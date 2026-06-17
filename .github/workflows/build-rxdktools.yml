@@ -3,8 +3,15 @@ name: Build RXDK Tools
 on:
   push:
     branches: [main, master]
+    tags:
+      - 'v*'
   pull_request:
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Create a GitHub Release with this tag (e.g. v1.0.0). Leave empty to build only.'
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -72,3 +79,61 @@ jobs:
             '|------|------|',
             $lines
           ) | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+
+  release:
+    name: GitHub Release
+    needs: build
+    if: |
+      github.event_name != 'pull_request' && (
+        startsWith(github.ref, 'refs/tags/v') ||
+        (github.event_name == 'workflow_dispatch' && github.event.inputs.release_tag != '') ||
+        (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'))
+      )
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: rxdk-tools-win-x64
+          path: dist
+
+      - name: Resolve release tag
+        id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            tag="${GITHUB_REF#refs/tags/}"
+            prerelease=false
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ github.event.inputs.release_tag }}" ]]; then
+            tag="${{ github.event.inputs.release_tag }}"
+            prerelease=true
+          else
+            tag="build-${GITHUB_RUN_NUMBER}"
+            prerelease=true
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
+          echo "Release tag: $tag (prerelease=$prerelease)"
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          name: RXDK Tools ${{ steps.meta.outputs.tag }}
+          prerelease: ${{ steps.meta.outputs.prerelease }}
+          generate_release_notes: true
+          files: dist/*.exe
+
+      - name: Release summary
+        shell: bash
+        run: |
+          {
+            echo "### GitHub Release"
+            echo ""
+            echo "- Tag: \`${{ steps.meta.outputs.tag }}\`"
+            echo "- Pre-release: \`${{ steps.meta.outputs.prerelease }}\`"
+            echo "- Assets: individual \`.exe\` files"
+          } >> "$GITHUB_STEP_SUMMARY"
