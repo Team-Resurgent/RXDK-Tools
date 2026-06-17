@@ -7,25 +7,26 @@
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++ CLASS DECLARATIONS ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 class CXboxStream : public IStream
 {
-public:
+  public:
     CXboxStream();
     ~CXboxStream();
     HRESULT Initialize(LPCSTR pszFilename, bool fDeleteOnFinalRelease = true);
 
     // IUnknown
-    STDMETHODIMP QueryInterface (REFIID iid, void **ppv);
-    STDMETHODIMP_(ULONG) AddRef();
-    STDMETHODIMP_(ULONG) Release();
+    STDMETHODIMP QueryInterface(REFIID iid, void **ppv);
+    STDMETHODIMP_(ULONG)
+    AddRef();
+    STDMETHODIMP_(ULONG)
+    Release();
 
     // IStream
-    STDMETHODIMP Read(void *pv, ULONG cb, ULONG *pcbRead);     
+    STDMETHODIMP Read(void *pv, ULONG cb, ULONG *pcbRead);
     STDMETHODIMP Write(VOID const *pv, ULONG cb, ULONG *pcbWritten);
     STDMETHODIMP Seek(LARGE_INTEGER dbMove, DWORD dwOrigin, ULARGE_INTEGER *pbNewPosition);
     STDMETHODIMP SetSize(ULARGE_INTEGER cbNewSize);
@@ -38,7 +39,7 @@ public:
     STDMETHODIMP Stat(STATSTG *pstatstg, DWORD grfStatFlag);
     STDMETHODIMP Clone(IStream **ppstm);
 
-protected:
+  protected:
     long m_cRef;
     bool m_fDeleteOnFinalRelease;
     HANDLE m_hFile;

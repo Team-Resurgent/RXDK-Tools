@@ -14,7 +14,6 @@
 // MAX_XBOX_THREADS -- Maximum number of threads expected on the Xbox.
 #define MAX_XBOX_THREADS 100
 
-
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++ STRUCTURES ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -23,34 +22,33 @@
 //                     crash.
 typedef struct
 {
-    bool  fValid;                           // 'true' if the thread's stack was successfully read.
-    DWORD dwThreadId;                       // Id of the thread.
-    DWORD dwStackBase;                      // Loaded address of the first element in the stack.
-    DWORD dwStackSize;                      // Size of the stack we're keeping around.
-    BYTE  *rgbyStack;                       // Pointer to the stack data.
-    XBDM_CONTEXT cr;                             // Complete context at time of crash.
+    bool fValid;       // 'true' if the thread's stack was successfully read.
+    DWORD dwThreadId;  // Id of the thread.
+    DWORD dwStackBase; // Loaded address of the first element in the stack.
+    DWORD dwStackSize; // Size of the stack we're keeping around.
+    BYTE *rgbyStack;   // Pointer to the stack data.
+    XBDM_CONTEXT cr;   // Complete context at time of crash.
 } sThreadInfo;
 
 // sBreakInfo       -- Encapsulates all information tracked at time of crash.
 typedef struct
 {
-    DWORD           dwEventType;            // The type of break event that occurred.
-    DWORD           dwBrokenThreadId;       // ID of the thread in which the break occurred.
-    DWORD           dwEventCode;            // Exception code of the break event if not a RIP.
-    bool            fWriteException;        // 'true' = write AV.  'False' = read AV.
-    DWORD           dwAVAddress;            // address of access violation (if that's what it was).
-    char            szRIP[1024];            // RIP string.  Empty if the event wasn't a RIP.
-    char            szXboxName[256];        // Name of the Xbox that the break occurred on.
-    SYSTEMTIME      systime;                // Time the break occurred.
-    char            szAppName[MAX_PATH];    // Name of the user's module.
-    DWORD           cModules;               // Number of modules loaded.
-    DMN_MODLOAD     *prgdmnml;              // Module information.
-    DWORD           cThreads;               // Number of threads active in this break event.
-    sThreadInfo     *prgthreadinfo;         // Per-thread break information.
-    DWORD           dwFirstSectionBase;     // The LOADED base address of the first section.  Used
-                                            // to determine offset from unrelocated address.
+    DWORD dwEventType;          // The type of break event that occurred.
+    DWORD dwBrokenThreadId;     // ID of the thread in which the break occurred.
+    DWORD dwEventCode;          // Exception code of the break event if not a RIP.
+    bool fWriteException;       // 'true' = write AV.  'False' = read AV.
+    DWORD dwAVAddress;          // address of access violation (if that's what it was).
+    char szRIP[1024];           // RIP string.  Empty if the event wasn't a RIP.
+    char szXboxName[256];       // Name of the Xbox that the break occurred on.
+    SYSTEMTIME systime;         // Time the break occurred.
+    char szAppName[MAX_PATH];   // Name of the user's module.
+    DWORD cModules;             // Number of modules loaded.
+    DMN_MODLOAD *prgdmnml;      // Module information.
+    DWORD cThreads;             // Number of threads active in this break event.
+    sThreadInfo *prgthreadinfo; // Per-thread break information.
+    DWORD dwFirstSectionBase;   // The LOADED base address of the first section.  Used
+                                // to determine offset from unrelocated address.
 } sBreakInfo;
-
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++ FUNCTIONS +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

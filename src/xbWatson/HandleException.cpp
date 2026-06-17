@@ -7,14 +7,12 @@
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++ INCLUDE FILES +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 // "stdafx.h"        -- Precompiled header file
 #include "stdafx.h"
-
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++ LOCAL GLOBAL VARIABLES ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -26,14 +24,12 @@ static DWORD gs_dwThreadId;
 // gs_pvAddress      -- Address of the exception.
 void *gs_pvAddress;
 
-
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++ GLOBAL VARIABLES ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 // g_dwExceptionCode -- Exception code of the exception which occurred.
 DWORD g_dwExceptionCode;
-
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++ FUNCTIONS +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -60,16 +56,16 @@ LRESULT CALLBACK ExceptionDlgProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM
     static bool s_fSaved = false;
 
     // ps                   -- Standard windows practice.  Used in WM_PAINT.
-	PAINTSTRUCT ps;
+    PAINTSTRUCT ps;
     HDC hdc;
 
     // hfont, hfontPrev, lf -- Variables necessary for outputing text
-    HFONT   hfont, hfontPrev;
+    HFONT hfont, hfontPrev;
     LOGFONT lf;
 
     // Handle the specified message
-	switch (message)
-	{
+    switch (message)
+    {
     case WM_INITDIALOG:
         MessageBeep(MB_ICONEXCLAMATION);
         SetWindowPos(hwnd, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
@@ -86,7 +82,7 @@ LRESULT CALLBACK ExceptionDlgProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM
 
     case WM_PAINT:
         // Standard windows WM_PAINT handling.
-		hdc = BeginPaint(hwnd, &ps);
+        hdc = BeginPaint(hwnd, &ps);
 
         // Don't draw any background in the ExtTextOut calls below.
         SetBkMode(hdc, TRANSPARENT);
@@ -101,7 +97,7 @@ LRESULT CALLBACK ExceptionDlgProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM
         hfontPrev = (HFONT)SelectObject(hdc, hfont);
 
         // Create the exception string
-        switch(g_dwExceptionCode)
+        switch (g_dwExceptionCode)
         {
         case 0x80000003:
             // Breakpoint
@@ -147,7 +143,7 @@ LRESULT CALLBACK ExceptionDlgProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM
 
     case WM_COMMAND:
         // The user pressed a button.
-        switch(LOWORD(wParam))
+        switch (LOWORD(wParam))
         {
         case ID_REBOOT:
             // Reboot the Xbox
@@ -171,8 +167,8 @@ LRESULT CALLBACK ExceptionDlgProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM
 
         case ID_CONTINUE:
             // User watns to continue.  Tell the Xbox to start running again
-		    DmContinueThread(gs_dwThreadId, FALSE);
-		    DmGo();
+            DmContinueThread(gs_dwThreadId, FALSE);
+            DmGo();
             break;
         }
 
@@ -200,12 +196,12 @@ void HandleException(DWORD dwThreadId, DWORD dwCode, void *pvAddress)
 {
     // Track the  thread that the exception occurred in.  Note: Can't avoid global variables with a
     // dialog box...
-    gs_dwThreadId     = dwThreadId;
-    gs_pvAddress      = pvAddress;
+    gs_dwThreadId = dwThreadId;
+    gs_pvAddress = pvAddress;
 
     // The exception code is file-global since GetBreakInfo needs to get it.
     g_dwExceptionCode = dwCode;
 
     // Open the exception dialog box - this will handle Ignore, Dump, and Reboot for us.
-    DialogBox(g_hInstance, (LPCTSTR)IDD_EXCEPTION, g_hwnd, (DLGPROC)ExceptionDlgProc);    
+    DialogBox(g_hInstance, (LPCTSTR)IDD_EXCEPTION, g_hwnd, (DLGPROC)ExceptionDlgProc);
 }

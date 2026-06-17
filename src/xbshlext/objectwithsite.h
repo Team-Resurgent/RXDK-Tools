@@ -8,9 +8,9 @@ Module Name:
     objectwithsite.h
 
 Abstract:
-    
+
     Declaration of an CShellObjectWithSite class that always
-    queries for IShellFolderView. 
+    queries for IShellFolderView.
 
 Environment:
 
@@ -29,27 +29,29 @@ class CShellObjectWithSite : public IObjectWithSite
 {
 
   public:
+    /*
+    ** c'tor, d'tor
+    */
+    CShellObjectWithSite() : m_pUnknownSite(NULL)
+    {
+    }
+    virtual ~CShellObjectWithSite()
+    {
+        if (m_pUnknownSite)
+            m_pUnknownSite->Release();
+    }
 
-   /*
-   ** c'tor, d'tor
-   */
-   CShellObjectWithSite() : m_pUnknownSite(NULL) {}
-   virtual ~CShellObjectWithSite()
-   {
-      if(m_pUnknownSite) m_pUnknownSite->Release();
-   }
+    /*
+    **  IObjectWithSite Methods
+    */
+    STDMETHOD(SetSite)(IUnknown *pUnkSite);
+    STDMETHOD(GetSite)(REFIID riid, void **ppvSite);
 
-   /*
-   **  IObjectWithSite Methods
-   */
-   STDMETHOD(SetSite)(IUnknown* pUnkSite);
-   STDMETHOD(GetSite)(REFIID riid, void **ppvSite);
-   
-   /*
-   **  An extra convenience function gets a service from the site interface
-   */
-   STDMETHOD(GetService)(REFGUID guidService, REFIID riid, void **ppvService);
+    /*
+    **  An extra convenience function gets a service from the site interface
+    */
+    STDMETHOD(GetService)(REFGUID guidService, REFIID riid, void **ppvService);
 
   protected:
-   IUnknown *m_pUnknownSite;
+    IUnknown *m_pUnknownSite;
 };

@@ -42,21 +42,21 @@ Abstract:
 //
 
 #ifdef _WIN64
-#define IMAGE_NT_HEADERS            IMAGE_NT_HEADERS32
-#define PIMAGE_NT_HEADERS           PIMAGE_NT_HEADERS32
-#define IMAGE_OPTIONAL_HEADER       IMAGE_OPTIONAL_HEADER32
-#define PIMAGE_OPTIONAL_HEADER      PIMAGE_OPTIONAL_HEADER32
-#define IMAGE_THUNK_DATA            IMAGE_THUNK_DATA32
-#define PIMAGE_THUNK_DATA           PIMAGE_THUNK_DATA32
-#define IMAGE_TLS_DIRECTORY         IMAGE_TLS_DIRECTORY32
-#define PIMAGE_TLS_DIRECTORY        PIMAGE_TLS_DIRECTORY32
+#define IMAGE_NT_HEADERS IMAGE_NT_HEADERS32
+#define PIMAGE_NT_HEADERS PIMAGE_NT_HEADERS32
+#define IMAGE_OPTIONAL_HEADER IMAGE_OPTIONAL_HEADER32
+#define PIMAGE_OPTIONAL_HEADER PIMAGE_OPTIONAL_HEADER32
+#define IMAGE_THUNK_DATA IMAGE_THUNK_DATA32
+#define PIMAGE_THUNK_DATA PIMAGE_THUNK_DATA32
+#define IMAGE_TLS_DIRECTORY IMAGE_TLS_DIRECTORY32
+#define PIMAGE_TLS_DIRECTORY PIMAGE_TLS_DIRECTORY32
 
 #undef IMAGE_NT_OPTIONAL_HDR_MAGIC
 #define IMAGE_NT_OPTIONAL_HDR_MAGIC IMAGE_NT_OPTIONAL_HDR32_MAGIC
 #undef IMAGE_SNAP_BY_ORDINAL
-#define IMAGE_SNAP_BY_ORDINAL       IMAGE_SNAP_BY_ORDINAL32
+#define IMAGE_SNAP_BY_ORDINAL IMAGE_SNAP_BY_ORDINAL32
 #undef IMAGE_ORDINAL
-#define IMAGE_ORDINAL               IMAGE_ORDINAL32
+#define IMAGE_ORDINAL IMAGE_ORDINAL32
 #endif // _WIN64
 
 #include "imagebld_win32.h"
@@ -69,7 +69,7 @@ Abstract:
 // Define the size of a processor page.
 //
 
-#define PAGE_SIZE                               0x1000
+#define PAGE_SIZE 0x1000
 
 //
 // Define a macro to align a virtual address to a page boundary.
@@ -93,7 +93,8 @@ Abstract:
 // Define the structure to track sections that should not be preloaded.
 //
 
-typedef struct _IMGB_NOPRELOAD {
+typedef struct _IMGB_NOPRELOAD
+{
     LIST_ENTRY ListEntry;
     LPSTR SectionName;
 } IMGB_NOPRELOAD, *PIMGB_NOPRELOAD;
@@ -103,7 +104,8 @@ typedef struct _IMGB_NOPRELOAD {
 // sections.
 //
 
-typedef struct _IMGB_INSERTFILE {
+typedef struct _IMGB_INSERTFILE
+{
     LIST_ENTRY ListEntry;
     HANDLE FileHandle;
     ULONG FileSize;
@@ -118,50 +120,56 @@ typedef struct _IMGB_INSERTFILE {
 // Define the default alignment of /INSERTFILE sections.
 //
 
-#define IMGB_INSERTFILE_SECTION_ALIGNMENT       32
+#define IMGB_INSERTFILE_SECTION_ALIGNMENT 32
 
 //
 // Define the maximum number of bytes that may be mapped by an XBE image.
 //
 
-#define IMGB_MAXIMUM_IMAGE_SIZE                 0x80000000
+#define IMGB_MAXIMUM_IMAGE_SIZE 0x80000000
 
 //
 // Define the structures to track data associated with the various subheaders of
 // an XBE image.
 //
 
-typedef struct _IMGB_GENERIC_HEADER {
+typedef struct _IMGB_GENERIC_HEADER
+{
     LIST_ENTRY HeadersListEntry;
     XBEVA VirtualAddress;
     ULONG VirtualSize;
     virtual VOID Write() = 0;
 } IMGB_GENERIC_HEADER, *PIMGB_GENERIC_HEADER;
 
-typedef struct _IMGB_XBEIMAGE_CERTIFICATE_HEADER: public IMGB_GENERIC_HEADER {
+typedef struct _IMGB_XBEIMAGE_CERTIFICATE_HEADER : public IMGB_GENERIC_HEADER
+{
     VOID Write();
 } IMGB_XBEIMAGE_CERTIFICATE_HEADER, *PIMGB_XBEIMAGE_CERTIFICATE_HEADER;
 
-typedef struct _IMGB_XBEIMAGE_IMPORT_DESCRIPTOR_HEADER: public IMGB_GENERIC_HEADER {
+typedef struct _IMGB_XBEIMAGE_IMPORT_DESCRIPTOR_HEADER : public IMGB_GENERIC_HEADER
+{
     ULONG NumberOfNonKernelImports;
     ULONG SizeOfNonKernelImageNames;
     VOID Write();
 } IMGB_XBEIMAGE_IMPORT_DESCRIPTOR_HEADER, *PIMGB_XBEIMAGE_IMPORT_DESCRIPTOR_HEADER;
 
-typedef struct _IMGB_TLS_RAW_DATA_HEADER: public IMGB_GENERIC_HEADER {
+typedef struct _IMGB_TLS_RAW_DATA_HEADER : public IMGB_GENERIC_HEADER
+{
     PIMAGE_TLS_DIRECTORY TlsDirectory;
     LPBYTE RawData;
     VOID Write();
 } IMGB_TLS_RAW_DATA_HEADER, *PIMGB_TLS_RAW_DATA_HEADER;
 
-typedef struct _IMGB_XBEIMAGE_LIBRARY_VERSION_HEADER: public IMGB_GENERIC_HEADER {
+typedef struct _IMGB_XBEIMAGE_LIBRARY_VERSION_HEADER : public IMGB_GENERIC_HEADER
+{
     PXBEIMAGE_LIBRARY_VERSION LibraryVersions;
     ULONG XboxKernelOffset;
     ULONG XapiOffset;
     VOID Write();
 } IMGB_XBEIMAGE_LIBRARY_VERSION_HEADER, *PIMGB_XBEIMAGE_LIBRARY_VERSION_HEADER;
 
-typedef struct _IMGB_XBEIMAGE_SECTION_HEADERS: public IMGB_GENERIC_HEADER {
+typedef struct _IMGB_XBEIMAGE_SECTION_HEADERS : public IMGB_GENERIC_HEADER
+{
     ULONG NumberOfExecutableSections;
     ULONG NumberOfInsertFileSections;
     ULONG SizeOfSectionNames;
@@ -169,15 +177,18 @@ typedef struct _IMGB_XBEIMAGE_SECTION_HEADERS: public IMGB_GENERIC_HEADER {
     VOID Write();
 } IMGB_XBEIMAGE_SECTION_HEADERS, *PIMGB_XBEIMAGE_SECTION_HEADERS;
 
-typedef struct _IMGB_DEBUG_PATHS_HEADER: public IMGB_GENERIC_HEADER {
+typedef struct _IMGB_DEBUG_PATHS_HEADER : public IMGB_GENERIC_HEADER
+{
     VOID Write();
 } IMGB_DEBUG_PATHS_HEADER, *PIMGB_DEBUG_PATHS_HEADER;
 
-typedef struct _IMGB_MICROSOFT_LOGO_HEADER: public IMGB_GENERIC_HEADER {
+typedef struct _IMGB_MICROSOFT_LOGO_HEADER : public IMGB_GENERIC_HEADER
+{
     VOID Write();
 } IMGB_MICROSOFT_LOGO_HEADER, *PIMGB_MICROSOFT_LOGO_HEADER;
 
-typedef struct _IMGB_PEHEADER_HEADER: public IMGB_GENERIC_HEADER {
+typedef struct _IMGB_PEHEADER_HEADER : public IMGB_GENERIC_HEADER
+{
     VOID Write();
 } IMGB_PEHEADER_HEADER, *PIMGB_PEHEADER_HEADER;
 
@@ -185,7 +196,8 @@ typedef struct _IMGB_PEHEADER_HEADER: public IMGB_GENERIC_HEADER {
 // Define the structure to track all of the contributions to an XBE image.
 //
 
-typedef struct _IMGB_XBEIMAGE_HEADER {
+typedef struct _IMGB_XBEIMAGE_HEADER
+{
     LIST_ENTRY HeadersListHead;
     XBEIMAGE_HEADER ImageHeader;
     IMGB_XBEIMAGE_CERTIFICATE_HEADER CertificateHeader;
@@ -206,46 +218,36 @@ typedef struct _IMGB_XBEIMAGE_HEADER {
 //
 
 DECLSPEC_NORETURN
-VOID
-ImgbDumpExecutable(
+VOID ImgbDumpExecutable(
     int argc,
-    char *argv[]
-    );
+    char *argv[]);
 
 //
 // General support functions.
 //
 
 DECLSPEC_NORETURN
-VOID
-ImgbExitProcess(
-    int ExitCode
-    );
+VOID ImgbExitProcess(
+    int ExitCode);
 
 LPVOID
 ImgbAllocateMemory(
-    SIZE_T cbBytes
-    );
+    SIZE_T cbBytes);
 
-VOID
-ImgbFreeMemory(
-    LPVOID lpMemory
-    );
+VOID ImgbFreeMemory(
+    LPVOID lpMemory);
 
 //
 // Command line support functions.
 //
 
-VOID
-ImgbProcessCommandLineOptions(
+VOID ImgbProcessCommandLineOptions(
     int argc,
-    char *argv[]
-    );
+    char *argv[]);
 
 BOOLEAN
 ImgbSearchNoPreloadList(
-    LPCSTR pszSectionName
-    );
+    LPCSTR pszSectionName);
 
 //
 // Portable Executable (PE) module support functions.
@@ -255,82 +257,64 @@ PIMAGE_SECTION_HEADER
 ImgbNameToSectionHeader(
     PIMAGE_NT_HEADERS NtHeader,
     PUCHAR SearchName,
-    PULONG SectionIndex
-    );
+    PULONG SectionIndex);
 
 PIMAGE_SECTION_HEADER
 ImgbVirtualAddressToSectionHeader(
     PIMAGE_NT_HEADERS NtHeader,
-    ULONG VirtualAddress
-    );
+    ULONG VirtualAddress);
 
 LPVOID
 ImgbVirtualAddressToData(
     PIMAGE_NT_HEADERS NtHeader,
-    ULONG VirtualAddress
-    );
+    ULONG VirtualAddress);
 
 LPVOID
 ImgbImageDataDirectoryToData(
     PIMAGE_NT_HEADERS NtHeader,
-    ULONG DataDirectoryIndex
-    );
+    ULONG DataDirectoryIndex);
 
 LPVOID
 ImgbLoadAddressToData(
     PIMAGE_NT_HEADERS NtHeader,
-    ULONG LoadAddress
-    );
+    ULONG LoadAddress);
 
-VOID
-ImgbRelocateImage(
+VOID ImgbRelocateImage(
     PIMAGE_NT_HEADERS NtHeader,
     ULONG OldBaseAddress,
     ULONG NewBaseAddress,
     PIMAGE_BASE_RELOCATION NextBlock,
-    ULONG TotalCountBytes
-    );
+    ULONG TotalCountBytes);
 
 //
 // String resource support functions.
 //
 
-VOID
-ImgbResourcePrintfV(
+VOID ImgbResourcePrintfV(
     FILE *file,
     UINT uStringID,
-    va_list args
-    );
+    va_list args);
 
-VOID
-ImgbResourcePrintf(
+VOID ImgbResourcePrintf(
     FILE *file,
     UINT uStringID,
-    ...
-    );
+    ...);
 
-VOID
-ImgbResourcePrintErrorAndExit(
+VOID ImgbResourcePrintErrorAndExit(
     UINT uStringID,
-    ...
-    );
+    ...);
 
-VOID
-ImgbResourcePrintWarning(
+VOID ImgbResourcePrintWarning(
     UINT uStringID,
-    ...
-    );
+    ...);
 
-VOID
-ImgbResourcePrintRange(
+VOID ImgbResourcePrintRange(
     FILE *file,
-    UINT uStartingStringID
-    );
+    UINT uStartingStringID);
 
 VOID
-ImgbResourcePrintLogoBanner(
-    VOID
-    );
+    ImgbResourcePrintLogoBanner(
+        VOID);
 
 //
 // C++ default operator overrides.

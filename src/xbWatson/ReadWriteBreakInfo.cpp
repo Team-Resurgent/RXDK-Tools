@@ -7,7 +7,6 @@
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++ INCLUDE FILES +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -18,7 +17,6 @@
 // UNDONE: This is the same file as found in xbDumpLog.  Should share code (common lib?) to avoid
 //         making a change in one place but not the other...
 
-
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++ GLOBAL VARIABLES ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -27,7 +25,6 @@
 //                     match this signature, then it is considered an incorrect or mangled file.
 //                     In the future, this signature will be used for backwards compatibility.
 static char gs_szSignature[] = "XBW1.0";
-
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++ FUNCTIONS +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -95,8 +92,8 @@ bool WriteBreakInfo(HANDLE hfile, sBreakInfo *pbreakinfo)
         return false;
 
     // Write out the Xbox name, time, and application name to the file
-    if (!WriteBytes(hfile, &pbreakinfo->szXboxName, sizeof(pbreakinfo->szXboxName)) || 
-        !WriteBytes(hfile, &pbreakinfo->systime, sizeof(pbreakinfo->systime))       ||
+    if (!WriteBytes(hfile, &pbreakinfo->szXboxName, sizeof(pbreakinfo->szXboxName)) ||
+        !WriteBytes(hfile, &pbreakinfo->systime, sizeof(pbreakinfo->systime)) ||
         !WriteBytes(hfile, &pbreakinfo->szAppName, sizeof(pbreakinfo->szAppName)))
         return false;
 
@@ -105,7 +102,7 @@ bool WriteBreakInfo(HANDLE hfile, sBreakInfo *pbreakinfo)
         return false;
     if (!WriteBytes(hfile, &pbreakinfo->dwBrokenThreadId, sizeof(pbreakinfo->dwBrokenThreadId)))
         return false;
-    
+
     // If the event was a RIP, then write out the RIP string.
     if (pbreakinfo->dwEventType == IDD_RIP)
     {
@@ -128,7 +125,7 @@ bool WriteBreakInfo(HANDLE hfile, sBreakInfo *pbreakinfo)
         return false;
     if (!WriteBytes(hfile, pbreakinfo->prgdmnml, sizeof(DMN_MODLOAD) * pbreakinfo->cModules))
         return false;
-    
+
     // Write out thread informaton to the file
     if (!WriteBytes(hfile, &pbreakinfo->cThreads, sizeof(pbreakinfo->cThreads)))
         return false;
@@ -138,8 +135,8 @@ bool WriteBreakInfo(HANDLE hfile, sBreakInfo *pbreakinfo)
         sThreadInfo *pthreadinfo = &pbreakinfo->prgthreadinfo[i];
         if (pthreadinfo->fValid)
         {
-            if (!WriteBytes(hfile, &pthreadinfo->cr,          sizeof(pthreadinfo->cr))          ||
-                !WriteBytes(hfile, &pthreadinfo->dwThreadId,  sizeof(pthreadinfo->dwThreadId))  ||
+            if (!WriteBytes(hfile, &pthreadinfo->cr, sizeof(pthreadinfo->cr)) ||
+                !WriteBytes(hfile, &pthreadinfo->dwThreadId, sizeof(pthreadinfo->dwThreadId)) ||
                 !WriteBytes(hfile, &pthreadinfo->dwStackBase, sizeof(pthreadinfo->dwStackBase)) ||
                 !WriteBytes(hfile, &pthreadinfo->dwStackSize, sizeof(pthreadinfo->dwStackSize)))
                 return false;
@@ -177,8 +174,8 @@ bool ReadBreakInfo(HANDLE hfile, sBreakInfo *pbreakinfo)
     }
 
     // Read in the Xbox name, time, and application name from the file
-    if (!ReadBytes(hfile, &pbreakinfo->szXboxName, sizeof(pbreakinfo->szXboxName)) || 
-        !ReadBytes(hfile, &pbreakinfo->systime, sizeof(pbreakinfo->systime))        ||
+    if (!ReadBytes(hfile, &pbreakinfo->szXboxName, sizeof(pbreakinfo->szXboxName)) ||
+        !ReadBytes(hfile, &pbreakinfo->systime, sizeof(pbreakinfo->systime)) ||
         !ReadBytes(hfile, &pbreakinfo->szAppName, sizeof(pbreakinfo->szAppName)))
         return false;
 
@@ -187,7 +184,7 @@ bool ReadBreakInfo(HANDLE hfile, sBreakInfo *pbreakinfo)
         return false;
     if (!ReadBytes(hfile, &pbreakinfo->dwBrokenThreadId, sizeof(pbreakinfo->dwBrokenThreadId)))
         return false;
-    
+
     // If the event was a RIP, then read in the RIP string.
     if (pbreakinfo->dwEventType == IDD_RIP)
     {
@@ -208,7 +205,7 @@ bool ReadBreakInfo(HANDLE hfile, sBreakInfo *pbreakinfo)
     // Read in the number of modules from the file
     if (!ReadBytes(hfile, &pbreakinfo->cModules, sizeof(pbreakinfo->cModules)))
         return false;
-    
+
     // Allocate space for the modules.
     pbreakinfo->prgdmnml = new DMN_MODLOAD[pbreakinfo->cModules];
     if (pbreakinfo->prgdmnml == NULL)
@@ -217,7 +214,7 @@ bool ReadBreakInfo(HANDLE hfile, sBreakInfo *pbreakinfo)
     // Read in the actual module information
     if (!ReadBytes(hfile, pbreakinfo->prgdmnml, sizeof(DMN_MODLOAD) * pbreakinfo->cModules))
         return false;
-    
+
     // Read the number of threads in this break event.
     if (!ReadBytes(hfile, &pbreakinfo->cThreads, sizeof(pbreakinfo->cThreads)))
         return false;
@@ -231,8 +228,8 @@ bool ReadBreakInfo(HANDLE hfile, sBreakInfo *pbreakinfo)
     for (DWORD i = 0; i < pbreakinfo->cThreads; i++)
     {
         sThreadInfo *pthreadinfo = &pbreakinfo->prgthreadinfo[i];
-        if (!ReadBytes(hfile, &pthreadinfo->cr,          sizeof(pthreadinfo->cr))          ||
-            !ReadBytes(hfile, &pthreadinfo->dwThreadId,  sizeof(pthreadinfo->dwThreadId))  ||
+        if (!ReadBytes(hfile, &pthreadinfo->cr, sizeof(pthreadinfo->cr)) ||
+            !ReadBytes(hfile, &pthreadinfo->dwThreadId, sizeof(pthreadinfo->dwThreadId)) ||
             !ReadBytes(hfile, &pthreadinfo->dwStackBase, sizeof(pthreadinfo->dwStackBase)) ||
             !ReadBytes(hfile, &pthreadinfo->dwStackSize, sizeof(pthreadinfo->dwStackSize)))
             return false;

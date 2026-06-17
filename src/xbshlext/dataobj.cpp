@@ -14,11 +14,11 @@ Abstract:
 
 Environment:
 
-    Windows 2000 and Later 
+    Windows 2000 and Later
     User Mode
 
 Revision History:
-    
+
     04-03-2001 : created (mitchd)
     04-25-2001 : implemented IDataObject methods (jeffsim)
     07-03-2001 : changed implementation to use CXboxSelectedItems and to recurse properly (mitchd)
@@ -31,61 +31,55 @@ Revision History:
 //-------------------------------------------------------------------------------------
 // Supported data formats
 //-------------------------------------------------------------------------------------
-CLIPFORMAT CF_FILECONTENTS               = (CLIPFORMAT)RegisterClipboardFormat(CFSTR_FILECONTENTS);
-CLIPFORMAT CF_FILEDESCRIPTORA            = (CLIPFORMAT)RegisterClipboardFormat(CFSTR_FILEDESCRIPTORA);
-CLIPFORMAT CF_FILEDESCRIPTORW            = (CLIPFORMAT)RegisterClipboardFormat(CFSTR_FILEDESCRIPTORW);
-CLIPFORMAT CF_FILENAMEMAPA               = (CLIPFORMAT)RegisterClipboardFormat(CFSTR_FILENAMEMAPA);
-CLIPFORMAT CF_FILENAMEMAPW               = (CLIPFORMAT)RegisterClipboardFormat(CFSTR_FILENAMEMAPW);
-CLIPFORMAT CF_FILENAME                   = (CLIPFORMAT)RegisterClipboardFormat(CFSTR_FILENAME);
-CLIPFORMAT CF_PREFERREDDROPEFFECT        = (CLIPFORMAT)RegisterClipboardFormat(CFSTR_PREFERREDDROPEFFECT);
-CLIPFORMAT CF_PERFORMEDDDROPEFFECT       = (CLIPFORMAT)RegisterClipboardFormat(CFSTR_PERFORMEDDROPEFFECT);
+CLIPFORMAT CF_FILECONTENTS = (CLIPFORMAT)RegisterClipboardFormat(CFSTR_FILECONTENTS);
+CLIPFORMAT CF_FILEDESCRIPTORA = (CLIPFORMAT)RegisterClipboardFormat(CFSTR_FILEDESCRIPTORA);
+CLIPFORMAT CF_FILEDESCRIPTORW = (CLIPFORMAT)RegisterClipboardFormat(CFSTR_FILEDESCRIPTORW);
+CLIPFORMAT CF_FILENAMEMAPA = (CLIPFORMAT)RegisterClipboardFormat(CFSTR_FILENAMEMAPA);
+CLIPFORMAT CF_FILENAMEMAPW = (CLIPFORMAT)RegisterClipboardFormat(CFSTR_FILENAMEMAPW);
+CLIPFORMAT CF_FILENAME = (CLIPFORMAT)RegisterClipboardFormat(CFSTR_FILENAME);
+CLIPFORMAT CF_PREFERREDDROPEFFECT = (CLIPFORMAT)RegisterClipboardFormat(CFSTR_PREFERREDDROPEFFECT);
+CLIPFORMAT CF_PERFORMEDDDROPEFFECT = (CLIPFORMAT)RegisterClipboardFormat(CFSTR_PERFORMEDDROPEFFECT);
 CLIPFORMAT CF_LOGICALPERFORMEDDROPEFFECT = (CLIPFORMAT)RegisterClipboardFormat(CFSTR_LOGICALPERFORMEDDROPEFFECT);
-CLIPFORMAT CF_PASTESUCCEEDED             = (CLIPFORMAT)RegisterClipboardFormat(CFSTR_PASTESUCCEEDED);
-CLIPFORMAT CF_SHELLIDLIST                = (CLIPFORMAT)RegisterClipboardFormat(CFSTR_SHELLIDLIST);
-CLIPFORMAT CF_XBOXFILEDESCRIPTOR         = (CLIPFORMAT)RegisterClipboardFormat(TEXT("XBOX_FILEDESCRIPTOR"));
+CLIPFORMAT CF_PASTESUCCEEDED = (CLIPFORMAT)RegisterClipboardFormat(CFSTR_PASTESUCCEEDED);
+CLIPFORMAT CF_SHELLIDLIST = (CLIPFORMAT)RegisterClipboardFormat(CFSTR_SHELLIDLIST);
+CLIPFORMAT CF_XBOXFILEDESCRIPTOR = (CLIPFORMAT)RegisterClipboardFormat(TEXT("XBOX_FILEDESCRIPTOR"));
 
+#define FORMAT_XBOXFILEDESCRIPTOR {CF_XBOXFILEDESCRIPTOR, NULL, DVASPECT_CONTENT, -1, TYMED_HGLOBAL}
+#define FORMAT_FILEDESCRIPTORA {CF_FILEDESCRIPTORA, NULL, DVASPECT_CONTENT, -1, TYMED_HGLOBAL}
+#define FORMAT_FILEDESCRIPTORW {CF_FILEDESCRIPTORW, NULL, DVASPECT_CONTENT, -1, TYMED_HGLOBAL}
+#define FORMAT_FILECONTENTS {CF_FILECONTENTS, NULL, DVASPECT_CONTENT, -1, TYMED_ISTREAM}
+#define FORMAT_SHELLIDLIST {CF_SHELLIDLIST, NULL, DVASPECT_CONTENT, -1, TYMED_HGLOBAL}
+#define FORMAT_PREFERREDDROPEFFECT {CF_PREFERREDDROPEFFECT, NULL, DVASPECT_CONTENT, -1, TYMED_HGLOBAL}
+#define FORMAT_PERFORMEDDDROPEFFECT {CF_PERFORMEDDDROPEFFECT, NULL, DVASPECT_CONTENT, -1, TYMED_HGLOBAL}
+#define FORMAT_LOGICALPERFORMEDDROPEFFECT {CF_LOGICALPERFORMEDDROPEFFECT, NULL, DVASPECT_CONTENT, -1, TYMED_HGLOBAL}
+#define FORMAT_PASTESUCCEEDED {CF_PASTESUCCEEDED, NULL, DVASPECT_CONTENT, -1, TYMED_HGLOBAL}
 
+GET_DATA_FORMAT_TABLE_ENTRY CXboxDataObject::sm_GetDataSupportedFormats[] =
+    {
+        {FORMAT_XBOXFILEDESCRIPTOR, &CXboxDataObject::GetXboxDescriptor},
+        {FORMAT_FILEDESCRIPTORA, &CXboxDataObject::GetFileDescriptorA},
+        {FORMAT_FILEDESCRIPTORW, &CXboxDataObject::GetFileDescriptorW},
+        {FORMAT_FILECONTENTS, &CXboxDataObject::GetFileContents},
+        {FORMAT_SHELLIDLIST, &CXboxDataObject::GetShellIdList}};
+UINT CXboxDataObject::sm_uGetDataSupportedCount = sizeof(CXboxDataObject::sm_GetDataSupportedFormats) / sizeof(GET_DATA_FORMAT_TABLE_ENTRY);
 
-#define FORMAT_XBOXFILEDESCRIPTOR          {CF_XBOXFILEDESCRIPTOR,        NULL, DVASPECT_CONTENT, -1, TYMED_HGLOBAL}
-#define FORMAT_FILEDESCRIPTORA             {CF_FILEDESCRIPTORA,           NULL, DVASPECT_CONTENT, -1, TYMED_HGLOBAL}
-#define FORMAT_FILEDESCRIPTORW             {CF_FILEDESCRIPTORW,           NULL, DVASPECT_CONTENT, -1, TYMED_HGLOBAL}
-#define FORMAT_FILECONTENTS                {CF_FILECONTENTS,              NULL, DVASPECT_CONTENT, -1, TYMED_ISTREAM}
-#define FORMAT_SHELLIDLIST                 {CF_SHELLIDLIST,               NULL, DVASPECT_CONTENT, -1, TYMED_HGLOBAL}
-#define FORMAT_PREFERREDDROPEFFECT         {CF_PREFERREDDROPEFFECT,       NULL, DVASPECT_CONTENT, -1, TYMED_HGLOBAL}
-#define FORMAT_PERFORMEDDDROPEFFECT        {CF_PERFORMEDDDROPEFFECT,      NULL, DVASPECT_CONTENT, -1, TYMED_HGLOBAL}
-#define FORMAT_LOGICALPERFORMEDDROPEFFECT  {CF_LOGICALPERFORMEDDROPEFFECT,NULL, DVASPECT_CONTENT, -1, TYMED_HGLOBAL}
-#define FORMAT_PASTESUCCEEDED              {CF_PASTESUCCEEDED,            NULL, DVASPECT_CONTENT, -1, TYMED_HGLOBAL}
-
-GET_DATA_FORMAT_TABLE_ENTRY CXboxDataObject::sm_GetDataSupportedFormats[] = 
-{
-  {FORMAT_XBOXFILEDESCRIPTOR,  &CXboxDataObject::GetXboxDescriptor},
-  {FORMAT_FILEDESCRIPTORA,     &CXboxDataObject::GetFileDescriptorA},
-  {FORMAT_FILEDESCRIPTORW,     &CXboxDataObject::GetFileDescriptorW},
-  {FORMAT_FILECONTENTS,        &CXboxDataObject::GetFileContents},
-  {FORMAT_SHELLIDLIST,         &CXboxDataObject::GetShellIdList}
-};
-UINT CXboxDataObject::sm_uGetDataSupportedCount = sizeof(CXboxDataObject::sm_GetDataSupportedFormats)/sizeof(GET_DATA_FORMAT_TABLE_ENTRY);
-
-SET_DATA_FORMAT_TABLE_ENTRY CXboxDataObject::sm_SetDataSupportedFormats[] = 
-{
-  {FORMAT_PREFERREDDROPEFFECT,         &CXboxDataObject::SetPreferredDropEffect},
-  {FORMAT_PERFORMEDDDROPEFFECT,        &CXboxDataObject::SetPerformedDropEffect},
-  {FORMAT_LOGICALPERFORMEDDROPEFFECT,  &CXboxDataObject::SetLogicalPerformedDropEffect},
-  {FORMAT_PASTESUCCEEDED,              &CXboxDataObject::SetPasteSucceeded}
-};
-UINT CXboxDataObject::sm_uSetDataSupportedCount = sizeof(CXboxDataObject::sm_SetDataSupportedFormats)/sizeof(SET_DATA_FORMAT_TABLE_ENTRY);
-
+SET_DATA_FORMAT_TABLE_ENTRY CXboxDataObject::sm_SetDataSupportedFormats[] =
+    {
+        {FORMAT_PREFERREDDROPEFFECT, &CXboxDataObject::SetPreferredDropEffect},
+        {FORMAT_PERFORMEDDDROPEFFECT, &CXboxDataObject::SetPerformedDropEffect},
+        {FORMAT_LOGICALPERFORMEDDROPEFFECT, &CXboxDataObject::SetLogicalPerformedDropEffect},
+        {FORMAT_PASTESUCCEEDED, &CXboxDataObject::SetPasteSucceeded}};
+UINT CXboxDataObject::sm_uSetDataSupportedCount = sizeof(CXboxDataObject::sm_SetDataSupportedFormats) / sizeof(SET_DATA_FORMAT_TABLE_ENTRY);
 
 //-------------------------------------------------------------------------------------
 // Creation and Destruction
 //-------------------------------------------------------------------------------------
-HRESULT 
+HRESULT
 CXboxDataObject::Create(
-    UINT           cidl,
+    UINT cidl,
     LPCITEMIDLIST *apidl,
-    CXboxFolder   *pParent,
-    IDataObject   **ppDataObject
-    )
+    CXboxFolder *pParent,
+    IDataObject **ppDataObject)
 /*++
  Routine Description:
   Creates an IDataObject for the selected items of a CXboxFolder.  This works
@@ -108,31 +102,33 @@ CXboxDataObject::Create(
     ULONG ulShellAttributes = SFGAO_CANCOPY | SFGAO_CANMOVE | SFGAO_CANLINK;
     CXboxFolder *pSelection;
     HRESULT hr = pParent->GetAttributesOf(cidl, apidl, &ulShellAttributes);
-    if(SUCCEEDED(hr))
+    if (SUCCEEDED(hr))
     {
-        if(!ulShellAttributes)
+        if (!ulShellAttributes)
         {
-            hr=E_NOINTERFACE;
-        } else
+            hr = E_NOINTERFACE;
+        }
+        else
         {
-            hr = pParent->CloneSelection(cidl, apidl,&pSelection);
+            hr = pParent->CloneSelection(cidl, apidl, &pSelection);
         }
     }
 
-    if(SUCCEEDED(hr))
+    if (SUCCEEDED(hr))
     {
         CComObject<CXboxDataObject> *pDataObject;
         hr = CComObject<CXboxDataObject>::CreateInstance(&pDataObject);
-        if(SUCCEEDED(hr))
+        if (SUCCEEDED(hr))
         {
             pDataObject->m_pSelection = pSelection;
             pDataObject->m_ulShellAttributes = ulShellAttributes;
             pDataObject->m_uTopLevelItemCount = cidl;
             pDataObject->QueryInterface(IID_PPV_ARG(IDataObject, ppDataObject));
             SHGetThreadRef(&pDataObject->m_pUnkThread);
-            //Assume drop effect copy, it might get changed later.
+            // Assume drop effect copy, it might get changed later.
             DataObjUtil::SetPreferredDropEffect(pDataObject, DROPEFFECT_COPY);
-        } else
+        }
+        else
         {
             pSelection->Release();
         }
@@ -140,12 +136,11 @@ CXboxDataObject::Create(
     return hr;
 }
 
-HRESULT 
+HRESULT
 CXboxDataObject::Create(
-    UINT           cidl,
-    CXboxFolder   *pSelection,
-    IDataObject   **ppDataObject
-    )
+    UINT cidl,
+    CXboxFolder *pSelection,
+    IDataObject **ppDataObject)
 /*++
  Routine Description:
   Creates an IDataObject for the selected items of a CXboxFolder.  This works
@@ -166,14 +161,14 @@ CXboxDataObject::Create(
 {
     ULONG ulShellAttributes = SFGAO_CANCOPY | SFGAO_CANMOVE | SFGAO_CANLINK;
     pSelection->GetSelectShellAttributes(&ulShellAttributes);
-    if(!ulShellAttributes)
+    if (!ulShellAttributes)
     {
         return E_NOINTERFACE;
     }
 
     CComObject<CXboxDataObject> *pDataObject;
     HRESULT hr = CComObject<CXboxDataObject>::CreateInstance(&pDataObject);
-    if(SUCCEEDED(hr))
+    if (SUCCEEDED(hr))
     {
         pSelection->AddRef();
         pDataObject->m_pSelection = pSelection;
@@ -181,13 +176,14 @@ CXboxDataObject::Create(
         pDataObject->m_uTopLevelItemCount = cidl;
         pDataObject->QueryInterface(IID_PPV_ARG(IDataObject, ppDataObject));
         SHGetThreadRef(&pDataObject->m_pUnkThread);
-        //Assume drop effect copy, it might get changed later.
+        // Assume drop effect copy, it might get changed later.
         DataObjUtil::SetPreferredDropEffect(pDataObject, DROPEFFECT_COPY);
-    } else
+    }
+    else
     {
         pSelection->Release();
     }
-    
+
     return hr;
 }
 
@@ -205,14 +201,14 @@ CXboxDataObject::~CXboxDataObject()
     **  unoptimized moves.
     */
 
-    
     //
     //  We are done with out clone of the selection
     //
-    if(m_pSelection) m_pSelection->Release();
-    
+    if (m_pSelection)
+        m_pSelection->Release();
+
     //
-    //  Cleanup the m_pXboxFileGroupList, if it 
+    //  Cleanup the m_pXboxFileGroupList, if it
     //  was ever created.
     //
     free(m_pXboxFileGroupDescriptor);
@@ -221,7 +217,8 @@ CXboxDataObject::~CXboxDataObject()
     //  If we are holding a reference count on the thread
     //  release it.
     //
-    if(m_pUnkThread) m_pUnkThread->Release();
+    if (m_pUnkThread)
+        m_pUnkThread->Release();
 }
 
 /*
@@ -254,10 +251,10 @@ STDMETHODIMP CXboxDataObject::GetData(FORMATETC *pfetc, STGMEDIUM *pstgm)
 --*/
 {
     HRESULT hr;
-    UINT    uDataFormatIndex;
+    UINT uDataFormatIndex;
 
     ENTER_SPEW;
-    
+
     // Validate parameters
     if (pfetc == NULL || pstgm == NULL)
         return E_INVALIDARG;
@@ -265,29 +262,29 @@ STDMETHODIMP CXboxDataObject::GetData(FORMATETC *pfetc, STGMEDIUM *pstgm)
     //
     //  Dump the format name.
     //
-    //DUMP_FORMAT_NAME(pfetc->cfFormat);
+    // DUMP_FORMAT_NAME(pfetc->cfFormat);
 
     //
     //   First, check our table for supported formats
     //
     hr = FindMatchingGetFormat(pfetc, &uDataFormatIndex);
-    if(SUCCEEDED(hr))
+    if (SUCCEEDED(hr))
     {
         hr = (this->*sm_GetDataSupportedFormats[uDataFormatIndex].pfnGetData)(pfetc, pstgm, false);
-    } else
+    }
+    else
     //
     //  Perhaps someone stored a non-native format.  Check that list too.
-    //  
+    //
     {
         CStoredDataFormat *pStoredFormat = m_StoredFormats.FindMatch(pfetc);
-        if(pStoredFormat)
+        if (pStoredFormat)
         {
             hr = pStoredFormat->CopyTo(pstgm);
         }
     }
     return hr;
 }
-
 
 STDMETHODIMP CXboxDataObject::SetData(FORMATETC *pfetc, STGMEDIUM *pstgm, BOOL fRelease)
 /*++
@@ -313,7 +310,7 @@ STDMETHODIMP CXboxDataObject::SetData(FORMATETC *pfetc, STGMEDIUM *pstgm, BOOL f
 {
     HRESULT hr;
     UINT uDataFormatIndex;
-    
+
     //
     // Verify parameters
     //
@@ -327,10 +324,11 @@ STDMETHODIMP CXboxDataObject::SetData(FORMATETC *pfetc, STGMEDIUM *pstgm, BOOL f
     //  any special handling.
     //
     hr = FindMatchingSetFormat(pfetc, &uDataFormatIndex);
-    if(SUCCEEDED(hr))
+    if (SUCCEEDED(hr))
     {
         hr = (this->*sm_SetDataSupportedFormats[uDataFormatIndex].pfnSetData)(pfetc, pstgm, fRelease);
-    } else
+    }
+    else
     //
     // Otherwise store it as a generic format.
     //
@@ -371,8 +369,9 @@ STDMETHODIMP CXboxDataObject::EnumFormatEtc(DWORD dwDirection, IEnumFORMATETC **
     // Verify parameters
     //
 
-    if (ppieftc == NULL) return E_INVALIDARG;
-    if( (DATADIR_GET!=dwDirection) && (DATADIR_SET!=dwDirection))
+    if (ppieftc == NULL)
+        return E_INVALIDARG;
+    if ((DATADIR_GET != dwDirection) && (DATADIR_SET != dwDirection))
     {
         _ASSERT(FALSE);
         return E_INVALIDARG;
@@ -381,19 +380,20 @@ STDMETHODIMP CXboxDataObject::EnumFormatEtc(DWORD dwDirection, IEnumFORMATETC **
     //
     //  Build the array
     //
-    UINT       uFormatCount;
+    UINT uFormatCount;
     FORMATETC *pFirstFormat;
     FORMATETC *pNextFormat;
-    if(DATADIR_GET == dwDirection)
+    if (DATADIR_GET == dwDirection)
     {
         //
         //  If the selected items may be copied then all of the
         //  formats are supported.  Otherwise, just CF_SHELLIDLIST
         //
-        if(m_ulShellAttributes&SFGAO_CANCOPY)
+        if (m_ulShellAttributes & SFGAO_CANCOPY)
         {
             uFormatCount = sm_uGetDataSupportedCount;
-        } else
+        }
+        else
         {
             uFormatCount = 1;
         }
@@ -402,20 +402,20 @@ STDMETHODIMP CXboxDataObject::EnumFormatEtc(DWORD dwDirection, IEnumFORMATETC **
         //  via SetData.
         //
         uFormatCount += m_StoredFormats.GetCount();
-        
+
         //
         //  Allocate the array.
         //
         pFirstFormat = new FORMATETC[uFormatCount];
 
-        if(pFirstFormat)
+        if (pFirstFormat)
         {
             //
             //  Copy the native formats
             //
-        
-            UINT uIndex = (m_ulShellAttributes&SFGAO_CANCOPY) ? 0 : (sm_uGetDataSupportedCount-1);
-            for(pNextFormat = pFirstFormat; uIndex < sm_uGetDataSupportedCount; uIndex++, pNextFormat++)
+
+            UINT uIndex = (m_ulShellAttributes & SFGAO_CANCOPY) ? 0 : (sm_uGetDataSupportedCount - 1);
+            for (pNextFormat = pFirstFormat; uIndex < sm_uGetDataSupportedCount; uIndex++, pNextFormat++)
             {
                 memcpy(pNextFormat, &sm_GetDataSupportedFormats[uIndex].formatEtc, sizeof(FORMATETC));
             }
@@ -425,29 +425,29 @@ STDMETHODIMP CXboxDataObject::EnumFormatEtc(DWORD dwDirection, IEnumFORMATETC **
             //
 
             CStoredDataFormat *pDataFormat = m_StoredFormats.GetFirst();
-            while(pDataFormat)
+            while (pDataFormat)
             {
                 pDataFormat->CopyFormat(pNextFormat++);
                 pDataFormat = pDataFormat->GetNext();
             }
         }
-
-    } else if(DATADIR_SET)
+    }
+    else if (DATADIR_SET)
     {
         uFormatCount = sm_uSetDataSupportedCount;
         //
         //  Allocate the array.
         //
         pFirstFormat = new FORMATETC[uFormatCount];
-        
-        if(pFirstFormat)
+
+        if (pFirstFormat)
         {
             //
             //  Copy the native formats
             //
-        
+
             UINT uIndex = 0;
-            for(pNextFormat = pFirstFormat; uIndex < sm_uSetDataSupportedCount; uIndex++, pNextFormat++)
+            for (pNextFormat = pFirstFormat; uIndex < sm_uSetDataSupportedCount; uIndex++, pNextFormat++)
             {
                 memcpy(pNextFormat, &sm_SetDataSupportedFormats[uIndex].formatEtc, sizeof(FORMATETC));
             }
@@ -457,28 +457,29 @@ STDMETHODIMP CXboxDataObject::EnumFormatEtc(DWORD dwDirection, IEnumFORMATETC **
     //
     //  If we managed to get an array, then create an enumerator
     //  and initialize it,
-    if(pFirstFormat)
+    if (pFirstFormat)
     {
         CComObject<CEnumFormatEtc> *pEnumFormatEtc;
         hr = CComObject<CEnumFormatEtc>::CreateInstance(&pEnumFormatEtc);
-        if(SUCCEEDED(hr))
+        if (SUCCEEDED(hr))
         {
             hr = pEnumFormatEtc->Init(pFirstFormat, pNextFormat, NULL, AtlFlagTakeOwnership);
-            if(SUCCEEDED(hr))
+            if (SUCCEEDED(hr))
             {
                 hr = pEnumFormatEtc->QueryInterface(IID_PPV_ARG(IEnumFORMATETC, ppieftc));
             }
-            if(FAILED(hr))
-            {   
+            if (FAILED(hr))
+            {
                 delete pEnumFormatEtc;
-                delete [] pFirstFormat;
+                delete[] pFirstFormat;
             }
         }
         else
         {
-            delete [] pFirstFormat;
+            delete[] pFirstFormat;
         }
-    } else
+    }
+    else
     {
         hr = E_OUTOFMEMORY;
     }
@@ -494,14 +495,15 @@ STDMETHODIMP CXboxDataObject::QueryGetData(FORMATETC *pfetc)
 {
     HRESULT hr;
     ENTER_SPEW;
-    
+
     // Validate parameters
-    if (pfetc == NULL) return E_INVALIDARG;
+    if (pfetc == NULL)
+        return E_INVALIDARG;
 
     //
     //  Dump the format name.
     //
-    //DUMP_FORMAT_NAME(pfetc->cfFormat);
+    // DUMP_FORMAT_NAME(pfetc->cfFormat);
 
     //
     //   First, check our table for supported formats
@@ -513,10 +515,10 @@ STDMETHODIMP CXboxDataObject::QueryGetData(FORMATETC *pfetc)
     //  Perhaps someone stored a non-native format.  Check that list too.
     //
 
-    if(FAILED(hr))
+    if (FAILED(hr))
     {
         CStoredDataFormat *pStoredFormat = m_StoredFormats.FindMatch(pfetc);
-        if(pStoredFormat)
+        if (pStoredFormat)
         {
             hr = S_OK;
         }
@@ -528,7 +530,7 @@ STDMETHODIMP CXboxDataObject::GetCanonicalFormatEtc(FORMATETC *pfetcIn, FORMATET
 /*++
   Routine Description:
     Implements IDataObject::GetCanonicalFormatEtc.
-    
+
     There is a big long discussion in the FTP shell extension code why this should be
     implemented thusly.  The arguments were all pretty generic.
 --*/
@@ -536,14 +538,13 @@ STDMETHODIMP CXboxDataObject::GetCanonicalFormatEtc(FORMATETC *pfetcIn, FORMATET
     return DATA_S_SAMEFORMATETC;
 }
 
-
 /*
 **  IDataObject methods that we do not (yet?) support
 **
 */
 
-STDMETHODIMP CXboxDataObject::DAdvise(FORMATETC *pfetc, DWORD dwAdviseFlags, IAdviseSink * piadvsink,
-	                             DWORD * pdwConnection)
+STDMETHODIMP CXboxDataObject::DAdvise(FORMATETC *pfetc, DWORD dwAdviseFlags, IAdviseSink *piadvsink,
+                                      DWORD *pdwConnection)
 {
     return E_NOTIMPL;
 }
@@ -555,7 +556,7 @@ STDMETHODIMP CXboxDataObject::DUnadvise(DWORD dwConnection)
 
 STDMETHODIMP CXboxDataObject::EnumDAdvise(IEnumSTATDATA **ppienumStatData)
 {
-	return E_NOTIMPL;
+    return E_NOTIMPL;
 }
 
 //
@@ -579,21 +580,22 @@ STDMETHODIMP CXboxDataObject::EndOperation(HRESULT hResult, IBindCtx *pbcReserve
     //  In the non-Async case, we do this from the out IShellFolderViewCB
     //  implemented CXboxView.
     //
-    
-    if(SUCCEEDED(hResult) && (DROPEFFECT_MOVE == dwEffects))
+
+    if (SUCCEEDED(hResult) && (DROPEFFECT_MOVE == dwEffects))
     {
         CXboxDelete objDelete(NULL, m_pSelection->GetChildCount(), true);
-        m_pSelection->VisitEach(&objDelete, IXboxVisitor::FlagContinue|IXboxVisitor::FlagRecurse);
+        m_pSelection->VisitEach(&objDelete, IXboxVisitor::FlagContinue | IXboxVisitor::FlagRecurse);
     }
     m_fDidAsynchStart = FALSE;
     return S_OK;
 }
 STDMETHODIMP CXboxDataObject::GetAsyncMode(BOOL *pfIsOpAsync)
 {
-    if(m_pUnkThread || WindowUtils::IsMainShellProcess())
+    if (m_pUnkThread || WindowUtils::IsMainShellProcess())
     {
         *pfIsOpAsync = TRUE;
-    } else
+    }
+    else
     {
         *pfIsOpAsync = FALSE;
     }
@@ -607,18 +609,16 @@ STDMETHODIMP CXboxDataObject::InOperation(BOOL *pfInAsyncOp)
 STDMETHODIMP CXboxDataObject::StartOperation(IBindCtx *pbcReserved)
 {
     _ASSERTE(!pbcReserved);
-    
+
     m_fDidAsynchStart = TRUE;
     return S_OK;
 }
 
-
 /*
-**  
+**
 **  Internal Implemenation of CXboxDataObject
 **
 */
-
 
 HRESULT CXboxDataObject::AreFormatsEquivalent(FORMATETC *pFormatEtc1, FORMATETC *pFormatEtc2)
 /*++
@@ -630,7 +630,7 @@ HRESULT CXboxDataObject::AreFormatsEquivalent(FORMATETC *pFormatEtc1, FORMATETC 
    we just ignore it.
 --*/
 {
-    if(pFormatEtc1->cfFormat != pFormatEtc2->cfFormat)
+    if (pFormatEtc1->cfFormat != pFormatEtc2->cfFormat)
     {
         return DV_E_FORMATETC;
     }
@@ -639,20 +639,19 @@ HRESULT CXboxDataObject::AreFormatsEquivalent(FORMATETC *pFormatEtc1, FORMATETC 
     //  CAVEAT: CF_FILECONTENTS can take a range of indices,
     //          we will FindMatchingGetFormat deals with this.
     //
-    if(CF_FILECONTENTS!=pFormatEtc1->cfFormat)
+    if (CF_FILECONTENTS != pFormatEtc1->cfFormat)
     {
-        if(pFormatEtc1->lindex != pFormatEtc2->lindex)
+        if (pFormatEtc1->lindex != pFormatEtc2->lindex)
         {
             return DV_E_LINDEX;
         }
     }
 
-    if(!(pFormatEtc1->tymed&pFormatEtc2->tymed))
+    if (!(pFormatEtc1->tymed & pFormatEtc2->tymed))
     {
         return DV_E_TYMED;
-        
     }
-    if(pFormatEtc1->dwAspect != pFormatEtc2->dwAspect)
+    if (pFormatEtc1->dwAspect != pFormatEtc2->dwAspect)
     {
         return DV_E_DVASPECT;
     }
@@ -666,33 +665,34 @@ HRESULT CXboxDataObject::FindMatchingGetFormat(FORMATETC *pFormatEtc, PUINT puIn
     Checks the sm_GetDataSupportedFormats for a matching FORMATETC.
 --*/
 {
-    UINT uIndex = (m_ulShellAttributes&SFGAO_CANCOPY) ? 0 : (sm_uGetDataSupportedCount-1);
+    UINT uIndex = (m_ulShellAttributes & SFGAO_CANCOPY) ? 0 : (sm_uGetDataSupportedCount - 1);
     HRESULT hrResult = S_OK;
     HRESULT hr;
-    
-    for(; uIndex < sm_uGetDataSupportedCount; uIndex++)
+
+    for (; uIndex < sm_uGetDataSupportedCount; uIndex++)
     {
         hr = AreFormatsEquivalent(&sm_GetDataSupportedFormats[uIndex].formatEtc, pFormatEtc);
-        if(SUCCEEDED(hr))
+        if (SUCCEEDED(hr))
         {
             //
             //  AreFormatsEquivalent cannot check the index for CF_FILECONTENTS
             //  so we do that here.
             //
-            if(CF_FILECONTENTS==pFormatEtc->cfFormat)
+            if (CF_FILECONTENTS == pFormatEtc->cfFormat)
             {
-                if(!IsValidFileContentsIndex(pFormatEtc->lindex))
+                if (!IsValidFileContentsIndex(pFormatEtc->lindex))
                 {
                     return DV_E_LINDEX;
                 }
             }
-            if(puIndex)
+            if (puIndex)
             {
                 *puIndex = uIndex;
             }
             hrResult = S_OK;
             break;
-        } else
+        }
+        else
         {
             //
             //  This is a bit strange. If you look at winerror.h
@@ -703,7 +703,7 @@ HRESULT CXboxDataObject::FindMatchingGetFormat(FORMATETC *pFormatEtc, PUINT puIn
             //  have the correct aspect ratio.  It turns out that the
             //  codes are laid out so that this works.
             //
-            if(HRESULT_CODE(hr) > HRESULT_CODE(hrResult))
+            if (HRESULT_CODE(hr) > HRESULT_CODE(hrResult))
             {
                 hrResult = hr;
             }
@@ -711,7 +711,6 @@ HRESULT CXboxDataObject::FindMatchingGetFormat(FORMATETC *pFormatEtc, PUINT puIn
     }
     return hrResult;
 }
- 
 
 HRESULT CXboxDataObject::FindMatchingSetFormat(FORMATETC *pFormatEtc, PUINT puIndex)
 /*++
@@ -722,21 +721,22 @@ HRESULT CXboxDataObject::FindMatchingSetFormat(FORMATETC *pFormatEtc, PUINT puIn
     UINT uIndex;
     HRESULT hrResult = S_OK;
     HRESULT hr;
-    
-    for(uIndex = 0; uIndex < sm_uSetDataSupportedCount; uIndex++)
+
+    for (uIndex = 0; uIndex < sm_uSetDataSupportedCount; uIndex++)
     {
         hr = AreFormatsEquivalent(&sm_SetDataSupportedFormats[uIndex].formatEtc, pFormatEtc);
-        if(SUCCEEDED(hr))
+        if (SUCCEEDED(hr))
         {
-            if(puIndex)
+            if (puIndex)
             {
                 *puIndex = uIndex;
             }
             hrResult = S_OK;
             break;
-        } else
+        }
+        else
         {
-            if(HRESULT_CODE(hr) > HRESULT_CODE(hrResult))
+            if (HRESULT_CODE(hr) > HRESULT_CODE(hrResult))
             {
                 hrResult = hr;
             }
@@ -745,60 +745,74 @@ HRESULT CXboxDataObject::FindMatchingSetFormat(FORMATETC *pFormatEtc, PUINT puIn
     return hrResult;
 }
 
-
 class CCreateXboxFileGroupDesc : public IXboxVisitor
 {
   public:
-    virtual void VisitRoot         (IXboxVisit *pRoot,                DWORD *pdwFlags){_ASSERTE(FALSE);}
-    virtual void VisitAddConsole   (IXboxVisit *pAddConsole,          DWORD *pdwFlags){_ASSERTE(FALSE);}
-    virtual void VisitConsole      (IXboxConsoleVisit *pConsole,    DWORD *pdwFlags){_ASSERTE(FALSE);}
-    virtual void VisitVolume       (IXboxVolumeVisit *pVolume,     DWORD *pdwFlags){_ASSERTE(FALSE);}
-    virtual void VisitDirectoryPost (IXboxFileOrDirVisit *pFileOrDir, DWORD *pdwFlags){_ASSERTE(FALSE);}
-    virtual void VisitFileOrDir    (IXboxFileOrDirVisit *pFileOrDir,  DWORD *pdwFlags);
+    virtual void VisitRoot(IXboxVisit *pRoot, DWORD *pdwFlags)
+    {
+        _ASSERTE(FALSE);
+    }
+    virtual void VisitAddConsole(IXboxVisit *pAddConsole, DWORD *pdwFlags)
+    {
+        _ASSERTE(FALSE);
+    }
+    virtual void VisitConsole(IXboxConsoleVisit *pConsole, DWORD *pdwFlags)
+    {
+        _ASSERTE(FALSE);
+    }
+    virtual void VisitVolume(IXboxVolumeVisit *pVolume, DWORD *pdwFlags)
+    {
+        _ASSERTE(FALSE);
+    }
+    virtual void VisitDirectoryPost(IXboxFileOrDirVisit *pFileOrDir, DWORD *pdwFlags)
+    {
+        _ASSERTE(FALSE);
+    }
+    virtual void VisitFileOrDir(IXboxFileOrDirVisit *pFileOrDir, DWORD *pdwFlags);
 
     PXBOXFILEGROUPDESCRIPTOR GetXboxGroupDesc(UINT uTopLevelCount, CXboxFolder *m_pSelection);
-  
+
   private:
     struct XBOX_FILE_ITEM
     {
-      DM_FILE_ATTRIBUTES dmFileAttributes;    
-      XBOX_FILE_ITEM    *pNext;
+        DM_FILE_ATTRIBUTES dmFileAttributes;
+        XBOX_FILE_ITEM *pNext;
     };
 
-    UINT            m_uCount;
+    UINT m_uCount;
     XBOX_FILE_ITEM *m_pListHead;
     XBOX_FILE_ITEM *m_pListTail;
 };
 
-
 void CCreateXboxFileGroupDesc::VisitFileOrDir(IXboxFileOrDirVisit *pFileOrDir, DWORD *pdwFlags)
 {
     XBOX_FILE_ITEM *pNewFileItem = new XBOX_FILE_ITEM;
-    if(pNewFileItem)
+    if (pNewFileItem)
     {
-       pFileOrDir->GetFileAttributes(&pNewFileItem->dmFileAttributes);
-       //
-       //   The name in dmFileAttributes is the simple name, we want
-       //   to replace it with the name relative to the point of recursion,
-       //   which GetName returns.
-       //
-       pFileOrDir->GetName(pNewFileItem->dmFileAttributes.Name);
+        pFileOrDir->GetFileAttributes(&pNewFileItem->dmFileAttributes);
+        //
+        //   The name in dmFileAttributes is the simple name, we want
+        //   to replace it with the name relative to the point of recursion,
+        //   which GetName returns.
+        //
+        pFileOrDir->GetName(pNewFileItem->dmFileAttributes.Name);
 
-       pNewFileItem->pNext = NULL;
-       if(!m_uCount)
-       {
-           m_pListHead = pNewFileItem;
-       } else
-       {
-           m_pListTail->pNext = pNewFileItem; 
-       }
-       m_pListTail = pNewFileItem;
-       m_uCount++;
+        pNewFileItem->pNext = NULL;
+        if (!m_uCount)
+        {
+            m_pListHead = pNewFileItem;
+        }
+        else
+        {
+            m_pListTail->pNext = pNewFileItem;
+        }
+        m_pListTail = pNewFileItem;
+        m_uCount++;
     }
 }
 
 PXBOXFILEGROUPDESCRIPTOR CCreateXboxFileGroupDesc::GetXboxGroupDesc(UINT uTopLevelCount, CXboxFolder *pSelection)
-{   
+{
     PXBOXFILEGROUPDESCRIPTOR pXboxFileGroupDescriptor = NULL;
     UINT uIndex = 0;
     m_uCount = 0;
@@ -808,19 +822,19 @@ PXBOXFILEGROUPDESCRIPTOR CCreateXboxFileGroupDesc::GetXboxGroupDesc(UINT uTopLev
     //
     //  Build the list linked list of XBOX_FILE_ITEM's
     //
-    pSelection->VisitEach(this, IXboxVisitor::FlagContinue|IXboxVisitor::FlagRecurse);
+    pSelection->VisitEach(this, IXboxVisitor::FlagContinue | IXboxVisitor::FlagRecurse);
 
     //
     //  Allocate and fill out the XBOXFILEGROUPDESCRIPTOR
-    //  
-    if(m_pListHead)
+    //
+    if (m_pListHead)
     {
         //
         //  Calculate the size and allocate it.
         //
-        UINT uSize = sizeof(XBOXFILEGROUPDESCRIPTOR) + (m_uCount-1)*sizeof(FILEDESCRIPTORA);
+        UINT uSize = sizeof(XBOXFILEGROUPDESCRIPTOR) + (m_uCount - 1) * sizeof(FILEDESCRIPTORA);
         pXboxFileGroupDescriptor = (PXBOXFILEGROUPDESCRIPTOR)malloc(uSize);
-        if(pXboxFileGroupDescriptor)
+        if (pXboxFileGroupDescriptor)
         {
             //
             //  Fill in the header content
@@ -828,9 +842,9 @@ PXBOXFILEGROUPDESCRIPTOR CCreateXboxFileGroupDesc::GetXboxGroupDesc(UINT uTopLev
 
             pXboxFileGroupDescriptor->cItems = m_uCount;
             pSelection->GetPath(pXboxFileGroupDescriptor->szFolderPath);
-            if(!uTopLevelCount)
+            if (!uTopLevelCount)
             {
-                LPSTR pszParse = strrchr(pXboxFileGroupDescriptor->szFolderPath,'\\');
+                LPSTR pszParse = strrchr(pXboxFileGroupDescriptor->szFolderPath, '\\');
                 *pszParse = '\0';
             }
         }
@@ -839,7 +853,7 @@ PXBOXFILEGROUPDESCRIPTOR CCreateXboxFileGroupDesc::GetXboxGroupDesc(UINT uTopLev
         //  Go through our list of item, add them to our XBOXFILEGROUPDESCRIPTOR,
         //  if we managed to allocate it, and then free each item.
         //
-        while(m_pListHead)
+        while (m_pListHead)
         {
             XBOX_FILE_ITEM *pFileItem;
             //
@@ -847,9 +861,9 @@ PXBOXFILEGROUPDESCRIPTOR CCreateXboxFileGroupDesc::GetXboxGroupDesc(UINT uTopLev
             //
             pFileItem = m_pListHead;
             m_pListHead = pFileItem->pNext;
-            if(pXboxFileGroupDescriptor)
+            if (pXboxFileGroupDescriptor)
             {
-                pXboxFileGroupDescriptor->fgd[uIndex].dwFlags = FD_ATTRIBUTES|FD_CREATETIME|FD_FILESIZE|FD_WRITESTIME|FD_PROGRESSUI;
+                pXboxFileGroupDescriptor->fgd[uIndex].dwFlags = FD_ATTRIBUTES | FD_CREATETIME | FD_FILESIZE | FD_WRITESTIME | FD_PROGRESSUI;
                 strcpy(pXboxFileGroupDescriptor->fgd[uIndex].cFileName, pFileItem->dmFileAttributes.Name);
                 pXboxFileGroupDescriptor->fgd[uIndex].dwFileAttributes = pFileItem->dmFileAttributes.Attributes;
                 pXboxFileGroupDescriptor->fgd[uIndex].ftCreationTime = pFileItem->dmFileAttributes.CreationTime;
@@ -864,24 +878,21 @@ PXBOXFILEGROUPDESCRIPTOR CCreateXboxFileGroupDesc::GetXboxGroupDesc(UINT uTopLev
     return pXboxFileGroupDescriptor;
 }
 
-
-
 PXBOXFILEGROUPDESCRIPTOR CXboxDataObject::GetXboxFileGroupDescriptor()
 {
     //
-    //  If the data is NOT already rendered, 
+    //  If the data is NOT already rendered,
     //  use our helper class to create it.
     //
-    if(!m_pXboxFileGroupDescriptor)
+    if (!m_pXboxFileGroupDescriptor)
     {
-        CCreateXboxFileGroupDesc createXboxFileGroupDesc;    
+        CCreateXboxFileGroupDesc createXboxFileGroupDesc;
         m_pXboxFileGroupDescriptor = createXboxFileGroupDesc.GetXboxGroupDesc(
-                                        m_uTopLevelItemCount,
-                                        m_pSelection);
+            m_uTopLevelItemCount,
+            m_pSelection);
     }
-    return m_pXboxFileGroupDescriptor;    
+    return m_pXboxFileGroupDescriptor;
 }
-
 
 bool CXboxDataObject::IsValidFileContentsIndex(UINT uIndex)
 /*++
@@ -892,11 +903,11 @@ bool CXboxDataObject::IsValidFileContentsIndex(UINT uIndex)
 {
     PXBOXFILEGROUPDESCRIPTOR pXboxGroupFileDescriptor;
     pXboxGroupFileDescriptor = GetXboxFileGroupDescriptor();
-    if(pXboxGroupFileDescriptor)
+    if (pXboxGroupFileDescriptor)
     {
-        if(uIndex < pXboxGroupFileDescriptor->cItems)
+        if (uIndex < pXboxGroupFileDescriptor->cItems)
         {
-            if(!(pXboxGroupFileDescriptor->fgd[uIndex].dwFileAttributes&FILE_ATTRIBUTE_DIRECTORY))
+            if (!(pXboxGroupFileDescriptor->fgd[uIndex].dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
             {
                 return true;
             }
@@ -910,13 +921,14 @@ HRESULT CXboxDataObject::CopyToHGlobal(STGMEDIUM *pstgm, PVOID pvData, UINT cbSi
     //
     // Allocate global memory to store the copy we are returning
     //
-    if(fHere)
+    if (fHere)
     {
-        if(cbSize > GlobalSize(pstgm->hGlobal))
+        if (cbSize > GlobalSize(pstgm->hGlobal))
         {
             return STG_E_MEDIUMFULL;
         }
-    } else
+    }
+    else
     {
         pstgm->hGlobal = GlobalAlloc(GMEM_MOVEABLE | GMEM_ZEROINIT | GMEM_SHARE, cbSize);
         if (pstgm->hGlobal == NULL)
@@ -942,19 +954,19 @@ HRESULT CXboxDataObject::GetXboxDescriptor(FORMATETC *pfetc, STGMEDIUM *pstgm, B
 
     PXBOXFILEGROUPDESCRIPTOR pXboxGroupFileDescriptor = GetXboxFileGroupDescriptor();
 
-    if(!pXboxGroupFileDescriptor)
+    if (!pXboxGroupFileDescriptor)
     {
         return E_OUTOFMEMORY;
     }
-    
-    _ASSERT(pfetc->tymed&TYMED_HGLOBAL);
-        
+
+    _ASSERT(pfetc->tymed & TYMED_HGLOBAL);
+
     //
     //  Calculate the size of the structure
     //
 
     UINT cItems = pXboxGroupFileDescriptor->cItems;
-    UINT cbSize = sizeof(XBOXFILEGROUPDESCRIPTOR) + ((cItems-1)*sizeof(FILEDESCRIPTORA));
+    UINT cbSize = sizeof(XBOXFILEGROUPDESCRIPTOR) + ((cItems - 1) * sizeof(FILEDESCRIPTORA));
 
     //
     //  Copy the data to the stream.
@@ -966,7 +978,7 @@ HRESULT CXboxDataObject::GetXboxDescriptor(FORMATETC *pfetc, STGMEDIUM *pstgm, B
 HRESULT CXboxDataObject::GetFileDescriptorA(FORMATETC *pfetc, STGMEDIUM *pstgm, BOOL fHere)
 {
     PXBOXFILEGROUPDESCRIPTOR pXboxGroupFileDescriptor = GetXboxFileGroupDescriptor();
-    if(!pXboxGroupFileDescriptor)
+    if (!pXboxGroupFileDescriptor)
     {
         return E_OUTOFMEMORY;
     }
@@ -975,18 +987,19 @@ HRESULT CXboxDataObject::GetFileDescriptorA(FORMATETC *pfetc, STGMEDIUM *pstgm, 
     //  Calculate the size of the structure
     //
     UINT cItems = pXboxGroupFileDescriptor->cItems;
-    UINT cbSize = sizeof(FILEGROUPDESCRIPTORA) + ((cItems-1)*sizeof(FILEDESCRIPTORA));
+    UINT cbSize = sizeof(FILEGROUPDESCRIPTORA) + ((cItems - 1) * sizeof(FILEDESCRIPTORA));
 
     //
     //  Allocate the medium
     //
-    if(fHere)
+    if (fHere)
     {
-        if(cbSize > GlobalSize(pstgm->hGlobal))
+        if (cbSize > GlobalSize(pstgm->hGlobal))
         {
             return STG_E_MEDIUMFULL;
         }
-    } else
+    }
+    else
     {
         pstgm->hGlobal = GlobalAlloc(GMEM_MOVEABLE | GMEM_ZEROINIT | GMEM_SHARE, cbSize);
         if (pstgm->hGlobal == NULL)
@@ -996,26 +1009,25 @@ HRESULT CXboxDataObject::GetFileDescriptorA(FORMATETC *pfetc, STGMEDIUM *pstgm, 
         pstgm->tymed = TYMED_HGLOBAL;
         pstgm->pUnkForRelease = NULL;
     }
-    
+
     //
     // Copy the Data Object's XBOXFILEGROUPDESCRIPTOR into the
     // global memory we just allocated.
     //
     FILEGROUPDESCRIPTORA *pfgda = (FILEGROUPDESCRIPTORA *)GlobalLock(pstgm->hGlobal);
     pfgda->cItems = cItems;
-    UINT cbCopySize = cItems*sizeof(FILEDESCRIPTORA);
+    UINT cbCopySize = cItems * sizeof(FILEDESCRIPTORA);
     memcpy(pfgda->fgd, pXboxGroupFileDescriptor->fgd, cbCopySize);
     GlobalUnlock(pstgm->hGlobal);
-    
-    return S_OK;
 
+    return S_OK;
 }
 HRESULT CXboxDataObject::GetFileDescriptorW(FORMATETC *pfetc, STGMEDIUM *pstgm, BOOL fHere)
 {
-    
+
     PXBOXFILEGROUPDESCRIPTOR pXboxGroupFileDescriptor = GetXboxFileGroupDescriptor();
 
-    if(!pXboxGroupFileDescriptor)
+    if (!pXboxGroupFileDescriptor)
     {
         return E_OUTOFMEMORY;
     }
@@ -1024,18 +1036,19 @@ HRESULT CXboxDataObject::GetFileDescriptorW(FORMATETC *pfetc, STGMEDIUM *pstgm, 
     //  Calculate the size of the structure
     //
     UINT cItems = pXboxGroupFileDescriptor->cItems;
-    UINT cbSize = sizeof(FILEGROUPDESCRIPTORW) + ((cItems-1)*sizeof(FILEDESCRIPTORW));
+    UINT cbSize = sizeof(FILEGROUPDESCRIPTORW) + ((cItems - 1) * sizeof(FILEDESCRIPTORW));
 
     //
     //  Allocate the medium
     //
-    if(fHere)
+    if (fHere)
     {
-        if(cbSize > GlobalSize(pstgm->hGlobal))
+        if (cbSize > GlobalSize(pstgm->hGlobal))
         {
             return STG_E_MEDIUMFULL;
         }
-    } else
+    }
+    else
     {
         pstgm->hGlobal = GlobalAlloc(GMEM_MOVEABLE | GMEM_ZEROINIT | GMEM_SHARE, cbSize);
         if (pstgm->hGlobal == NULL)
@@ -1045,7 +1058,7 @@ HRESULT CXboxDataObject::GetFileDescriptorW(FORMATETC *pfetc, STGMEDIUM *pstgm, 
         pstgm->tymed = TYMED_HGLOBAL;
         pstgm->pUnkForRelease = NULL;
     }
-    
+
     //
     // Copy the Data Object's XBOXFILEGROUPDESCRIPTOR into the
     // global memory we just allocated.
@@ -1053,47 +1066,47 @@ HRESULT CXboxDataObject::GetFileDescriptorW(FORMATETC *pfetc, STGMEDIUM *pstgm, 
     FILEGROUPDESCRIPTORW *pfgdw = (FILEGROUPDESCRIPTORW *)GlobalLock(pstgm->hGlobal);
     pfgdw->cItems = cItems;
     UINT uIndex;
-    for(uIndex = 0; uIndex < cItems; uIndex++)
+    for (uIndex = 0; uIndex < cItems; uIndex++)
     {
-        pfgdw->fgd[uIndex].dwFlags          = pXboxGroupFileDescriptor->fgd[uIndex].dwFlags;
-        pfgdw->fgd[uIndex].clsid            = pXboxGroupFileDescriptor->fgd[uIndex].clsid;
-        pfgdw->fgd[uIndex].sizel            = pXboxGroupFileDescriptor->fgd[uIndex].sizel;
-        pfgdw->fgd[uIndex].pointl           = pXboxGroupFileDescriptor->fgd[uIndex].pointl;
+        pfgdw->fgd[uIndex].dwFlags = pXboxGroupFileDescriptor->fgd[uIndex].dwFlags;
+        pfgdw->fgd[uIndex].clsid = pXboxGroupFileDescriptor->fgd[uIndex].clsid;
+        pfgdw->fgd[uIndex].sizel = pXboxGroupFileDescriptor->fgd[uIndex].sizel;
+        pfgdw->fgd[uIndex].pointl = pXboxGroupFileDescriptor->fgd[uIndex].pointl;
         pfgdw->fgd[uIndex].dwFileAttributes = pXboxGroupFileDescriptor->fgd[uIndex].dwFileAttributes;
-        pfgdw->fgd[uIndex].ftCreationTime   = pXboxGroupFileDescriptor->fgd[uIndex].ftCreationTime;
+        pfgdw->fgd[uIndex].ftCreationTime = pXboxGroupFileDescriptor->fgd[uIndex].ftCreationTime;
         pfgdw->fgd[uIndex].ftLastAccessTime = pXboxGroupFileDescriptor->fgd[uIndex].ftLastAccessTime;
-        pfgdw->fgd[uIndex].ftLastWriteTime  = pXboxGroupFileDescriptor->fgd[uIndex].ftLastWriteTime;
-        pfgdw->fgd[uIndex].nFileSizeHigh    = pXboxGroupFileDescriptor->fgd[uIndex].nFileSizeHigh;
-        pfgdw->fgd[uIndex].nFileSizeLow     = pXboxGroupFileDescriptor->fgd[uIndex].nFileSizeLow;
+        pfgdw->fgd[uIndex].ftLastWriteTime = pXboxGroupFileDescriptor->fgd[uIndex].ftLastWriteTime;
+        pfgdw->fgd[uIndex].nFileSizeHigh = pXboxGroupFileDescriptor->fgd[uIndex].nFileSizeHigh;
+        pfgdw->fgd[uIndex].nFileSizeLow = pXboxGroupFileDescriptor->fgd[uIndex].nFileSizeLow;
         wsprintfW(pfgdw->fgd[uIndex].cFileName, L"%hs", pXboxGroupFileDescriptor->fgd[uIndex].cFileName);
     }
     GlobalUnlock(pstgm->hGlobal);
-    
+
     return S_OK;
 }
 
 HRESULT CXboxDataObject::GetFileContents(FORMATETC *pfetc, STGMEDIUM *pstgm, BOOL fHere)
 {
     PXBOXFILEGROUPDESCRIPTOR pXboxGroupFileDescriptor = GetXboxFileGroupDescriptor();
-    
-    if(!pXboxGroupFileDescriptor)
+
+    if (!pXboxGroupFileDescriptor)
     {
         return E_OUTOFMEMORY;
     }
-    if(fHere)
+    if (fHere)
     {
         return E_NOTIMPL;
-    }   
-    
+    }
+
     HRESULT hr;
     char szTargetFile[MAX_PATH];
-    
+
     //
     //  Get a temporary file name, since we pass false to open
     //  the file is not actually created, we just get the name.
     //  (The return value is zero for success, INVALID_HANDLE_VALUE
     //   on failure.)
-    if(INVALID_HANDLE_VALUE==WindowUtils::CreateTempFile(szTargetFile, false))
+    if (INVALID_HANDLE_VALUE == WindowUtils::CreateTempFile(szTargetFile, false))
     {
         return HRESULT_FROM_WIN32(GetLastError());
     }
@@ -1102,7 +1115,7 @@ HRESULT CXboxDataObject::GetFileContents(FORMATETC *pfetc, STGMEDIUM *pstgm, BOO
     //  Bring the file across the wire and save it to our temp file
     //
     hr = m_pSelection->ReceiveFile(pXboxGroupFileDescriptor->fgd[pfetc->lindex].cFileName, szTargetFile);
-    if(SUCCEEDED(hr))
+    if (SUCCEEDED(hr))
     {
         //
         //  The file is now in a temp file.  We just need
@@ -1118,7 +1131,8 @@ HRESULT CXboxDataObject::GetFileContents(FORMATETC *pfetc, STGMEDIUM *pstgm, BOO
             pstgm->pstm = pxboxstream;
             pstgm->pUnkForRelease = NULL;
         }
-    } else
+    }
+    else
     // It is important to translate the error codes, such that windows gives
     // a sensible error code.
     {
@@ -1130,54 +1144,72 @@ HRESULT CXboxDataObject::GetFileContents(FORMATETC *pfetc, STGMEDIUM *pstgm, BOO
 class CCreateShellIdList : public IXboxVisitor
 {
   public:
-    virtual void VisitRoot         (IXboxVisit          *pItem, DWORD *pf){return Visit(pItem,pf);}
-    virtual void VisitAddConsole   (IXboxVisit          *pItem, DWORD *pf){return Visit(pItem,pf);}
-    virtual void VisitConsole      (IXboxConsoleVisit   *pItem, DWORD *pf){return Visit(pItem,pf);}
-    virtual void VisitVolume       (IXboxVolumeVisit    *pItem, DWORD *pf){return Visit(pItem,pf);}
-    virtual void VisitFileOrDir    (IXboxFileOrDirVisit *pItem, DWORD *pf){return Visit(pItem,pf);}
-    virtual void VisitDirectoryPost (IXboxFileOrDirVisit *,DWORD *){_ASSERTE(FALSE);}
+    virtual void VisitRoot(IXboxVisit *pItem, DWORD *pf)
+    {
+        return Visit(pItem, pf);
+    }
+    virtual void VisitAddConsole(IXboxVisit *pItem, DWORD *pf)
+    {
+        return Visit(pItem, pf);
+    }
+    virtual void VisitConsole(IXboxConsoleVisit *pItem, DWORD *pf)
+    {
+        return Visit(pItem, pf);
+    }
+    virtual void VisitVolume(IXboxVolumeVisit *pItem, DWORD *pf)
+    {
+        return Visit(pItem, pf);
+    }
+    virtual void VisitFileOrDir(IXboxFileOrDirVisit *pItem, DWORD *pf)
+    {
+        return Visit(pItem, pf);
+    }
+    virtual void VisitDirectoryPost(IXboxFileOrDirVisit *, DWORD *)
+    {
+        _ASSERTE(FALSE);
+    }
 
     void Visit(IXboxVisit *pItem, DWORD *pf);
 
     HRESULT GetShellIdList(UINT uTopLevelCount, CXboxFolder *pSelection, STGMEDIUM *pstgm, BOOL fHere);
-  
-  private:
 
-    UINT             m_uCount;
-    LPITEMIDLIST    *m_rgPidls;
-    UINT             m_uTotalPidlSize;
-    HRESULT          m_hr;
+  private:
+    UINT m_uCount;
+    LPITEMIDLIST *m_rgPidls;
+    UINT m_uTotalPidlSize;
+    HRESULT m_hr;
 };
 
 void CCreateShellIdList::Visit(IXboxVisit *pItem, DWORD *pf)
 {
     m_rgPidls[m_uCount] = pItem->GetPidl(CPidlUtils::PidlTypeSimple);
-    if(m_rgPidls[m_uCount])
+    if (m_rgPidls[m_uCount])
     {
-      m_uTotalPidlSize += CPidlUtils::GetLength(m_rgPidls[m_uCount]);
-      m_uCount++;
-    } else
+        m_uTotalPidlSize += CPidlUtils::GetLength(m_rgPidls[m_uCount]);
+        m_uCount++;
+    }
+    else
     {
-      *pf = 0;
-      m_hr = E_OUTOFMEMORY;
-    } 
+        *pf = 0;
+        m_hr = E_OUTOFMEMORY;
+    }
 }
 
 HRESULT CCreateShellIdList::GetShellIdList(UINT uTopLevelCount, CXboxFolder *pSelection, STGMEDIUM *pstgm, BOOL fHere)
 {
     CIDA *pCida = NULL;
-    UINT  uIndex;
+    UINT uIndex;
     UINT uPidlLen;
     UINT nNextPidlOffset;
     m_hr = S_OK;
     m_uCount = 0;
     m_uTotalPidlSize = 0;
-    
+
     //
     //  Get the pidl of the parent folder
     //
     LPITEMIDLIST pParentPidl = pSelection->GetPidl(CPidlUtils::PidlTypeAbsolute);
-    if(!pParentPidl)
+    if (!pParentPidl)
     {
         return E_OUTOFMEMORY;
     }
@@ -1188,7 +1220,7 @@ HRESULT CCreateShellIdList::GetShellIdList(UINT uTopLevelCount, CXboxFolder *pSe
     //  If the pSelection is for itself (not one of its children
     //  then we need its parent.)
     //
-    if(!uTopLevelCount)
+    if (!uTopLevelCount)
     {
         //
         //  Do surgery on the parent pidl, lob off the last item.
@@ -1199,33 +1231,36 @@ HRESULT CCreateShellIdList::GetShellIdList(UINT uTopLevelCount, CXboxFolder *pSe
     }
 
     m_rgPidls = new LPITEMIDLIST[uTopLevelCount];
-    if(m_rgPidls)
+    if (m_rgPidls)
     {
         pSelection->VisitEach(this, IXboxVisitor::FlagContinue);
-        if(SUCCEEDED(m_hr))
+        if (SUCCEEDED(m_hr))
         {
-            UINT cbSize = sizeof(CIDA) + (m_uCount)*sizeof(UINT);
+            UINT cbSize = sizeof(CIDA) + (m_uCount) * sizeof(UINT);
             cbSize += m_uTotalPidlSize;
 
             //
             //  Allocate the storage medium
             //
-            if(fHere)
+            if (fHere)
             {
-                if(cbSize > GlobalSize(pstgm->hGlobal))
+                if (cbSize > GlobalSize(pstgm->hGlobal))
                 {
                     m_hr = STG_E_MEDIUMFULL;
-                } else
+                }
+                else
                 {
                     pCida = (CIDA *)GlobalLock(pstgm->hGlobal);
                 }
-            } else
+            }
+            else
             {
                 pstgm->hGlobal = GlobalAlloc(GMEM_MOVEABLE | GMEM_ZEROINIT | GMEM_SHARE, cbSize);
                 if (pstgm->hGlobal == NULL)
                 {
                     m_hr = STG_E_MEDIUMFULL;
-                } else
+                }
+                else
                 {
                     pstgm->tymed = TYMED_HGLOBAL;
                     pstgm->pUnkForRelease = NULL;
@@ -1233,32 +1268,32 @@ HRESULT CCreateShellIdList::GetShellIdList(UINT uTopLevelCount, CXboxFolder *pSe
                 }
             }
         }
-            
+
         //
         //  Copy the parent pidl.
         //
-        if(pCida)
+        if (pCida)
         {
             pCida->cidl = m_uCount;
             nNextPidlOffset = sizeof(CIDA) + m_uCount * sizeof(UINT);
             pCida->aoffset[0] = nNextPidlOffset;
-            memcpy((BYTE*)pCida + nNextPidlOffset, pParentPidl, uPidlLen);
+            memcpy((BYTE *)pCida + nNextPidlOffset, pParentPidl, uPidlLen);
             nNextPidlOffset += uPidlLen;
         }
         //
         //  Free the parent pidl
-        //  
+        //
         CPidlUtils::Free(pParentPidl);
         //
         //  Copy the other pidls, and free them.
         //
-        for(uIndex = 0; uIndex < m_uCount; uIndex++)
+        for (uIndex = 0; uIndex < m_uCount; uIndex++)
         {
-            if(pCida)
+            if (pCida)
             {
-                pCida->aoffset[uIndex+1] = nNextPidlOffset;
+                pCida->aoffset[uIndex + 1] = nNextPidlOffset;
                 uPidlLen = CPidlUtils::GetLength(m_rgPidls[uIndex]);
-                memcpy((BYTE*)pCida + nNextPidlOffset, m_rgPidls[uIndex], uPidlLen);
+                memcpy((BYTE *)pCida + nNextPidlOffset, m_rgPidls[uIndex], uPidlLen);
                 nNextPidlOffset += uPidlLen;
             }
             CPidlUtils::Free(m_rgPidls[uIndex]);
@@ -1267,7 +1302,7 @@ HRESULT CCreateShellIdList::GetShellIdList(UINT uTopLevelCount, CXboxFolder *pSe
         //
         //  Done with the storage medium.
         //
-        if(pCida)
+        if (pCida)
         {
             GlobalUnlock(pstgm->hGlobal);
         }
@@ -1275,11 +1310,10 @@ HRESULT CCreateShellIdList::GetShellIdList(UINT uTopLevelCount, CXboxFolder *pSe
         //
         //  Done with the array for holding the pidls.
         //
-        delete [] m_rgPidls;
+        delete[] m_rgPidls;
     }
     return m_hr;
 }
-
 
 HRESULT CXboxDataObject::GetShellIdList(FORMATETC *pfetc, STGMEDIUM *pstgm, BOOL fHere)
 /*++
@@ -1339,7 +1373,7 @@ HRESULT CStoredDataFormatList::Store(FORMATETC *pFormatEtc, STGMEDIUM *pstgm, BO
     //
     //  We can only store types that we can easily duplicate.
     //
-    if(!(pstgm->tymed&(TYMED_HGLOBAL|TYMED_ISTREAM|TYMED_ISTORAGE)))
+    if (!(pstgm->tymed & (TYMED_HGLOBAL | TYMED_ISTREAM | TYMED_ISTORAGE)))
     {
         return DV_E_TYMED;
     }
@@ -1349,26 +1383,28 @@ HRESULT CStoredDataFormatList::Store(FORMATETC *pFormatEtc, STGMEDIUM *pstgm, BO
     //
 
     CStoredDataFormat *pDataFormat = FindMatch(pFormatEtc);
-    if(pDataFormat)
+    if (pDataFormat)
     {
         ReleaseStgMedium(&pDataFormat->m_stgm);
-    } else
+    }
+    else
     {
         //
         //  No match so allocate the item
         //
         pDataFormat = new CStoredDataFormat;
-        if(pDataFormat)
+        if (pDataFormat)
         {
             pDataFormat->m_pNext = m_pHead;
             m_pHead = pDataFormat;
             m_uCount++;
-        } else
+        }
+        else
         {
             return STG_E_MEDIUMFULL;
         }
     }
-    
+
     //
     //  Blast the FORMATETC
     //
@@ -1377,7 +1413,7 @@ HRESULT CStoredDataFormatList::Store(FORMATETC *pFormatEtc, STGMEDIUM *pstgm, BO
     //
     //  If fRelease is set than just blast it over
     //
-    if(fRelease)
+    if (fRelease)
     {
         memcpy(&pDataFormat->m_stgm, pstgm, sizeof(STGMEDIUM));
     }
@@ -1387,26 +1423,27 @@ HRESULT CStoredDataFormatList::Store(FORMATETC *pFormatEtc, STGMEDIUM *pstgm, BO
     //  for failure.
     {
         HRESULT hr = CopyStgMedium(pstgm, &pDataFormat->m_stgm);
-        if(FAILED(hr))
+        if (FAILED(hr))
         {
-          //
-          // Free the format
-          //
-          if(pDataFormat == m_pHead)
-          {
-            m_pHead = pDataFormat->m_pNext;
-          } else
-          {
-            CStoredDataFormat *pPreviousFormat = m_pHead;
-            while(pDataFormat != pPreviousFormat->m_pNext)
+            //
+            // Free the format
+            //
+            if (pDataFormat == m_pHead)
             {
-                pPreviousFormat = pPreviousFormat->m_pNext;
+                m_pHead = pDataFormat->m_pNext;
             }
+            else
+            {
+                CStoredDataFormat *pPreviousFormat = m_pHead;
+                while (pDataFormat != pPreviousFormat->m_pNext)
+                {
+                    pPreviousFormat = pPreviousFormat->m_pNext;
+                }
                 pPreviousFormat->m_pNext = pDataFormat->m_pNext;
-          }
-          delete pDataFormat;
-          m_uCount--;
-          return hr;
+            }
+            delete pDataFormat;
+            m_uCount--;
+            return hr;
         }
     }
     return S_OK;
@@ -1419,11 +1456,11 @@ CStoredDataFormat *CStoredDataFormatList::FindMatch(FORMATETC *pfetc)
 --*/
 {
     CStoredDataFormat *pFormat = m_pHead;
-    while(pFormat)
+    while (pFormat)
     {
-        if(SUCCEEDED(CXboxDataObject::AreFormatsEquivalent(&pFormat->m_fetc, pfetc)))
+        if (SUCCEEDED(CXboxDataObject::AreFormatsEquivalent(&pFormat->m_fetc, pfetc)))
         {
-          break;
+            break;
         }
         pFormat = pFormat->m_pNext;
     }
@@ -1438,7 +1475,7 @@ CStoredDataFormatList::~CStoredDataFormatList()
    structure.  The list really owns destruction.
 --*/
 {
-    while(m_pHead)
+    while (m_pHead)
     {
         CStoredDataFormat *pFormat = m_pHead;
         m_pHead = pFormat->m_pNext;

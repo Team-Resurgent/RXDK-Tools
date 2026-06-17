@@ -11,7 +11,7 @@
 
 #define XRSA_MAX_WORDS 72
 
-void RSA32API DWORDToBigEndian(unsigned char* dst, DWORD* src, unsigned int count);
+void RSA32API DWORDToBigEndian(unsigned char *dst, DWORD *src, unsigned int count);
 
 int XrsaCompare(LPDWORD a, LPDWORD b, DWORD n);
 DWORD XrsaDigitLen(LPDWORD a, DWORD n);
@@ -28,4 +28,4 @@ BOOL XrsaModMultiply(LPDWORD a, LPDWORD b, LPDWORD c, LPDWORD mod, DWORD n);
 BOOL XrsaModSquare(LPDWORD a, LPDWORD b, LPDWORD mod, DWORD n);
 BOOL XrsaModExp(LPDWORD a, LPDWORD b, LPDWORD c, LPDWORD mod, DWORD n);
 BOOL XrsaModRoot(LPDWORD m, LPDWORD c, LPDWORD pp, LPDWORD qq,
-    LPDWORD dp, LPDWORD dq, LPDWORD cr, DWORD pSize);
+                 LPDWORD dp, LPDWORD dq, LPDWORD cr, DWORD pSize);

@@ -20,13 +20,13 @@ Abstract:
 
 Environment:
 
-    Windows 2000 and Later 
+    Windows 2000 and Later
     User Mode
     Compiles UNICODE, but explictly most things are ANSI,
     since the Xbox filesystem is all ANSI.
 
 Revision History:
-    
+
     07-03-01 Created by Mitchell Dernis (mitchd)
 
 --*/
@@ -40,12 +40,12 @@ class IXboxVisit
   Interface Description:
     Things you can do when visiting any Xbox Item
 --*/
-{ 
+{
   public:
-   virtual void         GetName(OUT LPSTR pszItemName) = 0;
-   virtual LPITEMIDLIST GetPidl(CPidlUtils::PIDLTYPE PidlType) = 0;
-   virtual ULONG        GetShellAttributes() = 0;
-   virtual void         GetConsoleName(OUT LPSTR pszConsoleName) = 0;
+    virtual void GetName(OUT LPSTR pszItemName) = 0;
+    virtual LPITEMIDLIST GetPidl(CPidlUtils::PIDLTYPE PidlType) = 0;
+    virtual ULONG GetShellAttributes() = 0;
+    virtual void GetConsoleName(OUT LPSTR pszConsoleName) = 0;
 };
 
 class IXboxConsoleVisit : public IXboxVisit
@@ -55,9 +55,9 @@ class IXboxConsoleVisit : public IXboxVisit
 --*/
 {
   public:
-   virtual DWORD GetIPAddress() = 0;
-   virtual void  SetDefault(BOOL fMakeDefault) = 0;
-   virtual BOOL  GetDefault() = 0;
+    virtual DWORD GetIPAddress() = 0;
+    virtual void SetDefault(BOOL fMakeDefault) = 0;
+    virtual BOOL GetDefault() = 0;
 };
 
 class IXboxVolumeVisit : public IXboxVisit
@@ -66,9 +66,9 @@ class IXboxVolumeVisit : public IXboxVisit
     Things you can do when visiting an Xbox Volume.
 --*/
 {
- public:
-   virtual int  GetVolumeType() = 0; // Returns string Resource ID
-   virtual void GetDiskCapacity(PULONGLONG pullTotalCapacity, PULONGLONG pullFreeCapacity) = 0;
+  public:
+    virtual int GetVolumeType() = 0; // Returns string Resource ID
+    virtual void GetDiskCapacity(PULONGLONG pullTotalCapacity, PULONGLONG pullFreeCapacity) = 0;
 };
 
 class IXboxFileOrDirVisit : public IXboxVisit
@@ -77,12 +77,12 @@ class IXboxFileOrDirVisit : public IXboxVisit
     Things you can do when visiting an Xbox Directory or File.
 --*/
 {
- public:
-  virtual void    GetFileAttributes(PDM_FILE_ATTRIBUTES pDmFileAttributes) = 0;
-  virtual HRESULT SetFileAttributes(PDM_FILE_ATTRIBUTES pDmFileAttributes) = 0;
-  virtual HRESULT SetName(HWND hWnd, LPSTR pszNewName) = 0;
-  virtual HRESULT Delete() = 0;
-  virtual void GetWireName(LPSTR pszWireName) = 0;
+  public:
+    virtual void GetFileAttributes(PDM_FILE_ATTRIBUTES pDmFileAttributes) = 0;
+    virtual HRESULT SetFileAttributes(PDM_FILE_ATTRIBUTES pDmFileAttributes) = 0;
+    virtual HRESULT SetName(HWND hWnd, LPSTR pszNewName) = 0;
+    virtual HRESULT Delete() = 0;
+    virtual void GetWireName(LPSTR pszWireName) = 0;
 };
 
 //-------------------------------------------------------------------------------
@@ -107,24 +107,22 @@ class IXboxVisitor
 --*/
 {
   public:
-
-    virtual void VisitRoot         (IXboxVisit *pRoot,                DWORD *pdwFlags) = 0;   
-    virtual void VisitAddConsole   (IXboxVisit *pAddConsole,          DWORD *pdwFlags) = 0;
-    virtual void VisitConsole      (IXboxConsoleVisit   *pConsole,    DWORD *pdwFlags) = 0;   
-    virtual void VisitVolume       (IXboxVolumeVisit    *pVolume,     DWORD *pdwFlags) = 0;
-    virtual void VisitFileOrDir    (IXboxFileOrDirVisit *pFileOrDir,  DWORD *pdwFlags) = 0;
+    virtual void VisitRoot(IXboxVisit *pRoot, DWORD *pdwFlags) = 0;
+    virtual void VisitAddConsole(IXboxVisit *pAddConsole, DWORD *pdwFlags) = 0;
+    virtual void VisitConsole(IXboxConsoleVisit *pConsole, DWORD *pdwFlags) = 0;
+    virtual void VisitVolume(IXboxVolumeVisit *pVolume, DWORD *pdwFlags) = 0;
+    virtual void VisitFileOrDir(IXboxFileOrDirVisit *pFileOrDir, DWORD *pdwFlags) = 0;
 
     //
     //  Directories may be recursed.  This method is called, when recursing a directory,
     //  after its children have been recursed.
     //
-    virtual void VisitDirectoryPost (IXboxFileOrDirVisit *pFileOrDir, DWORD *pdwFlags) = 0;
+    virtual void VisitDirectoryPost(IXboxFileOrDirVisit *pFileOrDir, DWORD *pdwFlags) = 0;
 
     enum _Flags
     {
         FlagContinue = 1,
-        FlagRecurse  = 2,   //Only applies to directories
-        FlagCallPost = 4,   //Only applies to directories (requires FlagRecurse)
-        
+        FlagRecurse = 2,  // Only applies to directories
+        FlagCallPost = 4, // Only applies to directories (requires FlagRecurse)
     };
 };

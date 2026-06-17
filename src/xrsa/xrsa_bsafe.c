@@ -11,7 +11,8 @@ static DWORD KeyPDWords(DWORD bitlen)
 {
     DWORD half = bitlen >> 1;
     DWORD pd = (half >> 5) + 1;
-    if (half & 31) {
+    if (half & 31)
+    {
         ++pd;
     }
     return pd;
@@ -19,14 +20,15 @@ static DWORD KeyPDWords(DWORD bitlen)
 
 BOOL RSA32API BSafeGetPrvKeyParts(LPBSAFE_PRV_KEY key, LPBSAFE_KEY_PARTS parts)
 {
-    BYTE* p;
+    BYTE *p;
     DWORD half;
 
-    if (!key || !parts || key->magic != RSA2) {
+    if (!key || !parts || key->magic != RSA2)
+    {
         return FALSE;
     }
 
-    p = (BYTE*)key + sizeof(BSAFE_PUB_KEY);
+    p = (BYTE *)key + sizeof(BSAFE_PUB_KEY);
     parts->modulus = p;
     p += key->keylen;
     parts->prime1 = p;
@@ -50,12 +52,13 @@ BOOL RSA32API BSafeGetPrvKeyParts(LPBSAFE_PRV_KEY key, LPBSAFE_KEY_PARTS parts)
     return TRUE;
 }
 
-BYTE* RSA32API BSafeGetPubKeyModulus(LPBSAFE_PUB_KEY key)
+BYTE *RSA32API BSafeGetPubKeyModulus(LPBSAFE_PUB_KEY key)
 {
-    if (!key || key->magic != RSA1) {
+    if (!key || key->magic != RSA1)
+    {
         return NULL;
     }
-    return (BYTE*)key + sizeof(BSAFE_PUB_KEY);
+    return (BYTE *)key + sizeof(BSAFE_PUB_KEY);
 }
 
 BOOL RSA32API BSafeEncPublic(
@@ -67,31 +70,36 @@ BOOL RSA32API BSafeEncPublic(
     DWORD cmpWords;
     DWORD expBuf[XRSA_MAX_WORDS];
 
-    if (!key || key->magic != RSA1 || !part_in || !part_out) {
+    if (!key || key->magic != RSA1 || !part_in || !part_out)
+    {
         return FALSE;
     }
 
     pdWords = KeyPDWords(key->bitlen);
     cmpWords = pdWords * 2;
-    if (cmpWords > XRSA_MAX_WORDS) {
+    if (cmpWords > XRSA_MAX_WORDS)
+    {
         return FALSE;
     }
 
-    if (key->pubexp == 1) {
+    if (key->pubexp == 1)
+    {
         memcpy(part_out, part_in, key->keylen);
         return TRUE;
     }
 
-    if (Compare((LPDWORD)part_in, (LPDWORD)BSafeGetPubKeyModulus((LPBSAFE_PUB_KEY)key), cmpWords) >= 0) {
+    if (Compare((LPDWORD)part_in, (LPDWORD)BSafeGetPubKeyModulus((LPBSAFE_PUB_KEY)key), cmpWords) >= 0)
+    {
         return FALSE;
     }
 
     SetValDWORD(expBuf, key->pubexp, cmpWords);
     if (!BenalohModExp((LPDWORD)part_out,
-            (LPDWORD)part_in,
-            expBuf,
-            (LPDWORD)BSafeGetPubKeyModulus((LPBSAFE_PUB_KEY)key),
-            cmpWords)) {
+                       (LPDWORD)part_in,
+                       expBuf,
+                       (LPDWORD)BSafeGetPubKeyModulus((LPBSAFE_PUB_KEY)key),
+                       cmpWords))
+    {
         return FALSE;
     }
 
@@ -106,31 +114,35 @@ BOOL RSA32API BSafeDecPrivate(
     BSAFE_KEY_PARTS parts;
     DWORD pdWords;
 
-    if (!key || key->magic != RSA2 || !part_in || !part_out) {
+    if (!key || key->magic != RSA2 || !part_in || !part_out)
+    {
         return FALSE;
     }
-    if (!BSafeGetPrvKeyParts((LPBSAFE_PRV_KEY)key, &parts)) {
+    if (!BSafeGetPrvKeyParts((LPBSAFE_PRV_KEY)key, &parts))
+    {
         return FALSE;
     }
 
     pdWords = KeyPDWords(key->bitlen);
-    if (pdWords > XRSA_MAX_WORDS) {
+    if (pdWords > XRSA_MAX_WORDS)
+    {
         return FALSE;
     }
 
-    if (key->pubexp == 1) {
+    if (key->pubexp == 1)
+    {
         memcpy(part_out, part_in, key->keylen);
         return TRUE;
     }
 
     return BenalohModRoot((LPDWORD)part_out,
-        (LPDWORD)part_in,
-        (LPDWORD)parts.prime1,
-        (LPDWORD)parts.prime2,
-        (LPDWORD)parts.exp1,
-        (LPDWORD)parts.exp2,
-        (LPDWORD)parts.coef,
-        pdWords);
+                          (LPDWORD)part_in,
+                          (LPDWORD)parts.prime1,
+                          (LPDWORD)parts.prime2,
+                          (LPDWORD)parts.exp1,
+                          (LPDWORD)parts.exp2,
+                          (LPDWORD)parts.coef,
+                          pdWords);
 }
 
 BOOL RSA32API BSafeComputePDWords(LPDWORD bits, LPDWORD pdwords)
@@ -139,13 +151,15 @@ BOOL RSA32API BSafeComputePDWords(LPDWORD bits, LPDWORD pdwords)
     DWORD pd;
 
     value = *bits;
-    if ((value & 1) || value < 32) {
+    if ((value & 1) || value < 32)
+    {
         return FALSE;
     }
     value >>= 1;
     *bits = value;
     pd = (value >> 5) + 1;
-    if (value & 31) {
+    if (value & 31)
+    {
         ++pd;
     }
     *pdwords = pd;
@@ -161,13 +175,15 @@ BOOL RSA32API BSafeComputeKeySizes(
     DWORD pd;
 
     value = *bits;
-    if ((value & 1) || value < 32) {
+    if ((value & 1) || value < 32)
+    {
         return FALSE;
     }
     value >>= 1;
     *bits = value;
     pd = (value >> 5) + 1;
-    if (value & 31) {
+    if (value & 31)
+    {
         ++pd;
     }
     *PrivateKeySize = pd * 40 + sizeof(BSAFE_PRV_KEY);
@@ -177,14 +193,16 @@ BOOL RSA32API BSafeComputeKeySizes(
 
 void RSA32API BSafeFreePubKey(LPBSAFE_PUB_KEY public_key)
 {
-    if (public_key && public_key->magic == RSA1) {
+    if (public_key && public_key->magic == RSA1)
+    {
         LocalFree((HLOCAL)public_key);
     }
 }
 
 void RSA32API BSafeFreePrvKey(LPBSAFE_PRV_KEY private_key)
 {
-    if (private_key && private_key->magic == RSA2) {
+    if (private_key && private_key->magic == RSA2)
+    {
         LocalFree((HLOCAL)private_key);
     }
 }

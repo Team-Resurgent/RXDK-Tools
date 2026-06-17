@@ -16,8 +16,7 @@ Abstract:
 
 static unsigned long
 ImgbDumpAddress(
-    ULONG_PTR Address
-    )
+    ULONG_PTR Address)
 {
     return (unsigned long)Address;
 }
@@ -31,19 +30,18 @@ const char *ImgbApprovedStatus[] = {
     "unapproved",
     "possibly approved",
     "approved",
-    "expired"
-};
+    "expired"};
 
 LPSTR
 ImgbGetDumpTimeStampString(
-    PULONG TimeDateStamp
-    )
+    PULONG TimeDateStamp)
 {
     LPSTR pszTimeStampString;
 
-    pszTimeStampString = ctime((time_t*)TimeDateStamp);
+    pszTimeStampString = ctime((time_t *)TimeDateStamp);
 
-    if (pszTimeStampString == NULL) {
+    if (pszTimeStampString == NULL)
+    {
         pszTimeStampString = "invalid\n";
     }
 
@@ -52,16 +50,15 @@ ImgbGetDumpTimeStampString(
 
 LPSTR
 ImgbGetDumpCertificateKeyString(
-    PUCHAR CertificateKey
-    )
+    PUCHAR CertificateKey)
 {
     static CHAR Buffer[80];
 
     sprintf(Buffer, "%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
-        CertificateKey[0], CertificateKey[1], CertificateKey[2], CertificateKey[3],
-        CertificateKey[4], CertificateKey[5], CertificateKey[6], CertificateKey[7],
-        CertificateKey[8], CertificateKey[9], CertificateKey[10], CertificateKey[11],
-        CertificateKey[12], CertificateKey[13], CertificateKey[14], CertificateKey[15]);
+            CertificateKey[0], CertificateKey[1], CertificateKey[2], CertificateKey[3],
+            CertificateKey[4], CertificateKey[5], CertificateKey[6], CertificateKey[7],
+            CertificateKey[8], CertificateKey[9], CertificateKey[10], CertificateKey[11],
+            CertificateKey[12], CertificateKey[13], CertificateKey[14], CertificateKey[15]);
 
     return Buffer;
 }
@@ -70,8 +67,7 @@ LPVOID
 ImgbGetDumpDataFromVirtualAddress(
     PXBEIMAGE_HEADER ImageHeader,
     XBEVA VirtualAddress,
-    ULONG NumberOfBytes
-    )
+    ULONG NumberOfBytes)
 {
     PXBEIMAGE_SECTION ImageSection;
     ULONG FileByteOffset;
@@ -84,11 +80,13 @@ ImgbGetDumpDataFromVirtualAddress(
 
     if (((ULONG)ImageHeader->BaseAddress <= (ULONG)VirtualAddress) &&
         ((ULONG)VirtualAddress + NumberOfBytes <= (ULONG)ImageHeader->BaseAddress +
-            ImageHeader->SizeOfHeaders)) {
+                                                      ImageHeader->SizeOfHeaders))
+    {
 
         FileByteOffset = (ULONG)VirtualAddress - (ULONG)ImageHeader->BaseAddress;
 
-        if (FileByteOffset >= ImgbInputFileSize) {
+        if (FileByteOffset >= ImgbInputFileSize)
+        {
             return NULL;
         }
 
@@ -99,7 +97,8 @@ ImgbGetDumpDataFromVirtualAddress(
     // Verify that the image has sections.
     //
 
-    if (ImageHeader->NumberOfSections == 0) {
+    if (ImageHeader->NumberOfSections == 0)
+    {
         return NULL;
     }
 
@@ -109,7 +108,8 @@ ImgbGetDumpDataFromVirtualAddress(
     //
 
     if (((ULONG)ImageHeader->SectionHeaders - (ULONG)ImageHeader->BaseAddress) >=
-        ImgbInputFileSize) {
+        ImgbInputFileSize)
+    {
         return NULL;
     }
 
@@ -119,7 +119,8 @@ ImgbGetDumpDataFromVirtualAddress(
     //
 
     if (((ULONG)ImageHeader->SectionHeaders - (ULONG)ImageHeader->BaseAddress +
-        (ImageHeader->NumberOfSections * sizeof(XBEIMAGE_SECTION))) >= ImgbInputFileSize) {
+         (ImageHeader->NumberOfSections * sizeof(XBEIMAGE_SECTION))) >= ImgbInputFileSize)
+    {
         return NULL;
     }
 
@@ -129,18 +130,21 @@ ImgbGetDumpDataFromVirtualAddress(
     //
 
     ImageSection = (PXBEIMAGE_SECTION)((LPBYTE)ImageHeader +
-        (ULONG)ImageHeader->SectionHeaders - (ULONG)ImageHeader->BaseAddress);
+                                       (ULONG)ImageHeader->SectionHeaders - (ULONG)ImageHeader->BaseAddress);
 
-    for (Index = 0; Index < ImageHeader->NumberOfSections; Index++) {
+    for (Index = 0; Index < ImageHeader->NumberOfSections; Index++)
+    {
 
         if ((ImageSection->VirtualAddress <= (ULONG)VirtualAddress) &&
             ((ULONG)VirtualAddress + NumberOfBytes <= ImageSection->VirtualAddress +
-                ImageSection->SizeOfRawData)) {
+                                                          ImageSection->SizeOfRawData))
+        {
 
             FileByteOffset = ImageSection->PointerToRawData +
-                ((ULONG)VirtualAddress - ImageSection->VirtualAddress);
+                             ((ULONG)VirtualAddress - ImageSection->VirtualAddress);
 
-            if (FileByteOffset >= ImgbInputFileSize) {
+            if (FileByteOffset >= ImgbInputFileSize)
+            {
                 return NULL;
             }
 
@@ -153,10 +157,8 @@ ImgbGetDumpDataFromVirtualAddress(
     return NULL;
 }
 
-VOID
-ImgbDumpXbeCertificate(
-    PXBEIMAGE_HEADER ImageHeader
-    )
+VOID ImgbDumpXbeCertificate(
+    PXBEIMAGE_HEADER ImageHeader)
 {
     PXBEIMAGE_CERTIFICATE Certificate;
     ULONG Index;
@@ -165,7 +167,8 @@ ImgbDumpXbeCertificate(
     // Verify that the image has a certificate.
     //
 
-    if (ImageHeader->Certificate == NULL) {
+    if (ImageHeader->Certificate == NULL)
+    {
         return;
     }
 
@@ -177,7 +180,8 @@ ImgbDumpXbeCertificate(
     Certificate = (PXBEIMAGE_CERTIFICATE)ImgbGetDumpDataFromVirtualAddress(
         ImageHeader, ImageHeader->Certificate, sizeof(XBEIMAGE_CERTIFICATE));
 
-    if (Certificate == NULL) {
+    if (Certificate == NULL)
+    {
         return;
     }
 
@@ -192,9 +196,10 @@ ImgbDumpXbeCertificate(
     printf("%s%8X version\n", ImgbDumpPadding, Certificate->Version);
 
     if (Certificate->SizeOfCertificate > FIELD_OFFSET(XBEIMAGE_CERTIFICATE,
-        OnlineServiceName)) {
+                                                      OnlineServiceName))
+    {
         printf("%s%8X online service name\n", ImgbDumpPadding,
-            Certificate->OnlineServiceName);
+               Certificate->OnlineServiceName);
     }
 
     printf("\n");
@@ -205,37 +210,36 @@ ImgbDumpXbeCertificate(
     printf("Signature key: %s\n", ImgbGetDumpCertificateKeyString(Certificate->SignatureKey));
     printf("\n");
 
-    if (Certificate->AlternateTitleIDs[0] != 0) {
+    if (Certificate->AlternateTitleIDs[0] != 0)
+    {
 
         printf("Title alternate title ids:\n");
 
-        for (Index = 0; Index < XBEIMAGE_ALTERNATE_TITLE_ID_COUNT; Index++) {
+        for (Index = 0; Index < XBEIMAGE_ALTERNATE_TITLE_ID_COUNT; Index++)
+        {
 
-            if (Certificate->AlternateTitleIDs[Index] == 0) {
+            if (Certificate->AlternateTitleIDs[Index] == 0)
+            {
                 break;
             }
 
             printf("%s%08x    Signature key: %s\n", ImgbDumpPadding, Certificate->AlternateTitleIDs[Index],
-                ImgbGetDumpCertificateKeyString(Certificate->AlternateSignatureKeys[Index]));
+                   ImgbGetDumpCertificateKeyString(Certificate->AlternateSignatureKeys[Index]));
         }
 
         printf("\n");
     }
 }
 
-VOID
-ImgbAlterUnapprovedLibraryStatus(
+VOID ImgbAlterUnapprovedLibraryStatus(
     PXBEIMAGE_LIBRARY_VERSION LibraryVersion,
-    int ApprovalLevel
-    )
+    int ApprovalLevel)
 {
     LibraryVersion->ApprovedLibrary = (USHORT)ApprovalLevel;
 }
 
-VOID
-ImgbDumpXbeLibraryVersions(
-    PXBEIMAGE_HEADER ImageHeader
-    )
+VOID ImgbDumpXbeLibraryVersions(
+    PXBEIMAGE_HEADER ImageHeader)
 {
     PXBEIMAGE_LIBRARY_VERSION LibraryVersion;
     PXBEIMAGE_LIBRARY_VERSION XapiLibraryVersion;
@@ -246,7 +250,8 @@ ImgbDumpXbeLibraryVersions(
     // Verify that the image has a library versions section.
     //
 
-    if (ImageHeader->NumberOfLibraryVersions == 0) {
+    if (ImageHeader->NumberOfLibraryVersions == 0)
+    {
         return;
     }
 
@@ -259,15 +264,19 @@ ImgbDumpXbeLibraryVersions(
         ImageHeader, ImageHeader->LibraryVersions,
         ImageHeader->NumberOfLibraryVersions * sizeof(XBEIMAGE_LIBRARY_VERSION));
 
-    if (LibraryVersion == NULL) {
+    if (LibraryVersion == NULL)
+    {
         return;
     }
 
-    if (ImageHeader->XapiLibraryVersion != NULL) {
+    if (ImageHeader->XapiLibraryVersion != NULL)
+    {
         XapiLibraryVersion = (PXBEIMAGE_LIBRARY_VERSION)ImgbGetDumpDataFromVirtualAddress(
             ImageHeader, ImageHeader->XapiLibraryVersion,
             sizeof(XBEIMAGE_LIBRARY_VERSION));
-    } else {
+    }
+    else
+    {
         XapiLibraryVersion = NULL;
     }
 
@@ -276,28 +285,27 @@ ImgbDumpXbeLibraryVersions(
     //
 
     CheckLibraryApprovalStatus(XapiLibraryVersion, LibraryVersion,
-        ImageHeader->NumberOfLibraryVersions, ImgbAlterUnapprovedLibraryStatus);
+                               ImageHeader->NumberOfLibraryVersions, ImgbAlterUnapprovedLibraryStatus);
 
     printf("LIBRARY VERSIONS\n");
 
-    for (Index = 0; Index < ImageHeader->NumberOfLibraryVersions; Index++) {
+    for (Index = 0; Index < ImageHeader->NumberOfLibraryVersions; Index++)
+    {
         ApprovalStatus = LibraryVersion->ApprovedLibrary;
 
         printf("%s%8.8s %d.%d.%d.%d%s [%s]\n", ImgbDumpPadding, LibraryVersion->LibraryName,
-            LibraryVersion->MajorVersion, LibraryVersion->MinorVersion,
-            LibraryVersion->BuildVersion, LibraryVersion->QFEVersion,
-            (LibraryVersion->DebugBuild ? " [debug]" : ""),
-            ImgbApprovedStatus[ApprovalStatus]);
+               LibraryVersion->MajorVersion, LibraryVersion->MinorVersion,
+               LibraryVersion->BuildVersion, LibraryVersion->QFEVersion,
+               (LibraryVersion->DebugBuild ? " [debug]" : ""),
+               ImgbApprovedStatus[ApprovalStatus]);
         LibraryVersion++;
     }
 
     printf("\n");
 }
 
-VOID
-ImgbDumpXbeImportDirectories(
-    PXBEIMAGE_HEADER ImageHeader
-    )
+VOID ImgbDumpXbeImportDirectories(
+    PXBEIMAGE_HEADER ImageHeader)
 {
     XBEVA RawImportDescriptor;
     PXBEIMAGE_IMPORT_DESCRIPTOR ImportDescriptor;
@@ -308,7 +316,8 @@ ImgbDumpXbeImportDirectories(
     // the kernel.
     //
 
-    if (ImageHeader->ImportDirectory == NULL) {
+    if (ImageHeader->ImportDirectory == NULL)
+    {
         return;
     }
 
@@ -320,23 +329,27 @@ ImgbDumpXbeImportDirectories(
 
     RawImportDescriptor = ImageHeader->ImportDirectory;
 
-    for (;;) {
+    for (;;)
+    {
 
         ImportDescriptor = (PXBEIMAGE_IMPORT_DESCRIPTOR)ImgbGetDumpDataFromVirtualAddress(
             ImageHeader, RawImportDescriptor, sizeof(XBEIMAGE_IMPORT_DESCRIPTOR));
 
-        if (ImportDescriptor == NULL) {
+        if (ImportDescriptor == NULL)
+        {
             break;
         }
 
-        if (ImportDescriptor->ImageThunkData == NULL) {
+        if (ImportDescriptor->ImageThunkData == NULL)
+        {
             break;
         }
 
         ImageName = (PWCHAR)ImgbGetDumpDataFromVirtualAddress(ImageHeader,
-            ImportDescriptor->ImageName, sizeof(WCHAR));
+                                                              ImportDescriptor->ImageName, sizeof(WCHAR));
 
-        if (ImageName == NULL) {
+        if (ImageName == NULL)
+        {
             break;
         }
 
@@ -348,10 +361,8 @@ ImgbDumpXbeImportDirectories(
     printf("\n");
 }
 
-VOID
-ImgbDumpXbeTlsDirectory(
-    PXBEIMAGE_HEADER ImageHeader
-    )
+VOID ImgbDumpXbeTlsDirectory(
+    PXBEIMAGE_HEADER ImageHeader)
 {
     PIMAGE_TLS_DIRECTORY TlsDirectory;
 
@@ -359,7 +370,8 @@ ImgbDumpXbeTlsDirectory(
     // Verify that the image has a TLS directory.
     //
 
-    if (ImageHeader->TlsDirectory == NULL) {
+    if (ImageHeader->TlsDirectory == NULL)
+    {
         return;
     }
 
@@ -371,7 +383,8 @@ ImgbDumpXbeTlsDirectory(
     TlsDirectory = (PIMAGE_TLS_DIRECTORY)ImgbGetDumpDataFromVirtualAddress(
         ImageHeader, ImageHeader->TlsDirectory, sizeof(IMAGE_TLS_DIRECTORY));
 
-    if (TlsDirectory == NULL) {
+    if (TlsDirectory == NULL)
+    {
         return;
     }
 
@@ -385,10 +398,8 @@ ImgbDumpXbeTlsDirectory(
     printf("\n");
 }
 
-VOID
-ImgbDumpXbeSectionHeaders(
-    PXBEIMAGE_HEADER ImageHeader
-    )
+VOID ImgbDumpXbeSectionHeaders(
+    PXBEIMAGE_HEADER ImageHeader)
 {
     PXBEIMAGE_SECTION ImageSection;
     ULONG Index;
@@ -398,7 +409,8 @@ ImgbDumpXbeSectionHeaders(
     // Verify that the image has sections.
     //
 
-    if (ImageHeader->NumberOfSections == 0) {
+    if (ImageHeader->NumberOfSections == 0)
+    {
         return;
     }
 
@@ -411,14 +423,16 @@ ImgbDumpXbeSectionHeaders(
         ImageHeader, ImageHeader->SectionHeaders,
         ImageHeader->NumberOfSections * sizeof(XBEIMAGE_SECTION));
 
-    if (ImageSection == NULL) {
+    if (ImageSection == NULL)
+    {
         return;
     }
 
-    for (Index = 0; Index < ImageHeader->NumberOfSections; Index++) {
+    for (Index = 0; Index < ImageHeader->NumberOfSections; Index++)
+    {
 
         SectionName = (LPCSTR)((LPBYTE)ImageHeader +
-            (ULONG)ImageSection->SectionName - (ULONG)ImageHeader->BaseAddress);
+                               (ULONG)ImageSection->SectionName - (ULONG)ImageHeader->BaseAddress);
 
         printf("SECTION HEADER #%d  %s\n", Index + 1, SectionName);
         printf("%s%8X virtual address\n", ImgbDumpPadding, ImageSection->VirtualAddress);
@@ -429,22 +443,28 @@ ImgbDumpXbeSectionHeaders(
         printf("%s%08lX tail shared page reference count address\n", ImgbDumpPadding, ImgbDumpAddress((ULONG_PTR)ImageSection->TailSharedPageReferenceCount));
         printf("%s%8X flags\n", ImgbDumpPadding, ImageSection->SectionFlags);
 
-        if (ImageSection->SectionFlags & XBEIMAGE_SECTION_WRITEABLE) {
+        if (ImageSection->SectionFlags & XBEIMAGE_SECTION_WRITEABLE)
+        {
             printf("%s         Writeable\n", ImgbDumpPadding);
         }
-        if (ImageSection->SectionFlags & XBEIMAGE_SECTION_PRELOAD) {
+        if (ImageSection->SectionFlags & XBEIMAGE_SECTION_PRELOAD)
+        {
             printf("%s         Preload\n", ImgbDumpPadding);
         }
-        if (ImageSection->SectionFlags & XBEIMAGE_SECTION_EXECUTABLE) {
+        if (ImageSection->SectionFlags & XBEIMAGE_SECTION_EXECUTABLE)
+        {
             printf("%s         Executable\n", ImgbDumpPadding);
         }
-        if (ImageSection->SectionFlags & XBEIMAGE_SECTION_INSERTFILE) {
+        if (ImageSection->SectionFlags & XBEIMAGE_SECTION_INSERTFILE)
+        {
             printf("%s         Inserted file\n", ImgbDumpPadding);
         }
-        if (ImageSection->SectionFlags & XBEIMAGE_SECTION_HEAD_PAGE_READONLY) {
+        if (ImageSection->SectionFlags & XBEIMAGE_SECTION_HEAD_PAGE_READONLY)
+        {
             printf("%s         Head page read-only\n", ImgbDumpPadding);
         }
-        if (ImageSection->SectionFlags & XBEIMAGE_SECTION_TAIL_PAGE_READONLY) {
+        if (ImageSection->SectionFlags & XBEIMAGE_SECTION_TAIL_PAGE_READONLY)
+        {
             printf("%s         Tail page read-only\n", ImgbDumpPadding);
         }
 
@@ -454,10 +474,8 @@ ImgbDumpXbeSectionHeaders(
     }
 }
 
-VOID
-ImgbDumpXbeImageHeader(
-    VOID
-    )
+VOID ImgbDumpXbeImageHeader(
+    VOID)
 {
     PXBEIMAGE_HEADER ImageHeader;
 
@@ -466,7 +484,8 @@ ImgbDumpXbeImageHeader(
     // image header.
     //
 
-    if (ImgbInputFileSize < sizeof(XBEIMAGE_HEADER)) {
+    if (ImgbInputFileSize < sizeof(XBEIMAGE_HEADER))
+    {
         ImgbResourcePrintErrorAndExit(IDS_INVALID_CORRUPT_INPUT_FILE, ImgbInputFilePath);
     }
 
@@ -476,7 +495,8 @@ ImgbDumpXbeImageHeader(
 
     ImageHeader = (PXBEIMAGE_HEADER)ImgbInputFileMappingView;
 
-    if (ImageHeader->Signature != XBEIMAGE_SIGNATURE) {
+    if (ImageHeader->Signature != XBEIMAGE_SIGNATURE)
+    {
         ImgbResourcePrintErrorAndExit(IDS_INVALID_CORRUPT_INPUT_FILE, ImgbInputFilePath);
     }
 
@@ -494,24 +514,29 @@ ImgbDumpXbeImageHeader(
     printf("%s%8X number of sections\n", ImgbDumpPadding, ImageHeader->NumberOfSections);
     printf("%s%08lX section headers address\n", ImgbDumpPadding, ImgbDumpAddress((ULONG_PTR)ImageHeader->SectionHeaders));
     printf("%s%8X initialization flags\n", ImgbDumpPadding, ImageHeader->InitFlags);
-    if (ImageHeader->InitFlags & XINIT_MOUNT_UTILITY_DRIVE) {
+    if (ImageHeader->InitFlags & XINIT_MOUNT_UTILITY_DRIVE)
+    {
         printf("%s         Mount utility drive\n", ImgbDumpPadding);
     }
-    if (ImageHeader->InitFlags & XINIT_FORMAT_UTILITY_DRIVE) {
+    if (ImageHeader->InitFlags & XINIT_FORMAT_UTILITY_DRIVE)
+    {
         printf("%s         Format utility drive\n", ImgbDumpPadding);
     }
-    if (ImageHeader->InitFlags & XINIT_LIMIT_DEVKIT_MEMORY) {
+    if (ImageHeader->InitFlags & XINIT_LIMIT_DEVKIT_MEMORY)
+    {
         printf("%s         Limit development kit memory\n", ImgbDumpPadding);
     }
-    if (ImageHeader->InitFlags & XINIT_NO_SETUP_HARD_DISK) {
+    if (ImageHeader->InitFlags & XINIT_NO_SETUP_HARD_DISK)
+    {
         printf("%s         Don't setup hard disk\n", ImgbDumpPadding);
     }
-    if (ImageHeader->InitFlags & XINIT_DONT_MODIFY_HARD_DISK) {
+    if (ImageHeader->InitFlags & XINIT_DONT_MODIFY_HARD_DISK)
+    {
         printf("%s         Don't modify hard disk\n", ImgbDumpPadding);
     }
     printf("%s         %dK utility drive cluster size\n", ImgbDumpPadding,
-        (16 << ((ImageHeader->InitFlags & XINIT_UTILITY_DRIVE_CLUSTER_SIZE_MASK) >>
-        XINIT_UTILITY_DRIVE_CLUSTER_SIZE_SHIFT)));
+           (16 << ((ImageHeader->InitFlags & XINIT_UTILITY_DRIVE_CLUSTER_SIZE_MASK) >>
+                   XINIT_UTILITY_DRIVE_CLUSTER_SIZE_SHIFT)));
     printf("%s%08lX entry point address\n", ImgbDumpPadding, ImgbDumpAddress((ULONG_PTR)ImageHeader->AddressOfEntryPoint));
     printf("%s%08lX thread local storage directory address\n", ImgbDumpPadding, ImgbDumpAddress((ULONG_PTR)ImageHeader->TlsDirectory));
     printf("%s%8X size of stack commit\n", ImgbDumpPadding, ImageHeader->SizeOfStackCommit);
@@ -534,9 +559,10 @@ ImgbDumpXbeImageHeader(
     printf("%s%8X logo bitmap size\n", ImgbDumpPadding, ImageHeader->SizeOfMicrosoftLogo);
     printf("\n");
 
-    if (ImageHeader->DebugPathName != NULL) {
+    if (ImageHeader->DebugPathName != NULL)
+    {
         printf("Debug path name: %s\n\n", (LPCSTR)((PUCHAR)ImageHeader +
-            (ULONG_PTR)ImageHeader->DebugPathName - (ULONG_PTR)ImageHeader->BaseAddress));
+                                                   (ULONG_PTR)ImageHeader->DebugPathName - (ULONG_PTR)ImageHeader->BaseAddress));
     }
 
     //
@@ -571,11 +597,9 @@ ImgbDumpXbeImageHeader(
 }
 
 DECLSPEC_NORETURN
-VOID
-ImgbDumpExecutable(
+VOID ImgbDumpExecutable(
     int argc,
-    char *argv[]
-    )
+    char *argv[])
 {
     //
     // Print out the logo banner.
@@ -594,8 +618,9 @@ ImgbDumpExecutable(
     // If no arguments were supplied, then print out the usage text.
     //
 
-    if (argc == 0) {
-PrintUsageTextAndExit:
+    if (argc == 0)
+    {
+    PrintUsageTextAndExit:
         ImgbResourcePrintRange(stderr, IDS_DUMPXBE_USAGE);
         ImgbExitProcess(0);
     }
@@ -604,16 +629,19 @@ PrintUsageTextAndExit:
     // Process the command line options.
     //
 
-    do {
+    do
+    {
 
-        if (argv[0][0] == '-' || argv[0][0] == '/') {
+        if (argv[0][0] == '-' || argv[0][0] == '/')
+        {
 
             //
             // Attempt to match the help switches.
             //
 
             if ((_stricmp(&argv[0][1], "?") == 0) ||
-                (_stricmp(&argv[0][1], "HELP") == 0)) {
+                (_stricmp(&argv[0][1], "HELP") == 0))
+            {
                 goto PrintUsageTextAndExit;
             }
 
@@ -622,14 +650,16 @@ PrintUsageTextAndExit:
             //
 
             ImgbResourcePrintErrorAndExit(IDS_UNRECOGNIZED_OPTION, argv[0]);
-
-        } else {
+        }
+        else
+        {
 
             //
             // Ignore multiple input file names.
             //
 
-            if (ImgbInputFilePath == NULL) {
+            if (ImgbInputFilePath == NULL)
+            {
                 ImgbInputFilePath = argv[0];
             }
         }
@@ -643,7 +673,8 @@ PrintUsageTextAndExit:
     // If no file name was specified, then print out the usage text.
     //
 
-    if (ImgbInputFilePath == NULL) {
+    if (ImgbInputFilePath == NULL)
+    {
         goto PrintUsageTextAndExit;
     }
 
@@ -654,9 +685,10 @@ PrintUsageTextAndExit:
     //
 
     ImgbInputFileHandle = CreateFile(ImgbInputFilePath, GENERIC_READ,
-        FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+                                     FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
 
-    if (ImgbInputFileHandle == INVALID_HANDLE_VALUE) {
+    if (ImgbInputFileHandle == INVALID_HANDLE_VALUE)
+    {
         ImgbResourcePrintErrorAndExit(IDS_CANNOT_OPEN_INPUT_FILE, ImgbInputFilePath);
     }
 
@@ -672,20 +704,22 @@ PrintUsageTextAndExit:
     //
 
     ImgbInputFileMappingHandle = CreateFileMapping(ImgbInputFileHandle, NULL,
-        PAGE_WRITECOPY, 0, 0, NULL);
+                                                   PAGE_WRITECOPY, 0, 0, NULL);
 
-    if (ImgbInputFileMappingHandle == NULL) {
+    if (ImgbInputFileMappingHandle == NULL)
+    {
         ImgbResourcePrintErrorAndExit(IDS_CANNOT_READ_INPUT_FILE, ImgbInputFilePath);
-    }                                                                 
+    }
 
     //
     // Map a copy-on-write view of the input file section.
     //
 
     ImgbInputFileMappingView = MapViewOfFile(ImgbInputFileMappingHandle,
-        FILE_MAP_COPY, 0, 0, 0);
+                                             FILE_MAP_COPY, 0, 0, 0);
 
-    if (ImgbInputFileMappingView == NULL) {
+    if (ImgbInputFileMappingView == NULL)
+    {
         ImgbResourcePrintErrorAndExit(IDS_CANNOT_READ_INPUT_FILE, ImgbInputFilePath);
     }
 

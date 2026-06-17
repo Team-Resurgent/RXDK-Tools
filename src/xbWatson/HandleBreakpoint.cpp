@@ -7,14 +7,12 @@
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++ INCLUDE FILES +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 // "stdafx.h"       -- Precompiled header file
 #include "stdafx.h"
-
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++ LOCAL GLOBAL VARIABLES ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -25,7 +23,6 @@ static DWORD gs_dwThreadId;
 
 // gs_pvAddress      -- Address of the exception.
 static void *gs_pvAddress;
-
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++ FUNCTIONS +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -44,17 +41,17 @@ static void *gs_pvAddress;
 LRESULT CALLBACK BreakpointDlgProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     // ps                   -- Standard windows practice.  Used in WM_PAINT.
-	PAINTSTRUCT ps;
+    PAINTSTRUCT ps;
     HDC hdc;
 
     // hfont, hfontPrev, lf -- Variables necessary for outputing text
-    HFONT   hfont, hfontPrev;
+    HFONT hfont, hfontPrev;
     LOGFONT lf;
     char szBuf[1024];
 
     // Handle the specified message
-	switch (message)
-	{
+    switch (message)
+    {
     case WM_INITDIALOG:
         MessageBeep(MB_ICONEXCLAMATION);
         SetWindowPos(hwnd, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
@@ -68,7 +65,7 @@ LRESULT CALLBACK BreakpointDlgProc(HWND hwnd, UINT message, WPARAM wParam, LPARA
 
     case WM_PAINT:
         // Standard windows WM_PAINT handling.
-		hdc = BeginPaint(hwnd, &ps);
+        hdc = BeginPaint(hwnd, &ps);
 
         // Don't draw any background in the ExtTextOut calls below.
         SetBkMode(hdc, TRANSPARENT);
@@ -102,7 +99,7 @@ LRESULT CALLBACK BreakpointDlgProc(HWND hwnd, UINT message, WPARAM wParam, LPARA
 
     case WM_COMMAND:
         // The user pressed a button
-        switch(LOWORD(wParam))
+        switch (LOWORD(wParam))
         {
         case ID_REBOOT:
             // Reboot the Xbox
@@ -111,8 +108,8 @@ LRESULT CALLBACK BreakpointDlgProc(HWND hwnd, UINT message, WPARAM wParam, LPARA
 
         case ID_CONTINUE:
             // Ignore the Breakpoint.  Tell the Xbox to continue running
-		    DmContinueThread(gs_dwThreadId, FALSE);
-		    DmGo();
+            DmContinueThread(gs_dwThreadId, FALSE);
+            DmGo();
             break;
 
         case ID_DONOTHING:
@@ -143,8 +140,8 @@ void HandleBreakpoint(DWORD dwThreadId, void *pvAddress)
 {
     // Track various event-related variable.  Note: Can't avoid global variables with a dialog box...
     gs_dwThreadId = dwThreadId;
-    gs_pvAddress  = pvAddress;
+    gs_pvAddress = pvAddress;
 
     // Open the Breakpoint dialog box - this will handle Ignore, Dump, and Reboot for us.
-    DialogBox(g_hInstance, (LPCTSTR)IDD_BREAKPOINT, g_hwnd, (DLGPROC)BreakpointDlgProc);    
+    DialogBox(g_hInstance, (LPCTSTR)IDD_BREAKPOINT, g_hwnd, (DLGPROC)BreakpointDlgProc);
 }

@@ -49,7 +49,7 @@ The classic XDK shipped 32-bit utilities that no longer run on modern Windows. R
 
 The installer registers the shell extension and opens Neighborhood in Explorer. You can also navigate directly to:
 
-```text
+```uri
 shell:::{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}
 ```
 
@@ -98,7 +98,7 @@ Classic XDK command-line tools for moving data between the PC and a kit. Shared 
 | **`xbmkdir`** | Create a directory on the kit (`/t` creates parent path as needed) |
 | **`xbecopy`** | Deploy a built image to a remote Xbox path — for VS post-build steps (`local.exe` → `xe:\path\title.xbe`) |
 
-```text
+```cmd
 xbcp /r /t mybuild\* xE:\title\
 xbdir /r xE:\title
 xbmkdir /t xE:\data\savegames
@@ -121,7 +121,7 @@ Converts a Win32 **PE** executable into a signed **`.xbe`** title image — the 
 
 Command-line **debug launches** for scripts or CI. Reboots the kit to pending exec (if needed), sets the title path, arms an initial breakpoint, and runs until the title stops at entry.
 
-```text
+```cmd
 xbox-launch /dir xe:\path /title game.xbe [/cmd args] [/x console] [/reboot] [/timeout ms]
 ```
 
@@ -138,7 +138,7 @@ GUI **break-notification** tool from the classic XDK. Leave it running while dev
 | RIPs | Fatal error dialog with reboot choices |
 | Breakpoints & exceptions | Break/exception handlers with register/context display |
 
-```text
+```cmd
 xbWatson [/x xboxname]
 ```
 
@@ -148,12 +148,17 @@ Pairs well with Neighborhood or `xbox-launch` when you want visible feedback fro
 
 **JSON-over-stdio** debug host for modern editors and automation. Reads one JSON command per line on stdin, writes JSON results/events on stdout — intended for DAP front-ends and scripted debug sessions.
 
-**Commands:** `launch`, `attach`, `go`, `goUser`, `stop`, `step`, `waitBreak`, `setBreakpoint`, `resolveLine`, `getMemory`, `getThreads`, `getStack`, `getVariables`, `evaluate`, `loadSymbols`, `shutdown`
+Supported commands:
+
+```text
+launch, attach, go, goUser, stop, step, waitBreak, setBreakpoint, resolveLine,
+getMemory, getThreads, getStack, getVariables, evaluate, loadSymbols, shutdown
+```
 
 Symbol resolution uses **`dbghelp`** (PDB/map) with Xbox address relocation.
 
-```text
-echo {"id":1,"cmd":"ping"} | xboxdbg-bridge.exe
+```powershell
+echo '{"id":1,"cmd":"ping"}' | xboxdbg-bridge.exe
 ```
 
 ## Build from source
@@ -161,13 +166,13 @@ echo {"id":1,"cmd":"ping"} | xboxdbg-bridge.exe
 Requires **Visual Studio 2022** with **Desktop development with C++** (v145 toolset).
 
 1. Open **`RXDKTools.sln`**
-2. Build **Release \| x64**
+2. Build **`Release | x64`**
 
 | Output | Location |
 |--------|----------|
 | Executables & DLL | `out/bin/x64/Release/` |
 | Static libraries | `out/lib/x64/Release/` (`xbdbgs.lib`, `xbfile.lib`, `xrsa.lib`) |
-| Neighborhood installer | `XboxNeighborhood-Setup.exe` (built with **`xbshlext`**; Inno Setup installed automatically if missing) |
+| Neighborhood installer | `out/bin/x64/Release/XboxNeighborhood-Setup.exe` (built with **`xbshlext`**; Inno Setup installed automatically if missing) |
 
 ### Solution layout
 

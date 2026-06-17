@@ -13,25 +13,24 @@ Abstract:
 
 Environment:
 
-    Windows 2000 and Later 
+    Windows 2000 and Later
     User Mode
     Compiles UNICODE, but uses many ANSI APIs explictly.
 
 Revision History:
-    
+
     07-03-2001 : created
 
 --*/
-
 
 #include "stdafx.h"
 #include "resource.h"
 #include <initguid.h>
 #include "xbshlext.h"
-//#include "xbshlext_i.c"
+// #include "xbshlext_i.c"
 
 //-------------------------------------------------------------------------------
-//  ATL Module and Object 
+//  ATL Module and Object
 //-------------------------------------------------------------------------------
 CComModule _Module;
 BEGIN_OBJECT_MAP(ObjectMap)
@@ -46,8 +45,7 @@ IMalloc *g_pShellMalloc = NULL;
 //-------------------------------------------------------------------------------
 // DLL Entry Point - Standard ATL Implemenation.
 //-------------------------------------------------------------------------------
-extern "C"
-BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD dwReason, LPVOID /*lpReserved*/)
+extern "C" BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD dwReason, LPVOID /*lpReserved*/)
 {
     if (dwReason == DLL_PROCESS_ATTACH)
     {
@@ -56,7 +54,7 @@ BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD dwReason, LPVOID /*lpReserved*/)
     }
     else if (dwReason == DLL_PROCESS_DETACH)
         _Module.Term();
-    return TRUE;    // ok
+    return TRUE; // ok
 }
 
 //-------------------------------------------------------------------------------
@@ -68,22 +66,23 @@ STDAPI DllCanUnloadNow(void)
     //  See if we can unload
     //
     HRESULT hr;
-    hr = (_Module.GetLockCount()==0) ? S_OK : S_FALSE;
+    hr = (_Module.GetLockCount() == 0) ? S_OK : S_FALSE;
 
     //
     //  Cleanup a few things if we are going to return S_OK;
     //
-    if(S_OK==hr)
+    if (S_OK == hr)
     {
         //
         //  Release the shell's IMalloc
         //
-        if(g_pShellMalloc)
+        if (g_pShellMalloc)
         {
             g_pShellMalloc->Release();
             g_pShellMalloc = NULL;
         }
-    } else
+    }
+    else
     {
         DUMP_TRACKED_OBJECTS();
     }
@@ -93,18 +92,18 @@ STDAPI DllCanUnloadNow(void)
 //-------------------------------------------------------------------------------
 // Returns a class factory to create an object of the requested type
 //-------------------------------------------------------------------------------
-STDAPI DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID* ppv)
+STDAPI DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID *ppv)
 {
     HRESULT hr = S_OK;
     //
     //  Basically, everyone needs the shell's IMalloc, so just keep a global.
     //  Refuse to create any objects if we cannot get one.
     //
-    if(!g_pShellMalloc)
+    if (!g_pShellMalloc)
     {
         hr = SHGetMalloc(&g_pShellMalloc);
     }
-    if(SUCCEEDED(hr))
+    if (SUCCEEDED(hr))
     {
         hr = _Module.GetClassObject(rclsid, riid, ppv);
     }
@@ -128,7 +127,7 @@ int GetIconSize()
     TCHAR ach[20];
     DWORD cb = sizeof(ach);
     DWORD dwType;
-    
+
     // Get the icon size from GetSystemMetrics
     int cxIcon = GetSystemMetrics(SM_CXICON);
 
@@ -145,9 +144,9 @@ int GetIconSize()
         if( (ach[0] >= TEXT('0')) && (ach[0] <= TEXT('9')))
             return _ttoi(ach);
     }
-    
+
     return cxIcon;
-    
+
 }
 
 void SetIconSize(int iSize)
@@ -173,7 +172,7 @@ void UpdateShellImages()
     // call FileIconInit(BOOL fRestoreCache = TRUE). This is an evil hack, BUT we
     // cannot be first, and we certainly won't be the last to do this.  Unfortunately,
     // we need to preserve the size, so we need to do this it twice.
-    
+
     int iOrgSize = GetIconSize();
     int iNewSize = iOrgSize-1;
     SetIconSize(iNewSize);
@@ -186,7 +185,6 @@ void UpdateShellImages()
     SystemParametersInfo(SPI_SETICONMETRICS, sizeof(iconMetrics), &iconMetrics, SPIF_UPDATEINIFILE | SPIF_SENDWININICHANGE);
 }*/
 
-
 //-------------------------------------------------------------------------------
 // DllRegisterServer - Adds entries to the system registry
 //-------------------------------------------------------------------------------
@@ -194,17 +192,17 @@ STDAPI DllRegisterServer(void)
 {
     // registers object, typelib and all interfaces in typelib
     HRESULT hr = _Module.RegisterServer();
-    
-    if(SUCCEEDED(hr))
+
+    if (SUCCEEDED(hr))
     {
         //
         // notify the shell that we installed a new namespace.
         //
-        SHChangeNotify(SHCNE_MKDIR, SHCNF_PATH|SHCNF_FLUSH, ROOT_GUID_NAME_WIDE, NULL);
-        
+        SHChangeNotify(SHCNE_MKDIR, SHCNF_PATH | SHCNF_FLUSH, ROOT_GUID_NAME_WIDE, NULL);
+
         // Shortcut creation is handled by scripts/install-xbshlext.ps1. A namespace-target
         // .lnk (SetPath(ROOT_GUID_NAME_WIDE)) breaks on 64-bit Windows Explorer.
-        //UpdateShellImages();
+        // UpdateShellImages();
     }
     return hr;
 }
@@ -215,22 +213,22 @@ STDAPI DllRegisterServer(void)
 STDAPI DllUnregisterServer(void)
 {
     HRESULT hr = _Module.UnregisterServer(TRUE);
-    
-    if(SUCCEEDED(hr))
+
+    if (SUCCEEDED(hr))
     {
-        //Remove the shortcut
+        // Remove the shortcut
         HRESULT hres;
         WCHAR wszShortcutPath[MAX_PATH];
-        hres = SHGetFolderPathW( NULL, CSIDL_COMMON_PROGRAMS, NULL, SHGFP_TYPE_CURRENT, wszShortcutPath);
-        if(SUCCEEDED(hres))
+        hres = SHGetFolderPathW(NULL, CSIDL_COMMON_PROGRAMS, NULL, SHGFP_TYPE_CURRENT, wszShortcutPath);
+        if (SUCCEEDED(hres))
         {
             WCHAR wszShortcutName[40];
             LoadStringW(_Module.GetModuleInstance(), IDS_ROOT_SHORT_CUT_NAME, wszShortcutName, ARRAYSIZE(wszShortcutName));
             wcscat(wszShortcutPath, wszShortcutName);
-            DeleteFileW(wszShortcutPath);  // The use may have deleted it already."
+            DeleteFileW(wszShortcutPath); // The use may have deleted it already."
         }
         // Tell the shell that we removed the shell extension
-        SHChangeNotify(SHCNE_RMDIR, SHCNF_PATH|SHCNF_FLUSH, ROOT_GUID_NAME_WIDE, NULL);
+        SHChangeNotify(SHCNE_RMDIR, SHCNF_PATH | SHCNF_FLUSH, ROOT_GUID_NAME_WIDE, NULL);
     }
     return hr;
 }
@@ -238,7 +236,7 @@ STDAPI DllUnregisterServer(void)
 HRESULT WINAPI CXboxFolder::UpdateRegistry(BOOL bRegister)
 /*++
   Routine Description:
-    
+
     Modifies the normal ATL class registration.  This is how to create more
     map entries for script susbstitution.  We create three:
 
@@ -258,11 +256,11 @@ HRESULT WINAPI CXboxFolder::UpdateRegistry(BOOL bRegister)
     USES_CONVERSION;
     TCHAR szRunDllBuffer[_MAX_PATH];
 
-    //Allocate and terminate the regMapEntries
+    // Allocate and terminate the regMapEntries
     _ATL_REGMAP_ENTRY regMapEntries[3];
-    memset(&regMapEntries[2], 0, sizeof(_ATL_REGMAP_ENTRY)); //terminate the list
+    memset(&regMapEntries[2], 0, sizeof(_ATL_REGMAP_ENTRY)); // terminate the list
 
-    //Fill out the first entry for RUNDLLPATH
+    // Fill out the first entry for RUNDLLPATH
     HRESULT hr = SHGetFolderPath(NULL, CSIDL_SYSTEM, NULL, SHGFP_TYPE_DEFAULT, szRunDllBuffer);
     _ASSERTE(SUCCEEDED(hr));
     ULONG ulSystemDirLen = _tcslen(szRunDllBuffer);
@@ -270,8 +268,8 @@ HRESULT WINAPI CXboxFolder::UpdateRegistry(BOOL bRegister)
     regMapEntries[0].szKey = OLESTR("RUNDLLPATH");
     regMapEntries[0].szData = T2OLE(szRunDllBuffer);
 
-    //Fill out the second entry for %1 (this crap is necessary because the .rgs
-    //script is way to simplist, with no escape sequences.
+    // Fill out the second entry for %1 (this crap is necessary because the .rgs
+    // script is way to simplist, with no escape sequences.
     regMapEntries[1].szKey = OLESTR("FIRST_ARG");
     regMapEntries[1].szData = OLESTR("%1");
 
@@ -296,38 +294,37 @@ void CALLBACK LaunchExplorer(HWND hwnd, HINSTANCE hinst, LPSTR lpszCmdLine, int 
      1) If a file is specified redirect to the parent folder.
 --*/
 {
-  const char *szProtocolName = "xbox://";
-  const int   szProtocolNameLen = (sizeof("xbox://")/sizeof(char))-1;
-  const char *szNamespaceRoot = "shell::::{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}";
-  char szPath[MAX_PATH * 2];
+    const char *szProtocolName = "xbox://";
+    const int szProtocolNameLen = (sizeof("xbox://") / sizeof(char)) - 1;
+    const char *szNamespaceRoot = "shell::::{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}";
+    char szPath[MAX_PATH * 2];
 
-  while (*lpszCmdLine == ' ' || *lpszCmdLine == '\t')
-  {
-    ++lpszCmdLine;
-  }
-
-  if(0==strncmp(szProtocolName, lpszCmdLine, szProtocolNameLen))
-  {
-    lpszCmdLine += szProtocolNameLen;
-    int CmdLineLen = strlen(lpszCmdLine);
-    if(CmdLineLen > 0 && '/'==lpszCmdLine[CmdLineLen-1])
-    {   
-        lpszCmdLine[CmdLineLen-1] = '\0';
+    while (*lpszCmdLine == ' ' || *lpszCmdLine == '\t')
+    {
+        ++lpszCmdLine;
     }
 
-    if (lpszCmdLine[0] == '\0')
+    if (0 == strncmp(szProtocolName, lpszCmdLine, szProtocolNameLen))
     {
-      ShellExecuteA(NULL, "open", szNamespaceRoot, NULL, NULL, SW_SHOWNORMAL);
+        lpszCmdLine += szProtocolNameLen;
+        int CmdLineLen = strlen(lpszCmdLine);
+        if (CmdLineLen > 0 && '/' == lpszCmdLine[CmdLineLen - 1])
+        {
+            lpszCmdLine[CmdLineLen - 1] = '\0';
+        }
+
+        if (lpszCmdLine[0] == '\0')
+        {
+            ShellExecuteA(NULL, "open", szNamespaceRoot, NULL, NULL, SW_SHOWNORMAL);
+        }
+        else
+        {
+            wsprintfA(szPath, "%s\\%s", szNamespaceRoot, lpszCmdLine);
+            ShellExecuteA(NULL, "open", szPath, NULL, NULL, SW_SHOWNORMAL);
+        }
     }
     else
     {
-      wsprintfA(szPath, "%s\\%s", szNamespaceRoot, lpszCmdLine);
-      ShellExecuteA(NULL, "open", szPath, NULL, NULL, SW_SHOWNORMAL);
+        MessageBoxA(hwnd, lpszCmdLine, "LaunchExplorer - Bad Args", MB_OK | MB_ICONERROR);
     }
-  } else
-  {
-    MessageBoxA(hwnd, lpszCmdLine, "LaunchExplorer - Bad Args", MB_OK|MB_ICONERROR);
-  }
 }
-
-

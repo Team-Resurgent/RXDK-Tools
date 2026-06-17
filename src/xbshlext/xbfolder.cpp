@@ -12,12 +12,12 @@ Abstract:
 
 Environment:
 
-    Windows 2000 and Later 
+    Windows 2000 and Later
     User Mode
     Compiles UNICODE, but uses many ANSI APIs explictly.
 
 Revision History:
-    
+
     06-29-2001 : created
 
 --*/
@@ -28,7 +28,7 @@ Revision History:
 *********  Organization of Code.  Rather than implementing every class in a different code
 *********  file. All the methods declared in the base class as virtual are implemented for
 *********  each inheriting class one after the other.  For the most part methods are
-*********  implemented in the order they are declared.  They only deviations is that 
+*********  implemented in the order they are declared.  They only deviations is that
 *********  in some cases, public, protected and private are interleaved.
 ********/
 
@@ -39,7 +39,7 @@ Revision History:
 **   and an InitBaseClass method.
 **
 **   Every derived class that can be instantiated
-**   implements: 
+**   implements:
 **
 **      1) a private constructor
 **      1) a public  static Create   method
@@ -49,7 +49,7 @@ Revision History:
 **   EXCEPT CXboxRoot is special.  It is served
 **      by the module's class factory and the
 **      default c'tor works.  It is initialized with
-**      
+**
 **
 **   Create:
 **      Constructs a class and initializes it to mirror
@@ -72,67 +72,61 @@ Revision History:
 **   anything fail-safe.
 */
 
-
 /*
 ** Constructors - initialize members to a known state
-**                real construction is left for 
+**                real construction is left for
 **                the Create methods (which use
 **                CXboxFolder::InitBaseClass)
 */
 
-CXboxFolder::CXboxFolder() : 
-    m_pszPathName(NULL),
-    m_pszName(NULL),
-    m_ulShellAttributes(0),
-    m_uPathDepth(0),
-    m_uPathLen(0),
-    m_pidlRoot(NULL),
-    m_uRootPidlLen(0),
-    m_fSelectionClone(FALSE),
-    m_fChildrenValid(FALSE),
-    m_uAllocatedChildCount(0),   
-    m_uChildCount(0), 
-    m_uLastChildIndex(0),
-    m_rgpszChildNames(NULL),
-    m_rgulChildShellAttributes(NULL)
+CXboxFolder::CXboxFolder() : m_pszPathName(NULL),
+                             m_pszName(NULL),
+                             m_ulShellAttributes(0),
+                             m_uPathDepth(0),
+                             m_uPathLen(0),
+                             m_pidlRoot(NULL),
+                             m_uRootPidlLen(0),
+                             m_fSelectionClone(FALSE),
+                             m_fChildrenValid(FALSE),
+                             m_uAllocatedChildCount(0),
+                             m_uChildCount(0),
+                             m_uLastChildIndex(0),
+                             m_rgpszChildNames(NULL),
+                             m_rgulChildShellAttributes(NULL)
 {
     INIT_TRACKABLEOBJECT_NAME(CXboxFolder);
 }
 
-CXboxRoot::CXboxRoot() :  
-  m_rgdwChildIPAddresses(NULL),
-  m_rgpszActualNames(NULL),
-  m_uDefaultConsole((UINT)-1)
+CXboxRoot::CXboxRoot() : m_rgdwChildIPAddresses(NULL),
+                         m_rgpszActualNames(NULL),
+                         m_uDefaultConsole((UINT)-1)
 {
-    INIT_TRACKABLEOBJECT_NAME(CXboxRoot);  
+    INIT_TRACKABLEOBJECT_NAME(CXboxRoot);
     m_dwSelectionVerbs = ROOT_VERBS;
 }
 
-CXboxConsole::CXboxConsole() :
-  m_pConnection(NULL),
-  m_pszDisplayName(NULL),
-  m_dwIPAddress(0),
-  m_rgullChildFreeSpace(NULL),
-  m_rgullChildTotalSpace(NULL),
-  m_rguChildVolumeType(NULL)
+CXboxConsole::CXboxConsole() : m_pConnection(NULL),
+                               m_pszDisplayName(NULL),
+                               m_dwIPAddress(0),
+                               m_rgullChildFreeSpace(NULL),
+                               m_rgullChildTotalSpace(NULL),
+                               m_rguChildVolumeType(NULL)
 {
-  INIT_TRACKABLEOBJECT_NAME(CXboxConsole);
-  m_dwSelectionVerbs = CONSOLE_VERBS;
+    INIT_TRACKABLEOBJECT_NAME(CXboxConsole);
+    m_dwSelectionVerbs = CONSOLE_VERBS;
 }
 
-CXboxFileSystemFolder::CXboxFileSystemFolder() :
-  m_rgChildFileAttributes(NULL),
-  m_rgszChildTypeNames(NULL)
+CXboxFileSystemFolder::CXboxFileSystemFolder() : m_rgChildFileAttributes(NULL),
+                                                 m_rgszChildTypeNames(NULL)
 {
     INIT_TRACKABLEOBJECT_NAME(CXboxConsole);
 }
 
-HRESULT 
+HRESULT
 CXboxFolder::InitBaseClass(
-    LPCSTR          pszPathName,
-    ULONG           ulShellAttributes,
-    LPCITEMIDLIST   pidlRoot
-    )
+    LPCSTR pszPathName,
+    ULONG ulShellAttributes,
+    LPCITEMIDLIST pidlRoot)
 /*++
   Routine Description:
     Initializes the name, pidl, and ShellAttributes
@@ -148,25 +142,25 @@ CXboxFolder::InitBaseClass(
 
     m_uPathLen = 0;
     m_uPathDepth = 1;
-    while(*pszParse)
+    while (*pszParse)
     {
-        if(L'\\' == *pszParse)
+        if (L'\\' == *pszParse)
         {
             m_uPathDepth++;
         }
         m_uPathLen++;
         pszParse++;
     }
-    m_pszPathName = new CHAR[m_uPathLen+1];
-    
-    if(m_pszPathName)
+    m_pszPathName = new CHAR[m_uPathLen + 1];
+
+    if (m_pszPathName)
     {
         //
         // Assume that memcpy is more efficient than
         // strcpy, since we already know the length
         //
 
-        memcpy(m_pszPathName, pszPathName, m_uPathLen+1);
+        memcpy(m_pszPathName, pszPathName, m_uPathLen + 1);
 
         //
         //  m_pszName is pointer to the simple name.
@@ -175,30 +169,32 @@ CXboxFolder::InitBaseClass(
         //
 
         m_pszName = strrchr(m_pszPathName, '\\');
-        if(m_pszName)
+        if (m_pszName)
         {
-          m_pszName++;
-        }else
+            m_pszName++;
+        }
+        else
         {
-          m_pszName = m_pszPathName;
-        } 
-        
-    } else
+            m_pszName = m_pszPathName;
+        }
+    }
+    else
     {
         return E_OUTOFMEMORY;
     }
-    
+
     //
     // Setup pidl members
     //
 
     m_pidlRoot = CPidlUtils::Copy(pidlRoot);
-    if(m_pidlRoot)
+    if (m_pidlRoot)
     {
         m_uRootPidlLen = CPidlUtils::GetLength(m_pidlRoot);
-    } else
+    }
+    else
     {
-        delete [] m_pszPathName;
+        delete[] m_pszPathName;
         m_pszPathName = NULL;
         return E_OUTOFMEMORY;
     }
@@ -208,18 +204,17 @@ CXboxFolder::InitBaseClass(
     //
 
     m_ulShellAttributes = ulShellAttributes;
-    
+
     return S_OK;
 }
 
 HRESULT
 CXboxConsole::Create(
-    LPCSTR          pszResolveName,
-    LPCITEMIDLIST   pidlRoot,
+    LPCSTR pszResolveName,
+    LPCITEMIDLIST pidlRoot,
     IXboxConnection *pConnection,
-    REFIID          riid,
-    void            **ppv
-    )
+    REFIID riid,
+    void **ppv)
 /*++
   Routine Description:
     Creates an object of type CXboxConsole.
@@ -238,38 +233,38 @@ CXboxConsole::Create(
     *ppv = NULL;
 
     hr = CComObject<CXboxConsole>::CreateInstance(&pNewConsole);
-    if(SUCCEEDED(hr))
+    if (SUCCEEDED(hr))
     {
         hr = pNewConsole->InitBaseClass(
-                    pszResolveName,
-                    CONSOLE_SHELL_ATTRIBUTES,
-                    pidlRoot
-                    );
-        
-        if(SUCCEEDED(hr))
+            pszResolveName,
+            CONSOLE_SHELL_ATTRIBUTES,
+            pidlRoot);
+
+        if (SUCCEEDED(hr))
         {
-            // 
+            //
             // The name oif the box is the resolve name.  If the box is specified
             // by IP address, we only show the actual name in the property page.
             //
-            UINT uDisplayNameLen = strlen(pszResolveName)+1;
+            UINT uDisplayNameLen = strlen(pszResolveName) + 1;
             pNewConsole->m_pszDisplayName = new char[uDisplayNameLen];
-            if(pNewConsole->m_pszDisplayName)
+            if (pNewConsole->m_pszDisplayName)
             {
                 memcpy(pNewConsole->m_pszDisplayName, pszResolveName, uDisplayNameLen);
                 hr = pConnection->HrResolveXboxName(&pNewConsole->m_dwIPAddress);
-                if(SUCCEEDED(hr))
+                if (SUCCEEDED(hr))
                 {
                     pConnection->AddRef();
                     pNewConsole->m_pConnection = pConnection;
                     hr = pNewConsole->QueryInterface(riid, ppv);
                 }
-            } else
+            }
+            else
             {
                 hr = E_OUTOFMEMORY;
             }
         }
-        if(!SUCCEEDED(hr))
+        if (!SUCCEEDED(hr))
         {
             delete pNewConsole;
         }
@@ -277,14 +272,13 @@ CXboxConsole::Create(
     return hr;
 }
 
-HRESULT 
+HRESULT
 CXboxVolume::Create(
-    LPCSTR          pszPathName,
-    LPCITEMIDLIST   pidlRoot,
+    LPCSTR pszPathName,
+    LPCITEMIDLIST pidlRoot,
     IXboxConnection *pConnection,
-    REFIID          riid,
-    void            **ppv
-    )
+    REFIID riid,
+    void **ppv)
 /*++
   Routine Description:
     Creates an object of type CXboxVolume.
@@ -301,24 +295,23 @@ CXboxVolume::Create(
     CComObject<CXboxVolume> *pNewVolume;
 
     *ppv = NULL;
-    
+
     hr = CComObject<CXboxVolume>::CreateInstance(&pNewVolume);
-    if(SUCCEEDED(hr))
+    if (SUCCEEDED(hr))
     {
         hr = pNewVolume->InitBaseClass(
-                pszPathName,
-                VOLUME_SHELL_ATTRIBUTES|SFGAO_CANRENAME,
-                pidlRoot
-                );
+            pszPathName,
+            VOLUME_SHELL_ATTRIBUTES | SFGAO_CANRENAME,
+            pidlRoot);
 
-        if(SUCCEEDED(hr))
+        if (SUCCEEDED(hr))
         {
             pConnection->AddRef();
             pNewVolume->m_pConnection = pConnection;
             hr = pNewVolume->QueryInterface(riid, ppv);
         }
-        
-        if(!SUCCEEDED(hr))
+
+        if (!SUCCEEDED(hr))
         {
             delete pNewVolume;
         }
@@ -327,37 +320,35 @@ CXboxVolume::Create(
     return hr;
 }
 
-HRESULT 
+HRESULT
 CXboxDirectory::Create(
-    LPCSTR          pszPathName,
-    LPCITEMIDLIST   pidlRoot,
+    LPCSTR pszPathName,
+    LPCITEMIDLIST pidlRoot,
     IXboxConnection *pConnection,
-    REFIID          riid,
-    void            **ppv
-    )
+    REFIID riid,
+    void **ppv)
 {
     HRESULT hr = E_OUTOFMEMORY;
     CComObject<CXboxDirectory> *pNewDirectory;
 
     *ppv = NULL;
-    
+
     hr = CComObject<CXboxDirectory>::CreateInstance(&pNewDirectory);
-    if(SUCCEEDED(hr))
+    if (SUCCEEDED(hr))
     {
         hr = pNewDirectory->InitBaseClass(
-                pszPathName,
-                DIRECTORY_SHELL_ATTRIBUTES,
-                pidlRoot
-                );
+            pszPathName,
+            DIRECTORY_SHELL_ATTRIBUTES,
+            pidlRoot);
 
-        if(SUCCEEDED(hr))
+        if (SUCCEEDED(hr))
         {
             pConnection->AddRef();
             pNewDirectory->m_pConnection = pConnection;
             hr = pNewDirectory->QueryInterface(riid, ppv);
         }
-        
-        if(!SUCCEEDED(hr))
+
+        if (!SUCCEEDED(hr))
         {
             delete pNewDirectory;
         }
@@ -367,7 +358,7 @@ CXboxDirectory::Create(
 
 void CXboxFolder::Destroy()
 {
-    delete [] m_pszPathName;
+    delete[] m_pszPathName;
     m_pszPathName = NULL;
     CPidlUtils::Free(m_pidlRoot);
     FreeChildren();
@@ -395,7 +386,7 @@ void CXboxFileSystemFolder::Destroy()
 **          Information about item.
 **          Current Selection.
 **
-**          
+**
 */
 
 HRESULT CXboxFolder::BuildSelectionIndexList(UINT cidl, LPCITEMIDLIST *apidl, UINT **ppuIndexList)
@@ -405,7 +396,7 @@ HRESULT CXboxFolder::BuildSelectionIndexList(UINT cidl, LPCITEMIDLIST *apidl, UI
     UINT uIndex;
 
     *ppuIndexList = NULL;
-    
+
     _ASSERTE(cidl);
     _ASSERTE(apidl);
 
@@ -413,7 +404,7 @@ HRESULT CXboxFolder::BuildSelectionIndexList(UINT cidl, LPCITEMIDLIST *apidl, UI
     //  Build an index list.
     //
     puIndexList = new UINT[cidl];
-    if(!puIndexList)
+    if (!puIndexList)
     {
         return E_OUTOFMEMORY;
     }
@@ -421,12 +412,12 @@ HRESULT CXboxFolder::BuildSelectionIndexList(UINT cidl, LPCITEMIDLIST *apidl, UI
     //
     //  Walk the pidls and build a list of indices
     //
-    for(uIndex = 0; uIndex < cidl; uIndex++)
+    for (uIndex = 0; uIndex < cidl; uIndex++)
     {
-        hr = GetChildIndex((LPSTR)apidl[uIndex]->mkid.abID, puIndexList+uIndex);
-        if(FAILED(hr))
+        hr = GetChildIndex((LPSTR)apidl[uIndex]->mkid.abID, puIndexList + uIndex);
+        if (FAILED(hr))
         {
-            delete [] puIndexList;    
+            delete[] puIndexList;
             return hr;
         }
     }
@@ -455,21 +446,23 @@ HRESULT CXboxFolder::DuplicateBaseMembers(CXboxFolder *pClone)
 
 --*/
 {
-    pClone->m_pszPathName  = new char[m_uPathLen+1];
-    if(pClone->m_pszPathName)
+    pClone->m_pszPathName = new char[m_uPathLen + 1];
+    if (pClone->m_pszPathName)
     {
-        memcpy(pClone->m_pszPathName, m_pszPathName, m_uPathLen+1);
+        memcpy(pClone->m_pszPathName, m_pszPathName, m_uPathLen + 1);
         pClone->m_pszName = pClone->m_pszPathName + (m_pszName - m_pszPathName);
         pClone->m_pidlRoot = (LPITEMIDLIST)g_pShellMalloc->Alloc(m_uRootPidlLen);
-        if(pClone->m_pidlRoot)
+        if (pClone->m_pidlRoot)
         {
             memcpy(pClone->m_pidlRoot, m_pidlRoot, m_uRootPidlLen);
-        } else
+        }
+        else
         {
-            delete [] pClone->m_pszPathName;
+            delete[] pClone->m_pszPathName;
             return E_OUTOFMEMORY;
         }
-    } else
+    }
+    else
     {
         return E_OUTOFMEMORY;
     }
@@ -494,11 +487,12 @@ HRESULT CXboxFolder::CloneSelection(UINT cidl, LPCITEMIDLIST *apidl, CXboxFolder
     HRESULT hr = S_OK;
     UINT *puIndexList = NULL;
 
-    if(cidl)
+    if (cidl)
     {
         _ASSERTE(apidl);
         hr = BuildSelectionIndexList(cidl, apidl, &puIndexList);
-    } else
+    }
+    else
     {
         _ASSERTE(!apidl);
     }
@@ -506,35 +500,34 @@ HRESULT CXboxFolder::CloneSelection(UINT cidl, LPCITEMIDLIST *apidl, CXboxFolder
     //
     //  Let the class specific portion finish.
     //
-    if(SUCCEEDED(hr))
+    if (SUCCEEDED(hr))
     {
         hr = CloneSelection(cidl, puIndexList, ppSelectionClone);
-        delete [] puIndexList;
+        delete[] puIndexList;
     }
     return hr;
 }
-
 
 HRESULT CXboxFolder::Clone(CXboxFolder **ppSelectionClone)
 {
     _ASSERTE(m_fSelectionClone);
-    
+
     //
     //  Copy all the children
     //
     UINT *puIndexList = new UINT[m_uChildCount];
-    if(!puIndexList)
+    if (!puIndexList)
     {
         return E_OUTOFMEMORY;
     }
     UINT uIndex;
-    for(uIndex=0; uIndex < m_uChildCount; uIndex++) puIndexList[uIndex] = uIndex;
-    
+    for (uIndex = 0; uIndex < m_uChildCount; uIndex++)
+        puIndexList[uIndex] = uIndex;
+
     HRESULT hr = CloneSelection(m_uChildCount, puIndexList, ppSelectionClone);
-    delete [] puIndexList;
+    delete[] puIndexList;
     return hr;
 }
-
 
 HRESULT CXboxRoot::CloneSelection(UINT uIndexCount, const UINT *puIndexList, CXboxFolder **ppSelectionClone)
 {
@@ -548,52 +541,53 @@ HRESULT CXboxRoot::CloneSelection(UINT uIndexCount, const UINT *puIndexList, CXb
     //
 
     hr = CComObject<CXboxRoot>::CreateInstance(&pClone);
-    if(FAILED(hr))
+    if (FAILED(hr))
     {
         return hr;
     }
 
-    pClone->AddRef();  //It needs a reference count, so we can delete with release.
+    pClone->AddRef(); // It needs a reference count, so we can delete with release.
 
     //
     //  Now copy all the common base guts
     //
     hr = DuplicateBaseMembers(pClone);
-    
+
     //
     //  Now handle class specific and children
     //
-    if(SUCCEEDED(hr))
+    if (SUCCEEDED(hr))
     {
         pClone->m_rgdwChildIPAddresses = NULL;
         pClone->m_rgpszActualNames = NULL;
         pClone->m_uDefaultConsole = 0;
-        if(uIndexCount)
+        if (uIndexCount)
         {
             UINT uIndex;
             hr = pClone->ReallocateChildren(uIndexCount);
             pClone->m_dwSelectionVerbs = CONSOLE_VERBS;
-            for(uIndex = 0; uIndex < uIndexCount; uIndex++, pClone->m_uChildCount++)
+            for (uIndex = 0; uIndex < uIndexCount; uIndex++, pClone->m_uChildCount++)
             {
                 //
                 //  Copy the name.
                 //
 
-                UINT uNameLength = strlen(m_rgpszChildNames[puIndexList[uIndex]])+1;
+                UINT uNameLength = strlen(m_rgpszChildNames[puIndexList[uIndex]]) + 1;
                 pClone->m_rgpszChildNames[uIndex] = new char[uNameLength];
-                if(pClone->m_rgpszChildNames[uIndex])
+                if (pClone->m_rgpszChildNames[uIndex])
                 {
-                   memcpy(pClone->m_rgpszChildNames[uIndex], m_rgpszChildNames[puIndexList[uIndex]], uNameLength);
-                } else
+                    memcpy(pClone->m_rgpszChildNames[uIndex], m_rgpszChildNames[puIndexList[uIndex]], uNameLength);
+                }
+                else
                 {
-                   hr = E_OUTOFMEMORY;
-                   break;
+                    hr = E_OUTOFMEMORY;
+                    break;
                 }
 
                 //
                 //  If one of the items is the AddConsole Wizard, change the available verbs
                 //
-                if(*m_rgpszChildNames[puIndexList[uIndex]] == '?')
+                if (*m_rgpszChildNames[puIndexList[uIndex]] == '?')
                 {
                     pClone->m_dwSelectionVerbs = ADDCONSOLE_VERBS;
                 }
@@ -609,20 +603,21 @@ HRESULT CXboxRoot::CloneSelection(UINT uIndexCount, const UINT *puIndexList, CXb
                 //
 
                 pClone->m_rgdwChildIPAddresses[uIndex] = m_rgdwChildIPAddresses[puIndexList[uIndex]];
-                
+
                 //  Copy the actual names
-                if(m_rgpszActualNames[puIndexList[uIndex]])
+                if (m_rgpszActualNames[puIndexList[uIndex]])
                 {
-                    if(XBOX_USE_USER_PROVIDED_NAME == m_rgpszActualNames[puIndexList[uIndex]])
+                    if (XBOX_USE_USER_PROVIDED_NAME == m_rgpszActualNames[puIndexList[uIndex]])
                     {
                         pClone->m_rgpszActualNames[uIndex] = XBOX_USE_USER_PROVIDED_NAME;
-                    } else
+                    }
+                    else
                     {
-                        UINT uNameLen = strlen(m_rgpszActualNames[puIndexList[uIndex]])+1;
+                        UINT uNameLen = strlen(m_rgpszActualNames[puIndexList[uIndex]]) + 1;
                         pClone->m_rgpszActualNames[uIndex] = new char[uNameLen];
-                        if(pClone->m_rgpszActualNames[uIndex])
+                        if (pClone->m_rgpszActualNames[uIndex])
                         {
-                            //we know the length so memcpy is more efficient.
+                            // we know the length so memcpy is more efficient.
                             memcpy(pClone->m_rgpszActualNames[uIndex], m_rgpszActualNames[puIndexList[uIndex]], uNameLen);
                         }
                     }
@@ -630,11 +625,12 @@ HRESULT CXboxRoot::CloneSelection(UINT uIndexCount, const UINT *puIndexList, CXb
             }
         }
     }
-    
-    if(SUCCEEDED(hr))
+
+    if (SUCCEEDED(hr))
     {
         *ppSelectionClone = pClone;
-    } else
+    }
+    else
     {
         pClone->Release();
     }
@@ -642,12 +638,10 @@ HRESULT CXboxRoot::CloneSelection(UINT uIndexCount, const UINT *puIndexList, CXb
     return hr;
 }
 
-
-
 HRESULT CXboxConsole::CloneSelection(UINT uIndexCount, const UINT *puIndexList, CXboxFolder **ppSelectionClone)
 {
     HRESULT hr = S_OK;
-    LPSTR   pszDriveLetters;
+    LPSTR pszDriveLetters;
     CComObject<CXboxConsole> *pClone;
 
     *ppSelectionClone = NULL;
@@ -657,43 +651,44 @@ HRESULT CXboxConsole::CloneSelection(UINT uIndexCount, const UINT *puIndexList, 
     //
 
     hr = CComObject<CXboxConsole>::CreateInstance(&pClone);
-    if(FAILED(hr))
+    if (FAILED(hr))
     {
         return hr;
     }
 
-    pClone->AddRef();  //It needs a reference count, so we can delete with release.
+    pClone->AddRef(); // It needs a reference count, so we can delete with release.
 
     //
     //  Now copy all the common base guts
     //
     hr = DuplicateBaseMembers(pClone);
-    
+
     //
     //  Now handle class specific and children
     //
-    if(SUCCEEDED(hr))
+    if (SUCCEEDED(hr))
     {
-        UINT uNameLength = strlen(m_pszDisplayName)+1;
+        UINT uNameLength = strlen(m_pszDisplayName) + 1;
         pClone->m_pszDisplayName = new char[uNameLength];
-        if(!pClone->m_pszDisplayName)
+        if (!pClone->m_pszDisplayName)
         {
             hr = E_OUTOFMEMORY;
-        } else
+        }
+        else
         {
             memcpy(pClone->m_pszDisplayName, m_pszDisplayName, uNameLength);
             pClone->m_pConnection = m_pConnection;
             m_pConnection->AddRef();
             pClone->m_dwIPAddress = m_dwIPAddress;
-            if(uIndexCount)
+            if (uIndexCount)
             {
                 UINT uIndex;
                 pClone->m_dwSelectionVerbs = VOLUME_VERBS;
                 hr = pClone->ReallocateChildren(uIndexCount);
-                pszDriveLetters = new char[2*uIndexCount];
-                if(pszDriveLetters)
+                pszDriveLetters = new char[2 * uIndexCount];
+                if (pszDriveLetters)
                 {
-                    for(uIndex = 0; uIndex < uIndexCount; uIndex++, pClone->m_uChildCount++)
+                    for (uIndex = 0; uIndex < uIndexCount; uIndex++, pClone->m_uChildCount++)
                     {
                         //
                         //  Copy the name.
@@ -713,19 +708,20 @@ HRESULT CXboxConsole::CloneSelection(UINT uIndexCount, const UINT *puIndexList, 
                         //  Copy the class specific information
                         //
 
-                        pClone->m_rgullChildFreeSpace[uIndex]  = m_rgullChildFreeSpace[puIndexList[uIndex]];
+                        pClone->m_rgullChildFreeSpace[uIndex] = m_rgullChildFreeSpace[puIndexList[uIndex]];
                         pClone->m_rgullChildTotalSpace[uIndex] = m_rgullChildTotalSpace[puIndexList[uIndex]];
-                        pClone->m_rguChildVolumeType[uIndex]   = m_rguChildVolumeType[puIndexList[uIndex]];
+                        pClone->m_rguChildVolumeType[uIndex] = m_rguChildVolumeType[puIndexList[uIndex]];
                     }
                 }
             }
         }
     }
-    
-    if(SUCCEEDED(hr))
+
+    if (SUCCEEDED(hr))
     {
         *ppSelectionClone = pClone;
-    } else
+    }
+    else
     {
         //
         //  Should clean up everything we managed to set.
@@ -737,58 +733,59 @@ HRESULT CXboxConsole::CloneSelection(UINT uIndexCount, const UINT *puIndexList, 
     return hr;
 }
 
-
 HRESULT CXboxFileSystemFolder::CloneSelection(UINT uIndexCount, const UINT *puIndexList, CXboxFileSystemFolder *pClone)
 {
     //
     //  Now copy all the common base guts
     //
     HRESULT hr = DuplicateBaseMembers(pClone);
-    
+
     //
     //  Now handle class specific and children
     //
-    if(SUCCEEDED(hr))
+    if (SUCCEEDED(hr))
     {
         pClone->m_pConnection = m_pConnection;
         m_pConnection->AddRef();
-        if(uIndexCount)
+        if (uIndexCount)
         {
             UINT uIndex;
             // Assume the maximum number of verbs.  As we go through actual items
             // we AND with the ones that actually apply.
-            pClone->m_dwSelectionVerbs = DIRECTORY_VERBS|DIRECTORY_VERBS|FILE_VERBS|XBE_VERBS;
+            pClone->m_dwSelectionVerbs = DIRECTORY_VERBS | DIRECTORY_VERBS | FILE_VERBS | XBE_VERBS;
             hr = pClone->ReallocateChildren(uIndexCount);
-            for(uIndex = 0; uIndex < uIndexCount; uIndex++, pClone->m_uChildCount++)
+            for (uIndex = 0; uIndex < uIndexCount; uIndex++, pClone->m_uChildCount++)
             {
                 //
                 //  Copy the name.
                 //
 
-                UINT uNameLength = strlen(m_rgpszChildNames[puIndexList[uIndex]])+1;
+                UINT uNameLength = strlen(m_rgpszChildNames[puIndexList[uIndex]]) + 1;
                 pClone->m_rgpszChildNames[uIndex] = new char[uNameLength];
-                if(pClone->m_rgpszChildNames[uIndex])
+                if (pClone->m_rgpszChildNames[uIndex])
                 {
-                   memcpy(pClone->m_rgpszChildNames[uIndex], m_rgpszChildNames[puIndexList[uIndex]], uNameLength);
-                } else
+                    memcpy(pClone->m_rgpszChildNames[uIndex], m_rgpszChildNames[puIndexList[uIndex]], uNameLength);
+                }
+                else
                 {
-                   hr = E_OUTOFMEMORY;
-                   break;
+                    hr = E_OUTOFMEMORY;
+                    break;
                 }
 
                 //
                 //  Copy the type name.
                 //
 
-                uNameLength = strlen(m_rgszChildTypeNames[puIndexList[uIndex]])+1;
+                uNameLength = strlen(m_rgszChildTypeNames[puIndexList[uIndex]]) + 1;
                 pClone->m_rgszChildTypeNames[uIndex] = new char[uNameLength];
-                if(pClone->m_rgszChildTypeNames[uIndex])
+                if (pClone->m_rgszChildTypeNames[uIndex])
                 {
-                   memcpy(pClone->m_rgszChildTypeNames[uIndex], m_rgszChildTypeNames[puIndexList[uIndex]], uNameLength);
-                } else
+                    memcpy(pClone->m_rgszChildTypeNames[uIndex], m_rgszChildTypeNames[puIndexList[uIndex]], uNameLength);
+                }
+                else
                 {
-                   hr = E_OUTOFMEMORY;
-                   break;
+                    hr = E_OUTOFMEMORY;
+                    break;
                 }
 
                 //
@@ -802,22 +799,23 @@ HRESULT CXboxFileSystemFolder::CloneSelection(UINT uIndexCount, const UINT *puIn
                 //
 
                 memcpy(
-                   &pClone->m_rgChildFileAttributes[uIndex],
-                   &m_rgChildFileAttributes[puIndexList[uIndex]],
-                   sizeof(DM_FILE_ATTRIBUTES)
-                   );
+                    &pClone->m_rgChildFileAttributes[uIndex],
+                    &m_rgChildFileAttributes[puIndexList[uIndex]],
+                    sizeof(DM_FILE_ATTRIBUTES));
 
                 // Figure out the supported verbs
-                if(pClone->m_rgChildFileAttributes[uIndex].Attributes&FILE_ATTRIBUTE_DIRECTORY)
+                if (pClone->m_rgChildFileAttributes[uIndex].Attributes & FILE_ATTRIBUTE_DIRECTORY)
                 {
                     pClone->m_dwSelectionVerbs &= DIRECTORY_VERBS;
-                } else
+                }
+                else
                 {
-                    //If it is an XBE file, AND with XBE verbs
-                    if(IsXbeFile(pClone->m_rgpszChildNames[uIndex]))
+                    // If it is an XBE file, AND with XBE verbs
+                    if (IsXbeFile(pClone->m_rgpszChildNames[uIndex]))
                     {
                         pClone->m_dwSelectionVerbs &= XBE_VERBS;
-                    } else
+                    }
+                    else
                     {
                         pClone->m_dwSelectionVerbs &= FILE_VERBS;
                     }
@@ -825,10 +823,9 @@ HRESULT CXboxFileSystemFolder::CloneSelection(UINT uIndexCount, const UINT *puIn
             }
         }
     }
-    
+
     return hr;
 }
-
 
 HRESULT CXboxVolume::CloneSelection(UINT uIndexCount, const UINT *puIndexList, CXboxFolder **ppSelectionClone)
 {
@@ -842,20 +839,21 @@ HRESULT CXboxVolume::CloneSelection(UINT uIndexCount, const UINT *puIndexList, C
     //
 
     hr = CComObject<CXboxVolume>::CreateInstance(&pClone);
-    if(FAILED(hr))
+    if (FAILED(hr))
     {
         return hr;
     }
 
-    pClone->AddRef();  //It needs a reference count, so we can delete with release.
+    pClone->AddRef(); // It needs a reference count, so we can delete with release.
 
     hr = CXboxFileSystemFolder::CloneSelection(uIndexCount, puIndexList, pClone);
-    
-    if(SUCCEEDED(hr))
+
+    if (SUCCEEDED(hr))
     {
         pClone->m_uVolumeType = m_uVolumeType;
         *ppSelectionClone = pClone;
-    } else
+    }
+    else
     {
         //
         //  Should clean up everything we managed to set.
@@ -866,7 +864,6 @@ HRESULT CXboxVolume::CloneSelection(UINT uIndexCount, const UINT *puIndexList, C
 
     return hr;
 }
-
 
 HRESULT CXboxDirectory::CloneSelection(UINT uIndexCount, const UINT *puIndexList, CXboxFolder **ppSelectionClone)
 {
@@ -880,19 +877,20 @@ HRESULT CXboxDirectory::CloneSelection(UINT uIndexCount, const UINT *puIndexList
     //
 
     hr = CComObject<CXboxDirectory>::CreateInstance(&pClone);
-    if(FAILED(hr))
+    if (FAILED(hr))
     {
         return hr;
     }
 
-    pClone->AddRef();  //It needs a reference count, so we can delete with release.
+    pClone->AddRef(); // It needs a reference count, so we can delete with release.
 
     hr = CXboxFileSystemFolder::CloneSelection(uIndexCount, puIndexList, pClone);
-    
-    if(SUCCEEDED(hr))
+
+    if (SUCCEEDED(hr))
     {
         *ppSelectionClone = pClone;
-    } else
+    }
+    else
     {
         //
         //  Should clean up everything we managed to set.
@@ -921,52 +919,52 @@ UINT CXboxFolder::GetPidlLen(CPidlUtils::PIDLTYPE PidlType)
    The size of the desired pidl in bytes.
 --*/
 {
-  //
-  //  Special handling for root
-  //
-  if(0==m_uPathDepth)
-  {
-    return m_uRootPidlLen;
-  }
+    //
+    //  Special handling for root
+    //
+    if (0 == m_uPathDepth)
+    {
+        return m_uRootPidlLen;
+    }
 
-  //
-  // Each SHITEMID in the pidl is a NULL terminated
-  // string corresponding exactly to the Name of the
-  // item.
-  //
-  
-  //
-  // Start sizeof(USHORT) to termiante the pidl +
-  // the sizeof(CHAR) for the last NULL.
-  //
-  
-  UINT uPidlLen = sizeof(USHORT)+sizeof(CHAR);
+    //
+    // Each SHITEMID in the pidl is a NULL terminated
+    // string corresponding exactly to the Name of the
+    // item.
+    //
 
-  //
-  //  Switch on the pidl type
-  //
-  switch (PidlType)
-  {
+    //
+    // Start sizeof(USHORT) to termiante the pidl +
+    // the sizeof(CHAR) for the last NULL.
+    //
+
+    UINT uPidlLen = sizeof(USHORT) + sizeof(CHAR);
+
+    //
+    //  Switch on the pidl type
+    //
+    switch (PidlType)
+    {
     case CPidlUtils::PidlTypeSimple:
-      //Add in the length of the simple name.
-      uPidlLen += strlen(m_pszName);
-      break;
+        // Add in the length of the simple name.
+        uPidlLen += strlen(m_pszName);
+        break;
     case CPidlUtils::PidlTypeAbsolute:
-      uPidlLen += m_uRootPidlLen;
-      uPidlLen -= sizeof(USHORT); //The root pidl was already terminated
-      //Fall through
+        uPidlLen += m_uRootPidlLen;
+        uPidlLen -= sizeof(USHORT); // The root pidl was already terminated
+        // Fall through
     case CPidlUtils::PidlTypeRoot:
-      //Add in the path len, the extra '\0' are a wash
-      //with missing '\'.
-      uPidlLen += m_uPathLen;
-      //Add in a USHORT for each cb of each SHITEMID.
-      uPidlLen += (m_uPathDepth*sizeof(USHORT));
-      break;
+        // Add in the path len, the extra '\0' are a wash
+        // with missing '\'.
+        uPidlLen += m_uPathLen;
+        // Add in a USHORT for each cb of each SHITEMID.
+        uPidlLen += (m_uPathDepth * sizeof(USHORT));
+        break;
     default:
-      _ASSERTE("PidlType Unknown" && FALSE);
-  }
+        _ASSERTE("PidlType Unknown" && FALSE);
+    }
 
-  return uPidlLen;
+    return uPidlLen;
 }
 
 LPITEMIDLIST CXboxFolder::GetPidl(CPidlUtils::PIDLTYPE PidlType, UINT uExtraAllocation)
@@ -983,70 +981,73 @@ LPITEMIDLIST CXboxFolder::GetPidl(CPidlUtils::PIDLTYPE PidlType, UINT uExtraAllo
   On failure - NULL.  The only failure mode is an out of memory failure.
 --*/
 {
-  UINT uPidlLen = GetPidlLen(PidlType);
-  LPITEMIDLIST pidl = (LPITEMIDLIST)g_pShellMalloc->Alloc(uPidlLen+uExtraAllocation);
-  LPITEMIDLIST pidlWalk = pidl;
-  LPSTR pszPath = m_pszPathName;
-  USHORT cb;
-  if(pidl)
-  {
-    //
-    //  If this is the root (m_uPathDepth is 0)
-    //  just copy the m_pidlRoot.
-    //
-    if(!m_uPathDepth)
-    {
-        memcpy(pidlWalk, m_pidlRoot, m_uRootPidlLen);
-    } else
-    //
-    //  Otherwise, we have more work.
-    //
+    UINT uPidlLen = GetPidlLen(PidlType);
+    LPITEMIDLIST pidl = (LPITEMIDLIST)g_pShellMalloc->Alloc(uPidlLen + uExtraAllocation);
+    LPITEMIDLIST pidlWalk = pidl;
+    LPSTR pszPath = m_pszPathName;
+    USHORT cb;
+    if (pidl)
     {
         //
-        // If we need an absolute pidl, start with the root.
+        //  If this is the root (m_uPathDepth is 0)
+        //  just copy the m_pidlRoot.
         //
-
-        if(PidlType==CPidlUtils::PidlTypeAbsolute)
+        if (!m_uPathDepth)
         {
-            // Copy root pidl (leaving off termination.
-            memcpy(pidlWalk, m_pidlRoot, m_uRootPidlLen-sizeof(USHORT));
-            pidlWalk = AdvancePtr(pidlWalk, m_uRootPidlLen-sizeof(USHORT));
+            memcpy(pidlWalk, m_pidlRoot, m_uRootPidlLen);
         }
-    
+        else
         //
-        // Otherwise if it is simple, get only the last item id.
+        //  Otherwise, we have more work.
         //
-    
-        else if(PidlType==CPidlUtils::PidlTypeSimple)
         {
-            pszPath = m_pszName;
+            //
+            // If we need an absolute pidl, start with the root.
+            //
+
+            if (PidlType == CPidlUtils::PidlTypeAbsolute)
+            {
+                // Copy root pidl (leaving off termination.
+                memcpy(pidlWalk, m_pidlRoot, m_uRootPidlLen - sizeof(USHORT));
+                pidlWalk = AdvancePtr(pidlWalk, m_uRootPidlLen - sizeof(USHORT));
+            }
+
+            //
+            // Otherwise if it is simple, get only the last item id.
+            //
+
+            else if (PidlType == CPidlUtils::PidlTypeSimple)
+            {
+                pszPath = m_pszName;
+            }
+
+            //
+            // Copy each item from the path.
+            //
+
+            while (*pszPath)
+            {
+                cb = 0;
+                while (*pszPath && (*pszPath != '\\'))
+                    pidlWalk->mkid.abID[cb++] = *pszPath++;
+                pidlWalk->mkid.abID[cb++] = '\0';
+                if (*pszPath == '\\')
+                    pszPath++;
+                pidlWalk->mkid.cb = cb + sizeof(USHORT);
+                pidlWalk = AdvancePtr(pidlWalk, pidlWalk->mkid.cb);
+            }
+
+            //
+            //  Terminate the pidl
+            //
+
+            pidlWalk->mkid.cb = 0;
         }
-    
-        //
-        // Copy each item from the path.
-        //
-
-        while(*pszPath)
-        {
-            cb = 0;
-            while(*pszPath && (*pszPath != '\\')) pidlWalk->mkid.abID[cb++] = *pszPath++;
-            pidlWalk->mkid.abID[cb++] = '\0';
-            if(*pszPath == '\\') pszPath++;
-            pidlWalk->mkid.cb = cb+sizeof(USHORT);
-            pidlWalk = AdvancePtr(pidlWalk, pidlWalk->mkid.cb);
-        }
-
-        //
-        //  Terminate the pidl
-        //
-
-        pidlWalk->mkid.cb = 0;
     }
-  }
-  _ASSERTE(pidl);
-  ATLTRACE("GetPidl returning:(0x%0.8x)",pidl);
-  DEBUG_DUMP_PIDL(pidl);
-  return pidl;
+    _ASSERTE(pidl);
+    ATLTRACE("GetPidl returning:(0x%0.8x)", pidl);
+    DEBUG_DUMP_PIDL(pidl);
+    return pidl;
 }
 
 HRESULT CXboxFolder::CompareItemIDs(UINT uColumn, int iNameCmp, const __unaligned SHITEMID *pItemId1, const __unaligned SHITEMID *pItemId2)
@@ -1054,7 +1055,7 @@ HRESULT CXboxFolder::CompareItemIDs(UINT uColumn, int iNameCmp, const __unaligne
  Routine Description:
     Compares two immediate children of a CXboxFolder based on an uColumn.  The Column
       ID is specific to the class type of the CXboxFolder.
-      
+
   Arguments:
       uColumn  - index of column to sort bt.
       iNameCmp - result of case-insenstive comparison on builds carried out by caller.
@@ -1076,7 +1077,7 @@ HRESULT CXboxFolder::CompareItemIDs(UINT uColumn, int iNameCmp, const __unaligne
   Comments:
 
       This routine turns is not virtual.  It turns the pItemId1, and pItemId2 into indices
-      into the list of children.  Then it calls 
+      into the list of children.  Then it calls
       CompareItemIDs(UINT iColumn, int iNameCmp, UINT uChildIndex1, UINT uChildIndex2),
       which does this real class dependent work.
 
@@ -1088,25 +1089,26 @@ HRESULT CXboxFolder::CompareItemIDs(UINT uColumn, int iNameCmp, const __unaligne
 
 {
     HRESULT hr, hr2;
-    UINT    uChildIndex1;
-    UINT    uChildIndex2;
-    
-    hr=GetChildIndex((LPCSTR)pItemId1->abID, &uChildIndex1);
-    hr2=GetChildIndex((LPCSTR)pItemId2->abID, &uChildIndex2);
-    
-    if(SUCCEEDED(hr))
+    UINT uChildIndex1;
+    UINT uChildIndex2;
+
+    hr = GetChildIndex((LPCSTR)pItemId1->abID, &uChildIndex1);
+    hr2 = GetChildIndex((LPCSTR)pItemId2->abID, &uChildIndex2);
+
+    if (SUCCEEDED(hr))
     {
-        if(SUCCEEDED(hr2))
+        if (SUCCEEDED(hr2))
         {
             //
             //  If the indices match they are equal
             //
-            if(uChildIndex1 == uChildIndex2)
+            if (uChildIndex1 == uChildIndex2)
             {
                 return 0;
             }
             return CompareItemIDs(uColumn, iNameCmp, uChildIndex1, uChildIndex2);
-        } else
+        }
+        else
         {
             //
             // pItemId1 is valid and pItemId2 is not.
@@ -1114,12 +1116,12 @@ HRESULT CXboxFolder::CompareItemIDs(UINT uColumn, int iNameCmp, const __unaligne
             return ResultFromCompare(-1, true);
         }
     }
-    
+
     //
     //  If we are here pItemId1 is invalid
     //
 
-    if(SUCCEEDED(hr2))
+    if (SUCCEEDED(hr2))
     {
         //
         // pItemId2 is valid and pItemId1 is not.
@@ -1138,7 +1140,7 @@ HRESULT CXboxFolder::CompareItemIDs(UINT uColumn, int iNameCmp, const __unaligne
 **
 **      Compares two immediate children of a CXboxFolder based on an uColumn.  The Column
 **      ID is specific to the class type of the CXboxFolder.
-**      
+**
 **  Arguments:
 **      uColumn      - index of column to sort bt.
 **      iNameCmp     - result of case-insenstive comparison on builds carried out by caller.
@@ -1176,12 +1178,12 @@ HRESULT CXboxRoot::CompareItemIDs(UINT uColumn, int iNameCmp, UINT uChildIndex1,
  Sort Order by uColumn:
     XBOX_CONSOLE_COLUMN_NAME (0):   Sort by the name of the console.
     XBOX_CONSOLE_COLUMN_IPADDR (1): Sort by the IP address of the console.
-    
+
     Regardless of uColumn, the "Add New Console" wizard is always before
     any of the consoles.
-  
+
   Implementation Notes:
-  
+
     index 0 is always the "Add New Console" wizard.
 
     Two different pidls could refer to the same Xbox, one by name and the other
@@ -1190,42 +1192,43 @@ HRESULT CXboxRoot::CompareItemIDs(UINT uColumn, int iNameCmp, UINT uChildIndex1,
     twisted logic, and may have severe perfromance implications as well.  This will
     effect very few users, and the consequences of not matching them are exceedingly
     benign.
-    
---*/    
+
+--*/
 {
-    _ASSERTE(uChildIndex1!=uChildIndex2);   
+    _ASSERTE(uChildIndex1 != uChildIndex2);
 
     //
     // Check for "Add New Console" wizard
     //
 
-    if(0==uChildIndex1)
+    if (0 == uChildIndex1)
     {
-      return S_LESS;
-    } 
-            
-    if(0==uChildIndex2)
+        return S_LESS;
+    }
+
+    if (0 == uChildIndex2)
     {
-      return S_GREATER;
+        return S_GREATER;
     }
 
     //
     //  Compare passed on uColumn
     //
-    
-    if(uColumn == XBOX_CONSOLE_COLUMN_IPADDR)
+
+    if (uColumn == XBOX_CONSOLE_COLUMN_IPADDR)
     {
-      DWORD dwIpAddressChild1 = GetChildIpAddress(uChildIndex1);
-      DWORD dwIpAddressChild2 = GetChildIpAddress(uChildIndex2);
-      if(dwIpAddressChild1 < dwIpAddressChild2)
-      {
-        return S_LESS;
-      } else if(dwIpAddressChild1 > dwIpAddressChild2)
-      {
-        return S_GREATER;
-      }
+        DWORD dwIpAddressChild1 = GetChildIpAddress(uChildIndex1);
+        DWORD dwIpAddressChild2 = GetChildIpAddress(uChildIndex2);
+        if (dwIpAddressChild1 < dwIpAddressChild2)
+        {
+            return S_LESS;
+        }
+        else if (dwIpAddressChild1 > dwIpAddressChild2)
+        {
+            return S_GREATER;
+        }
     }
-    
+
     return ResultFromCompare(iNameCmp);
 }
 
@@ -1239,49 +1242,49 @@ HRESULT CXboxConsole::CompareItemIDs(UINT uColumn, int iNameCmp, UINT uChildInde
     XBOX_VOLUME_COLUMN_TYPE (1):          Sort by the type of volume (MU versus HD).
     XBOX_VOLUME_COLUMN_FREE_CAPACITY (2): Sort by the free capacity of volume.
     XBOX_VOLUME_COLUMN_TOTAL_CAPACITY(3): Sort by the total capacity of volume.
-    
+
 --*/
 {
-    _ASSERTE(uChildIndex1!=uChildIndex2);   
+    _ASSERTE(uChildIndex1 != uChildIndex2);
 
     //
     //  Compare based on uColumn
     //
     switch (uColumn)
     {
-      case XBOX_VOLUME_COLUMN_TYPE:
-        if(m_rguChildVolumeType[uChildIndex1] < m_rguChildVolumeType[uChildIndex2])
+    case XBOX_VOLUME_COLUMN_TYPE:
+        if (m_rguChildVolumeType[uChildIndex1] < m_rguChildVolumeType[uChildIndex2])
         {
             return S_LESS;
         }
-        if(m_rguChildVolumeType[uChildIndex1] > m_rguChildVolumeType[uChildIndex2])
+        if (m_rguChildVolumeType[uChildIndex1] > m_rguChildVolumeType[uChildIndex2])
         {
             return S_GREATER;
         }
         break;
-      case XBOX_VOLUME_COLUMN_FREE_CAPACITY:
-        if(m_rgullChildFreeSpace[uChildIndex1] < m_rgullChildFreeSpace[uChildIndex2])
+    case XBOX_VOLUME_COLUMN_FREE_CAPACITY:
+        if (m_rgullChildFreeSpace[uChildIndex1] < m_rgullChildFreeSpace[uChildIndex2])
         {
             return S_LESS;
         }
-        if(m_rgullChildFreeSpace[uChildIndex1] > m_rgullChildFreeSpace[uChildIndex2])
+        if (m_rgullChildFreeSpace[uChildIndex1] > m_rgullChildFreeSpace[uChildIndex2])
         {
             return S_GREATER;
         }
         break;
-      case XBOX_VOLUME_COLUMN_TOTAL_CAPACITY:
-        if(m_rgullChildTotalSpace[uChildIndex1] < m_rgullChildTotalSpace[uChildIndex2])
+    case XBOX_VOLUME_COLUMN_TOTAL_CAPACITY:
+        if (m_rgullChildTotalSpace[uChildIndex1] < m_rgullChildTotalSpace[uChildIndex2])
         {
             return S_LESS;
         }
-        if(m_rgullChildTotalSpace[uChildIndex1] > m_rgullChildTotalSpace[uChildIndex2])
+        if (m_rgullChildTotalSpace[uChildIndex1] > m_rgullChildTotalSpace[uChildIndex2])
         {
             return S_GREATER;
         }
         break;
-      case XBOX_VOLUME_COLUMN_NAME:
-      default:
-          break;
+    case XBOX_VOLUME_COLUMN_NAME:
+    default:
+        break;
     }
     //
     //  If they were equal by other qualities fall back on name.
@@ -1300,11 +1303,11 @@ HRESULT CXboxFileSystemFolder::CompareItemIDs(UINT uColumn, int iNameCmp, UINT u
     XBOX_FILE_COLUMN_TYPE      (2): Sort by the type of file.
     XBOX_FILE_COLUMN_MODIFIED  (3): Sort by the date modified.
     XBOX_FILE_COLUMN_ATTRIBUTE (4): Sort by the file attributes.
-    
+
     Regardless of uColumn, directories always appear before files.
 --*/
 {
-    _ASSERTE(uChildIndex1!=uChildIndex2);
+    _ASSERTE(uChildIndex1 != uChildIndex2);
     BOOL fBothDirectories = FALSE;
 
     //
@@ -1312,21 +1315,23 @@ HRESULT CXboxFileSystemFolder::CompareItemIDs(UINT uColumn, int iNameCmp, UINT u
     // comes first.
     //
 
-    if(m_rgChildFileAttributes[uChildIndex1].Attributes&FILE_ATTRIBUTE_DIRECTORY)
+    if (m_rgChildFileAttributes[uChildIndex1].Attributes & FILE_ATTRIBUTE_DIRECTORY)
     {
-      if(m_rgChildFileAttributes[uChildIndex2].Attributes&FILE_ATTRIBUTE_DIRECTORY)
-      {
-         fBothDirectories = TRUE;
-      }
-      else {
-        return S_LESS;  
-      }
-    } else
+        if (m_rgChildFileAttributes[uChildIndex2].Attributes & FILE_ATTRIBUTE_DIRECTORY)
+        {
+            fBothDirectories = TRUE;
+        }
+        else
+        {
+            return S_LESS;
+        }
+    }
+    else
     {
-      if(m_rgChildFileAttributes[uChildIndex2].Attributes&FILE_ATTRIBUTE_DIRECTORY)
-      {
-        return S_GREATER;  
-      }
+        if (m_rgChildFileAttributes[uChildIndex2].Attributes & FILE_ATTRIBUTE_DIRECTORY)
+        {
+            return S_GREATER;
+        }
     }
 
     //
@@ -1334,78 +1339,78 @@ HRESULT CXboxFileSystemFolder::CompareItemIDs(UINT uColumn, int iNameCmp, UINT u
     //
     switch (uColumn)
     {
-      case XBOX_FILE_COLUMN_ATTRIBUTE:
-        if(m_rgChildFileAttributes[uChildIndex1].Attributes < m_rgChildFileAttributes[uChildIndex2].Attributes)
+    case XBOX_FILE_COLUMN_ATTRIBUTE:
+        if (m_rgChildFileAttributes[uChildIndex1].Attributes < m_rgChildFileAttributes[uChildIndex2].Attributes)
         {
             return S_LESS;
         }
-        if(m_rgChildFileAttributes[uChildIndex1].Attributes > m_rgChildFileAttributes[uChildIndex2].Attributes)
+        if (m_rgChildFileAttributes[uChildIndex1].Attributes > m_rgChildFileAttributes[uChildIndex2].Attributes)
         {
             return S_GREATER;
         }
         break;
-      case XBOX_FILE_COLUMN_MODIFIED:
-        if(m_rgChildFileAttributes[uChildIndex1].ChangeTime.dwHighDateTime < 
-           m_rgChildFileAttributes[uChildIndex2].ChangeTime.dwHighDateTime)
+    case XBOX_FILE_COLUMN_MODIFIED:
+        if (m_rgChildFileAttributes[uChildIndex1].ChangeTime.dwHighDateTime <
+            m_rgChildFileAttributes[uChildIndex2].ChangeTime.dwHighDateTime)
         {
             return S_LESS;
         }
-        if(m_rgChildFileAttributes[uChildIndex1].ChangeTime.dwHighDateTime > 
-           m_rgChildFileAttributes[uChildIndex2].ChangeTime.dwHighDateTime)
+        if (m_rgChildFileAttributes[uChildIndex1].ChangeTime.dwHighDateTime >
+            m_rgChildFileAttributes[uChildIndex2].ChangeTime.dwHighDateTime)
         {
             return S_GREATER;
         }
-        if(m_rgChildFileAttributes[uChildIndex1].ChangeTime.dwLowDateTime  < 
-           m_rgChildFileAttributes[uChildIndex2].ChangeTime.dwLowDateTime)
+        if (m_rgChildFileAttributes[uChildIndex1].ChangeTime.dwLowDateTime <
+            m_rgChildFileAttributes[uChildIndex2].ChangeTime.dwLowDateTime)
         {
             return S_LESS;
         }
-        if(m_rgChildFileAttributes[uChildIndex1].ChangeTime.dwLowDateTime  > 
-           m_rgChildFileAttributes[uChildIndex2].ChangeTime.dwLowDateTime)
+        if (m_rgChildFileAttributes[uChildIndex1].ChangeTime.dwLowDateTime >
+            m_rgChildFileAttributes[uChildIndex2].ChangeTime.dwLowDateTime)
         {
             return S_GREATER;
         }
         break;
 
-      case XBOX_FILE_COLUMN_SIZE:
-        if(!fBothDirectories)
+    case XBOX_FILE_COLUMN_SIZE:
+        if (!fBothDirectories)
         {
-            if(m_rgChildFileAttributes[uChildIndex1].SizeHigh < 
-               m_rgChildFileAttributes[uChildIndex2].SizeHigh)
+            if (m_rgChildFileAttributes[uChildIndex1].SizeHigh <
+                m_rgChildFileAttributes[uChildIndex2].SizeHigh)
             {
                 return S_LESS;
             }
-            if(m_rgChildFileAttributes[uChildIndex1].SizeHigh > 
-               m_rgChildFileAttributes[uChildIndex2].SizeHigh)
+            if (m_rgChildFileAttributes[uChildIndex1].SizeHigh >
+                m_rgChildFileAttributes[uChildIndex2].SizeHigh)
             {
                 return S_GREATER;
             }
-            if(m_rgChildFileAttributes[uChildIndex1].SizeLow  < 
-               m_rgChildFileAttributes[uChildIndex2].SizeLow)
+            if (m_rgChildFileAttributes[uChildIndex1].SizeLow <
+                m_rgChildFileAttributes[uChildIndex2].SizeLow)
             {
                 return S_LESS;
             }
-            if(m_rgChildFileAttributes[uChildIndex1].SizeLow  > 
-               m_rgChildFileAttributes[uChildIndex2].SizeLow)
+            if (m_rgChildFileAttributes[uChildIndex1].SizeLow >
+                m_rgChildFileAttributes[uChildIndex2].SizeLow)
             {
                 return S_GREATER;
             }
         }
         break;
-      case XBOX_FILE_COLUMN_TYPE:
-        if(!fBothDirectories)
+    case XBOX_FILE_COLUMN_TYPE:
+        if (!fBothDirectories)
         {
             int iTypeCmp;
             iTypeCmp = _stricmp(m_rgszChildTypeNames[uChildIndex1], m_rgszChildTypeNames[uChildIndex2]);
-            if(iTypeCmp)
+            if (iTypeCmp)
             {
                 return ResultFromCompare(iTypeCmp);
             }
         }
         break;
-      case XBOX_FILE_COLUMN_NAME:
-      default:
-          break;
+    case XBOX_FILE_COLUMN_NAME:
+    default:
+        break;
     }
     //
     //  If they were equal by other qualities fall back on name.
@@ -1422,40 +1427,41 @@ BOOL CXboxFolder::AreItemsIDsIdentical(LPCITEMIDLIST pidl1, LPCITEMIDLIST pidl2,
    It is static.  It is part of CXboxFolder purely to contain the pidl interpretation encapsulated in this class.
 --*/
 {
-    //Check the first item id, the machine name
-    if(_stricmp((char *)pidl1->mkid.abID, (char *)pidl2->mkid.abID))
+    // Check the first item id, the machine name
+    if (_stricmp((char *)pidl1->mkid.abID, (char *)pidl2->mkid.abID))
     {
         *pfSameMachine = FALSE;
         return FALSE;
     }
-    *pfSameMachine = TRUE;  //Same machine
+    *pfSameMachine = TRUE; // Same machine
 
-    //Check the rest of the item ids.
+    // Check the rest of the item ids.
     do
     {
-        //Advance to comparing the next pidl's
+        // Advance to comparing the next pidl's
         pidl1 = AdvancePtr(pidl1, pidl1->mkid.cb);
         pidl2 = AdvancePtr(pidl2, pidl2->mkid.cb);
-        
+
         // Check loop termination conditions.
-        if(0==pidl1->mkid.cb)
+        if (0 == pidl1->mkid.cb)
         {
-            if(0==pidl2->mkid.cb)
+            if (0 == pidl2->mkid.cb)
             {
                 // At the end of pidl1 and pidl2, these are the same.
                 return TRUE;
             }
-            //At end of pidl1, but not pidl2, these are different.
+            // At end of pidl1, but not pidl2, these are different.
             return FALSE;
-        } else if(0==pidl2->mkid.cb)
+        }
+        else if (0 == pidl2->mkid.cb)
         {
-            //At end of pidl2, but not pidl1, these are different.
+            // At end of pidl2, but not pidl1, these are different.
             return FALSE;
         }
         // At the end of neither pidl1 or pidl2, so keep looping.
-    } while(0==_stricmp((char *)pidl1->mkid.abID, (char *)pidl2->mkid.abID));
+    } while (0 == _stricmp((char *)pidl1->mkid.abID, (char *)pidl2->mkid.abID));
 
-    //We fell out of the loop when a difference was found, these are different.
+    // We fell out of the loop when a difference was found, these are different.
     return FALSE;
 }
 
@@ -1471,18 +1477,19 @@ UINT CXboxFolder::GetChildCount(BOOL fGuesstimate)
 --*/
 {
     //
-    //  If the children are not valid, decide whether or 
+    //  If the children are not valid, decide whether or
     //  not to guess or refresh the children.
     //
 
-    if(!m_fChildrenValid)
+    if (!m_fChildrenValid)
     {
 
-        if(fGuesstimate)
+        if (fGuesstimate)
         {
-            //TODO: Performance tune this value, perhaps by class.
+            // TODO: Performance tune this value, perhaps by class.
             return 15;
-        } else
+        }
+        else
         {
             RefreshChildren();
         }
@@ -1498,7 +1505,7 @@ HRESULT CXboxFolder::GetChildIndex(LPCSTR pszChildName, UINT *puIndex)
   Arguments:
     pszChildName - [IN]  name of child to search for.
     puIndex      - [OUT] pointer to receive index of child.
-  
+
   Comments:
     1) Does NOT refresh children.  Fails if the
        child list is invalid.
@@ -1511,16 +1518,16 @@ HRESULT CXboxFolder::GetChildIndex(LPCSTR pszChildName, UINT *puIndex)
     This routine is called a lot.  As often as not, it is called for exactly the same item it was
     called for the previous time.  50% of the other items it is called for the very next item.
     So our search loop always starts on the previously returned index.
-    
+
 --*/
 {
     //
     // Only search if the child list is valid.
     //
 
-    if(m_fChildrenValid && m_uChildCount)
+    if (m_fChildrenValid && m_uChildCount)
     {
-        UINT uIndex;    
+        UINT uIndex;
 
         //
         //  Loop over children, looking for a matching name
@@ -1530,41 +1537,41 @@ HRESULT CXboxFolder::GetChildIndex(LPCSTR pszChildName, UINT *puIndex)
         {
             LPCSTR pszSource = m_rgpszChildNames[uIndex];
             LPCSTR pszTarget = pszChildName;
-            BOOL   fMatch = TRUE;
+            BOOL fMatch = TRUE;
 
             //
             //  check for a match
             //
-            while(*pszSource && *pszTarget)
+            while (*pszSource && *pszTarget)
             {
-                if(toupper(*pszSource++) != toupper(*pszTarget++))
-                {   
+                if (toupper(*pszSource++) != toupper(*pszTarget++))
+                {
                     fMatch = FALSE;
                     break;
                 }
             }
-            
+
             //
             //  All the common characters are the
             //  same, check to see if one is longer
             //  than the other.
             //
-            if(fMatch)
+            if (fMatch)
             {
                 //
                 // If the sources is at the end, and the
                 // target is at the end (including a trailing '\\'
                 // then they match.
                 //
-                if(('\0'==*pszSource) && (('\0'==*pszTarget)||('\\'==*pszTarget)))
+                if (('\0' == *pszSource) && (('\0' == *pszTarget) || ('\\' == *pszTarget)))
                 {
                     *puIndex = m_uLastChildIndex = uIndex;
                     return S_OK;
                 }
             }
-            //Increment uIndex for the next loop
-            uIndex = (uIndex+1)%m_uChildCount;
-        } while(uIndex != m_uLastChildIndex);  //loop until we get back where we started.
+            // Increment uIndex for the next loop
+            uIndex = (uIndex + 1) % m_uChildCount;
+        } while (uIndex != m_uLastChildIndex); // loop until we get back where we started.
     }
 
     //
@@ -1590,87 +1597,90 @@ LPITEMIDLIST CXboxFolder::GetChildPidl(UINT uIndex, CPidlUtils::PIDLTYPE PidlTyp
 
  Comment:
   If CPidlUtils::PidlTypeSimple it is all done here, otherwise GetPidl is invoked.
-   
+
 --*/
 {
-   LPITEMIDLIST pidlReturn = NULL;
-   LPITEMIDLIST pidlWalk = NULL;
+    LPITEMIDLIST pidlReturn = NULL;
+    LPITEMIDLIST pidlWalk = NULL;
 
-   //
-   //  If the children are not valid, return NULL.
-   //
+    //
+    //  If the children are not valid, return NULL.
+    //
 
-   if(!m_fChildrenValid) return NULL;
+    if (!m_fChildrenValid)
+        return NULL;
 
-   //
-   // Calculate the length of the pidl
-   //
-   UINT uChildItemIdLen = strlen(m_rgpszChildNames[uIndex]) + sizeof(USHORT) + sizeof(char);
-   
-   //
-   // If not simple add our pidl length to that of the
-   // child.
-   //
+    //
+    // Calculate the length of the pidl
+    //
+    UINT uChildItemIdLen = strlen(m_rgpszChildNames[uIndex]) + sizeof(USHORT) + sizeof(char);
 
-   if(PidlType != CPidlUtils::PidlTypeSimple)
-   {
-       //
-       //  Get our pidl, and ask for space at end to tack on
-       //  our child.
-       //
+    //
+    // If not simple add our pidl length to that of the
+    // child.
+    //
 
-       pidlReturn = GetPidl(PidlType, uChildItemIdLen);
+    if (PidlType != CPidlUtils::PidlTypeSimple)
+    {
+        //
+        //  Get our pidl, and ask for space at end to tack on
+        //  our child.
+        //
 
-       //
-       //  Go to the end of the pidl.
-       //
-       if(pidlReturn)
-       {
-         pidlWalk = AdvancePtr(pidlReturn, GetPidlLen(PidlType)-2);
-        _ASSERT(0==pidlWalk->mkid.cb);
-       }
-   } else
-   //
-   //   Otherwise, allocate space for a simple pidl
-   //
-   {
-       pidlReturn = 
-       pidlWalk = (LPITEMIDLIST)g_pShellMalloc->Alloc(uChildItemIdLen+sizeof(USHORT));
-   }
+        pidlReturn = GetPidl(PidlType, uChildItemIdLen);
 
-   //
-   //  If the allocation worked, we need to add the SHITEMID for our child.
-   //
+        //
+        //  Go to the end of the pidl.
+        //
+        if (pidlReturn)
+        {
+            pidlWalk = AdvancePtr(pidlReturn, GetPidlLen(PidlType) - 2);
+            _ASSERT(0 == pidlWalk->mkid.cb);
+        }
+    }
+    else
+    //
+    //   Otherwise, allocate space for a simple pidl
+    //
+    {
+        pidlReturn =
+            pidlWalk = (LPITEMIDLIST)g_pShellMalloc->Alloc(uChildItemIdLen + sizeof(USHORT));
+    }
 
-   if(pidlWalk)
-   {
-       LPSTR pszChildNameTarget = (LPSTR)pidlWalk->mkid.abID;
-       LPSTR pszChildNameSource = m_rgpszChildNames[uIndex];
-       while(*pszChildNameSource)
-       {
-          *pszChildNameTarget++ = *pszChildNameSource++;
-       }
-       *pszChildNameTarget++ = *pszChildNameSource++;
-       pidlWalk->mkid.cb = (USHORT)uChildItemIdLen;
-       pidlWalk = AdvancePtr(pidlWalk, uChildItemIdLen);
-       pidlWalk->mkid.cb = 0;
-   }
-   _ASSERTE(pidlReturn);
-   return pidlReturn;
+    //
+    //  If the allocation worked, we need to add the SHITEMID for our child.
+    //
+
+    if (pidlWalk)
+    {
+        LPSTR pszChildNameTarget = (LPSTR)pidlWalk->mkid.abID;
+        LPSTR pszChildNameSource = m_rgpszChildNames[uIndex];
+        while (*pszChildNameSource)
+        {
+            *pszChildNameTarget++ = *pszChildNameSource++;
+        }
+        *pszChildNameTarget++ = *pszChildNameSource++;
+        pidlWalk->mkid.cb = (USHORT)uChildItemIdLen;
+        pidlWalk = AdvancePtr(pidlWalk, uChildItemIdLen);
+        pidlWalk->mkid.cb = 0;
+    }
+    _ASSERTE(pidlReturn);
+    return pidlReturn;
 }
 
 void CXboxFolder::GetSelectShellAttributes(IN OUT ULONG *pulShellAttributes)
 {
     _ASSERTE(m_fSelectionClone);
-    
-    if(m_uChildCount)
+
+    if (m_uChildCount)
     {
         UINT uIndex;
-        for(uIndex = 0; uIndex < m_uChildCount; uIndex++)
+        for (uIndex = 0; uIndex < m_uChildCount; uIndex++)
         {
             *pulShellAttributes &= m_rgulChildShellAttributes[uIndex];
         }
-    } else
+    }
+    else
     {
         *pulShellAttributes &= m_ulShellAttributes;
     }
@@ -1690,15 +1700,15 @@ HRESULT CXboxRoot::RefreshChildren()
 --*/
 {
     HRESULT hr;
-    UINT    uChildCount;
-    char    szConsoleName[MAX_CONSOLE_NAME];
-    DWORD   dwConsoleNameSize;
-    
+    UINT uChildCount;
+    char szConsoleName[MAX_CONSOLE_NAME];
+    DWORD dwConsoleNameSize;
+
     //
     //  If the children are already valid then there is no reason
     //  to do this.
     //
-    if(m_fChildrenValid)
+    if (m_fChildrenValid)
     {
         return S_OK;
     }
@@ -1709,64 +1719,63 @@ HRESULT CXboxRoot::RefreshChildren()
     //  The extra child is for the Add New Console Wizard.
     //
     uChildCount = consoleManager.GetMaxCount() + 1;
-    
+
     //
     //  Free Children
     //
 
     FreeChildren();
-    _ASSERTE(0==m_uChildCount);
+    _ASSERTE(0 == m_uChildCount);
 
     //
     //  Allocate Children
     //
     hr = ReallocateChildren(uChildCount);
-    if(FAILED(hr))
+    if (FAILED(hr))
     {
         return hr;
     }
-    
+
     //
     //  Initialize Add New Console Wizard entry
     //
 
     m_rgpszChildNames[m_uChildCount] = new char[sizeof(ADD_NEW_CONSOLE_PIDL_NAME)];
-    if(m_rgpszChildNames[m_uChildCount])
+    if (m_rgpszChildNames[m_uChildCount])
     {
-         memcpy(m_rgpszChildNames[m_uChildCount], ADD_NEW_CONSOLE_PIDL_NAME, sizeof(ADD_NEW_CONSOLE_PIDL_NAME));
-         m_rgulChildShellAttributes[m_uChildCount] = ADDNEWCONSOLE_SHELL_ATTRIBUTES;
-         m_rgpszActualNames[m_uChildCount] = XBOX_USE_USER_PROVIDED_NAME;
-         m_uChildCount++;
+        memcpy(m_rgpszChildNames[m_uChildCount], ADD_NEW_CONSOLE_PIDL_NAME, sizeof(ADD_NEW_CONSOLE_PIDL_NAME));
+        m_rgulChildShellAttributes[m_uChildCount] = ADDNEWCONSOLE_SHELL_ATTRIBUTES;
+        m_rgpszActualNames[m_uChildCount] = XBOX_USE_USER_PROVIDED_NAME;
+        m_uChildCount++;
     }
 
     //
     //  Enumerate Consoles
     //
-    
+
     dwConsoleNameSize = sizeof(szConsoleName);
-    while( (m_uChildCount < uChildCount) && consoleManager.GetNext(szConsoleName, &dwConsoleNameSize))
+    while ((m_uChildCount < uChildCount) && consoleManager.GetNext(szConsoleName, &dwConsoleNameSize))
     {
         //
         //  Allocate space to store the console name
         //
-        dwConsoleNameSize+=1;
+        dwConsoleNameSize += 1;
         m_rgpszChildNames[m_uChildCount] = new char[dwConsoleNameSize];
-        
-     
+
         //
         //  If the allocation worked, setup the console.
         //
-        if(m_rgpszChildNames[m_uChildCount])
+        if (m_rgpszChildNames[m_uChildCount])
         {
-            if(consoleManager.IsDefault(szConsoleName))
-            {   
+            if (consoleManager.IsDefault(szConsoleName))
+            {
                 m_uDefaultConsole = m_uChildCount;
             }
             memcpy(m_rgpszChildNames[m_uChildCount], szConsoleName, dwConsoleNameSize);
             m_rgulChildShellAttributes[m_uChildCount] = CONSOLE_SHELL_ATTRIBUTES;
             m_rgdwChildIPAddresses[m_uChildCount] = 0;
             m_rgpszActualNames[m_uChildCount] = NULL;
-            
+
             /*
             hr = Utils::GetXboxConnection(szConsoleName, &pConnection);
             if(SUCCEEDED(hr))
@@ -1787,7 +1796,7 @@ HRESULT CXboxRoot::RefreshChildren()
     //  Set the children valid is true here, otherwise the
     //  default Xbox will show up twice.
     m_fChildrenValid = TRUE;
-    
+
     return S_OK;
 }
 
@@ -1795,16 +1804,17 @@ DWORD CXboxRoot::GetChildIpAddress(UINT uChildIndex, BOOL fRetry)
 {
     HRESULT hr = S_OK;
     _ASSERTE(uChildIndex <= m_uChildCount);
-    
+
     //
     //  If the IP address is INVALID_HANDLE_VALUE, then we have tried
     //  to get it in the past and failed.  If fRetry, then
     //  we try the wire protocol again to get it, otherwise we
     //  return 0 for the IP address.
     //
-    if(0xFFFFFFFF == m_rgdwChildIPAddresses[uChildIndex])
+    if (0xFFFFFFFF == m_rgdwChildIPAddresses[uChildIndex])
     {
-        if(!fRetry) return 0;
+        if (!fRetry)
+            return 0;
         m_rgdwChildIPAddresses[uChildIndex] = 0;
     }
 
@@ -1812,11 +1822,11 @@ DWORD CXboxRoot::GetChildIpAddress(UINT uChildIndex, BOOL fRetry)
     //  If the IP address is 0, then we have to go over the wire
     //  to get it.
     //
-    if(!m_rgdwChildIPAddresses[uChildIndex])
+    if (!m_rgdwChildIPAddresses[uChildIndex])
     {
         IXboxConnection *pConnection;
         hr = Utils::GetXboxConnection(m_rgpszChildNames[uChildIndex], &pConnection);
-        if(SUCCEEDED(hr))
+        if (SUCCEEDED(hr))
         {
             hr = pConnection->HrResolveXboxName(&m_rgdwChildIPAddresses[uChildIndex]);
             pConnection->Release();
@@ -1825,7 +1835,7 @@ DWORD CXboxRoot::GetChildIpAddress(UINT uChildIndex, BOOL fRetry)
         //  If we failed getting the interface or resolving the Xbox name to an IP address
         //  then we mark the IP address as INVALID_HANDLE_VALUE, and return 0.
         //
-        if(FAILED(hr))
+        if (FAILED(hr))
         {
             m_rgdwChildIPAddresses[uChildIndex] = 0xFFFFFFFF;
             return 0;
@@ -1848,11 +1858,11 @@ LPCSTR CXboxRoot::GetActualName(UINT uChildIndex)
     //
     //  If the actual name is available, just use it.
     //
-    if(m_rgpszActualNames[uChildIndex])
+    if (m_rgpszActualNames[uChildIndex])
     {
         //  If the name is XBOX_USE_USER_PROVIDED_NAME, it means use the
         //  name that is is in the registry, that the user provided.
-        if(XBOX_USE_USER_PROVIDED_NAME == m_rgpszActualNames[uChildIndex])
+        if (XBOX_USE_USER_PROVIDED_NAME == m_rgpszActualNames[uChildIndex])
         {
             return m_rgpszChildNames[uChildIndex];
         }
@@ -1863,29 +1873,28 @@ LPCSTR CXboxRoot::GetActualName(UINT uChildIndex)
     //
     // If the user provided the name, then just use it.
     //
-    if(INADDR_NONE==inet_addr(m_rgpszChildNames[uChildIndex]))
+    if (INADDR_NONE == inet_addr(m_rgpszChildNames[uChildIndex]))
     {
         m_rgpszActualNames[uChildIndex] = XBOX_USE_USER_PROVIDED_NAME;
         return m_rgpszChildNames[uChildIndex];
     }
-    
 
     // If we are here, we need to go over the wire to get the name.
     // Don't try going over the wire, if we failed at our last attempt
     // to find the box, when getting the IP address.
-    if(0xFFFFFFFF != m_rgdwChildIPAddresses[uChildIndex])
+    if (0xFFFFFFFF != m_rgdwChildIPAddresses[uChildIndex])
     {
         IXboxConnection *pConnection;
         hr = Utils::GetXboxConnection(m_rgpszChildNames[uChildIndex], &pConnection);
-        if(SUCCEEDED(hr))
+        if (SUCCEEDED(hr))
         {
-            char  szName[60];
+            char szName[60];
             DWORD dwNameLen;
             hr = pConnection->HrGetNameOfXbox(szName, &dwNameLen, FALSE);
-            if(SUCCEEDED(hr))
+            if (SUCCEEDED(hr))
             {
                 m_rgpszActualNames[uChildIndex] = new char[++dwNameLen];
-                if(m_rgpszActualNames[uChildIndex])
+                if (m_rgpszActualNames[uChildIndex])
                 {
                     memcpy(m_rgpszActualNames[uChildIndex], szName, dwNameLen);
                     return m_rgpszActualNames[uChildIndex];
@@ -1894,7 +1903,7 @@ LPCSTR CXboxRoot::GetActualName(UINT uChildIndex)
             pConnection->Release();
         }
     }
-    
+
     //
     // If we are here, then we couldn't get the actual name for some
     // reason, return whatever the user typed.
@@ -1914,33 +1923,33 @@ HRESULT CXboxConsole::RefreshChildren()
     4) populate the children from registry.
     5) get the default console, and if necessary
        add it to the registry.
-    
+
   Comments:
     How many volumes can there be?  E, S, T, U, V, X, plus
     C and Y (internal only) + 8 MU's, + any aliases.
     Figure that we will never see more that 24.  That is small
     enough that we can just allocate them all.
-    
+
 --*/
 {
-    HRESULT         hr;
-    char            szVolumeName[4];
-    char            szDriveLetters[24];
-    char            *pszDriveNames;
-    DWORD           dwDriveCount = 24;
-    DWORD           dwDriveIndex;
-    ULARGE_INTEGER  uliBogus;
+    HRESULT hr;
+    char szVolumeName[4];
+    char szDriveLetters[24];
+    char *pszDriveNames;
+    DWORD dwDriveCount = 24;
+    DWORD dwDriveIndex;
+    ULARGE_INTEGER uliBogus;
 
-    if(m_fChildrenValid)
+    if (m_fChildrenValid)
     {
         return S_OK;
     }
-    
+
     //
     //  Get the list of drives
     //
     hr = m_pConnection->HrGetDriveList(szDriveLetters, &dwDriveCount);
-    if(FAILED(hr))
+    if (FAILED(hr))
     {
         return hr;
     }
@@ -1948,8 +1957,8 @@ HRESULT CXboxConsole::RefreshChildren()
     //
     //  Allocate space for all the names.
     //
-    pszDriveNames = new char[2*dwDriveCount];
-    if(!pszDriveNames)
+    pszDriveNames = new char[2 * dwDriveCount];
+    if (!pszDriveNames)
     {
         return E_OUTOFMEMORY;
     }
@@ -1959,25 +1968,25 @@ HRESULT CXboxConsole::RefreshChildren()
     //
 
     FreeChildren();
-    _ASSERTE(0==m_uChildCount);
+    _ASSERTE(0 == m_uChildCount);
 
     //
     //  Allocate Children
     //
     hr = ReallocateChildren(dwDriveCount);
-    
+
     //
     //  Will be needed as we go through the drive letters
     //
-    szVolumeName[1]=':';
-    szVolumeName[2]='\\';
-    szVolumeName[3]='\0';
+    szVolumeName[1] = ':';
+    szVolumeName[2] = '\\';
+    szVolumeName[3] = '\0';
 
     //
     //  Loop over all the volumes and collect information.
     //
 
-    for(dwDriveIndex = 0; dwDriveIndex < dwDriveCount; dwDriveIndex++)
+    for (dwDriveIndex = 0; dwDriveIndex < dwDriveCount; dwDriveIndex++)
     {
         szVolumeName[0] = szDriveLetters[dwDriveIndex];
         m_rgpszChildNames[m_uChildCount] = pszDriveNames;
@@ -1985,17 +1994,16 @@ HRESULT CXboxConsole::RefreshChildren()
         *pszDriveNames++ = '\0';
         m_rgulChildShellAttributes[m_uChildCount] = VOLUME_SHELL_ATTRIBUTES;
         m_rguChildVolumeType[m_uChildCount] = CXboxVolume::GetVolumeType(*szVolumeName);
-        
+
         //
         // Go over the wire to get the free space and total space.
         //
-        
+
         m_pConnection->HrGetDiskFreeSpace(
-                        szVolumeName,
-                        &uliBogus,
-                        (PULARGE_INTEGER)&m_rgullChildTotalSpace[m_uChildCount],
-                        (PULARGE_INTEGER)&m_rgullChildFreeSpace[m_uChildCount]
-                        );
+            szVolumeName,
+            &uliBogus,
+            (PULARGE_INTEGER)&m_rgullChildTotalSpace[m_uChildCount],
+            (PULARGE_INTEGER)&m_rgullChildFreeSpace[m_uChildCount]);
         m_uChildCount++;
     }
 
@@ -2006,32 +2014,32 @@ HRESULT CXboxConsole::RefreshChildren()
 UINT CXboxVolume::GetVolumeType(char cDriveLetter)
 {
     cDriveLetter = (char)toupper(cDriveLetter);
-    if((cDriveLetter >= 'F') && (cDriveLetter<= 'M'))
+    if ((cDriveLetter >= 'F') && (cDriveLetter <= 'M'))
     {
         return IDS_DRIVETYPE_MEMORY_UNIT;
     }
 
-    switch(cDriveLetter)
+    switch (cDriveLetter)
     {
-        case 'C':
-            return IDS_DRIVETYPE_MAIN_ROOT;
-        case 'D':
-            return IDS_DRIVETYPE_BOOT; 
-        case 'E':
-            return IDS_DRIVETYPE_DEVELOPMENT; 
-        case 'S':
-            return IDS_DRIVETYPE_TITLE_ROOT; 
-        case 'T':
-            return IDS_DRIVETYPE_TITLE_CURRENT; 
-        case 'U':
-            return IDS_DRIVETYPE_SAVED_CURRENT; 
-        case 'V':
-            return IDS_DRIVETYPE_SAVED_ROOT;
-        case 'X':
-            return IDS_DRIVETYPE_SCRATCH;
-        case 'Y':
-            return IDS_DRIVETYPE_DASH;
-    } 
+    case 'C':
+        return IDS_DRIVETYPE_MAIN_ROOT;
+    case 'D':
+        return IDS_DRIVETYPE_BOOT;
+    case 'E':
+        return IDS_DRIVETYPE_DEVELOPMENT;
+    case 'S':
+        return IDS_DRIVETYPE_TITLE_ROOT;
+    case 'T':
+        return IDS_DRIVETYPE_TITLE_CURRENT;
+    case 'U':
+        return IDS_DRIVETYPE_SAVED_CURRENT;
+    case 'V':
+        return IDS_DRIVETYPE_SAVED_ROOT;
+    case 'X':
+        return IDS_DRIVETYPE_SCRATCH;
+    case 'Y':
+        return IDS_DRIVETYPE_DASH;
+    }
     return IDS_DRIVETYPE_UNKNOWN;
 }
 
@@ -2047,11 +2055,11 @@ HRESULT CXboxFileSystemFolder::RefreshChildren()
     DWORD dwFileCount;
     HRESULT hr;
 
-    if(m_fChildrenValid)
+    if (m_fChildrenValid)
     {
         return S_OK;
     }
-    
+
     //
     //  Get the wire name (for our self).
     //
@@ -2061,30 +2069,30 @@ HRESULT CXboxFileSystemFolder::RefreshChildren()
     //  Get the first child, as well as a count.
     //
     hr = m_pConnection->HrOpenDir(&pdmWalkDir, szWireName, &dwFileCount);
-    if(FAILED(hr))
+    if (FAILED(hr))
     {
         return hr;
-    }   
+    }
 
     //
     //  Free Children
     //
 
     FreeChildren();
-    _ASSERTE(0==m_uChildCount);
+    _ASSERTE(0 == m_uChildCount);
 
     //
     //  Allocate Children
     //
     hr = ReallocateChildren(dwFileCount);
-    if(SUCCEEDED(hr))
+    if (SUCCEEDED(hr))
     {
 
         //
         //  Now fill in the children.
         //
-        while(SUCCEEDED(m_pConnection->HrWalkDir(&pdmWalkDir, NULL, &m_rgChildFileAttributes[m_uChildCount])))
-        {   
+        while (SUCCEEDED(m_pConnection->HrWalkDir(&pdmWalkDir, NULL, &m_rgChildFileAttributes[m_uChildCount])))
+        {
             //
             // Have the name point at the name in the DM_FILE_ATTRIBUTES
             //
@@ -2096,22 +2104,23 @@ HRESULT CXboxFileSystemFolder::RefreshChildren()
             //  from the attributes.
             //
 
-            if(m_rgChildFileAttributes[m_uChildCount].Attributes&FILE_ATTRIBUTE_DIRECTORY)
+            if (m_rgChildFileAttributes[m_uChildCount].Attributes & FILE_ATTRIBUTE_DIRECTORY)
             {
-              m_rgulChildShellAttributes[m_uChildCount] = DIRECTORY_SHELL_ATTRIBUTES;
-              m_rgszChildTypeNames[m_uChildCount] = (LPSTR)WindowUtils::GetPreloadedString(IDS_PRELOAD_FOLDER_TYPE_NAME);
-            } else
-            {
-              m_rgulChildShellAttributes[m_uChildCount] = FILE_SHELL_ATTRIBUTES;
-              m_rgszChildTypeNames[m_uChildCount] = GetFileTypeName(&m_rgChildFileAttributes[m_uChildCount]);
+                m_rgulChildShellAttributes[m_uChildCount] = DIRECTORY_SHELL_ATTRIBUTES;
+                m_rgszChildTypeNames[m_uChildCount] = (LPSTR)WindowUtils::GetPreloadedString(IDS_PRELOAD_FOLDER_TYPE_NAME);
             }
-            if(m_rgChildFileAttributes[m_uChildCount].Attributes&FILE_ATTRIBUTE_READONLY)
+            else
             {
-              m_rgulChildShellAttributes[m_uChildCount] |= SFGAO_READONLY;
+                m_rgulChildShellAttributes[m_uChildCount] = FILE_SHELL_ATTRIBUTES;
+                m_rgszChildTypeNames[m_uChildCount] = GetFileTypeName(&m_rgChildFileAttributes[m_uChildCount]);
             }
-            if(m_rgChildFileAttributes[m_uChildCount].Attributes&FILE_ATTRIBUTE_HIDDEN)
+            if (m_rgChildFileAttributes[m_uChildCount].Attributes & FILE_ATTRIBUTE_READONLY)
             {
-              m_rgulChildShellAttributes[m_uChildCount] |= (SFGAO_HIDDEN|SFGAO_GHOSTED);
+                m_rgulChildShellAttributes[m_uChildCount] |= SFGAO_READONLY;
+            }
+            if (m_rgChildFileAttributes[m_uChildCount].Attributes & FILE_ATTRIBUTE_HIDDEN)
+            {
+                m_rgulChildShellAttributes[m_uChildCount] |= (SFGAO_HIDDEN | SFGAO_GHOSTED);
             }
             m_uChildCount++;
         }
@@ -2120,11 +2129,10 @@ HRESULT CXboxFileSystemFolder::RefreshChildren()
     return S_OK;
 }
 
-
 HRESULT CXboxRoot::ReallocateChildren(UINT uChildCount)
 {
-    
-    if(uChildCount > m_uAllocatedChildCount)
+
+    if (uChildCount > m_uAllocatedChildCount)
     {
         LPSTR *rgpszChildNames;
         ULONG *rgulChildShellAttributes;
@@ -2134,37 +2142,38 @@ HRESULT CXboxRoot::ReallocateChildren(UINT uChildCount)
         //
         // Allocate new arrays
         //
-        rgpszChildNames          = new LPSTR[uChildCount];
+        rgpszChildNames = new LPSTR[uChildCount];
         rgulChildShellAttributes = new ULONG[uChildCount];
-        rgdwChildIPAddresses     = new DWORD[uChildCount];
-        rgpszActualNames         = new LPSTR[uChildCount];
+        rgdwChildIPAddresses = new DWORD[uChildCount];
+        rgpszActualNames = new LPSTR[uChildCount];
 
-        if( !rgpszChildNames || !rgulChildShellAttributes || !rgdwChildIPAddresses || !rgpszActualNames)
+        if (!rgpszChildNames || !rgulChildShellAttributes || !rgdwChildIPAddresses || !rgpszActualNames)
         {
-            delete [] rgpszChildNames;
-            delete [] rgulChildShellAttributes;
-            delete [] rgdwChildIPAddresses;
-            delete [] rgpszActualNames;
+            delete[] rgpszChildNames;
+            delete[] rgulChildShellAttributes;
+            delete[] rgdwChildIPAddresses;
+            delete[] rgpszActualNames;
             return E_OUTOFMEMORY;
-        } else
+        }
+        else
         {
-            if(m_uChildCount)
+            if (m_uChildCount)
             {
-                memcpy(rgpszChildNames,          m_rgpszChildNames,          sizeof(LPSTR)*m_uChildCount);
-                memcpy(rgulChildShellAttributes, m_rgulChildShellAttributes, sizeof(ULONG)*m_uChildCount);
-                memcpy(rgdwChildIPAddresses,     m_rgdwChildIPAddresses,     sizeof(DWORD)*m_uChildCount);
-                memcpy(rgpszActualNames,         m_rgpszActualNames,         sizeof(LPSTR)*m_uChildCount);
+                memcpy(rgpszChildNames, m_rgpszChildNames, sizeof(LPSTR) * m_uChildCount);
+                memcpy(rgulChildShellAttributes, m_rgulChildShellAttributes, sizeof(ULONG) * m_uChildCount);
+                memcpy(rgdwChildIPAddresses, m_rgdwChildIPAddresses, sizeof(DWORD) * m_uChildCount);
+                memcpy(rgpszActualNames, m_rgpszActualNames, sizeof(LPSTR) * m_uChildCount);
             }
-            
-            delete [] m_rgpszChildNames;
-            delete [] m_rgulChildShellAttributes;
-            delete [] m_rgdwChildIPAddresses;
-            delete [] m_rgpszActualNames;          
-            
-            m_rgpszChildNames          = rgpszChildNames;
+
+            delete[] m_rgpszChildNames;
+            delete[] m_rgulChildShellAttributes;
+            delete[] m_rgdwChildIPAddresses;
+            delete[] m_rgpszActualNames;
+
+            m_rgpszChildNames = rgpszChildNames;
             m_rgulChildShellAttributes = rgulChildShellAttributes;
-            m_rgdwChildIPAddresses     = rgdwChildIPAddresses;
-            m_rgpszActualNames         = rgpszActualNames;
+            m_rgdwChildIPAddresses = rgdwChildIPAddresses;
+            m_rgpszActualNames = rgpszActualNames;
 
             m_uAllocatedChildCount = uChildCount;
         }
@@ -2175,61 +2184,60 @@ HRESULT CXboxRoot::ReallocateChildren(UINT uChildCount)
 HRESULT CXboxConsole::ReallocateChildren(UINT uChildCount)
 {
 
-    if(uChildCount > m_uAllocatedChildCount)
+    if (uChildCount > m_uAllocatedChildCount)
     {
-        LPSTR     *rgpszChildNames;
-        ULONG     *rgulChildShellAttributes;
+        LPSTR *rgpszChildNames;
+        ULONG *rgulChildShellAttributes;
         ULONGLONG *rgullChildFreeSpace;
         ULONGLONG *rgullChildTotalSpace;
-        UINT      *rguChildVolumeType;
+        UINT *rguChildVolumeType;
 
         //
         // Allocate new arrays
         //
 
-        rgpszChildNames          = new LPSTR[uChildCount];
+        rgpszChildNames = new LPSTR[uChildCount];
         rgulChildShellAttributes = new ULONG[uChildCount];
-        rgullChildFreeSpace      = new ULONGLONG[uChildCount];
-        rgullChildTotalSpace     = new ULONGLONG[uChildCount];
-        rguChildVolumeType       = new UINT[uChildCount];
+        rgullChildFreeSpace = new ULONGLONG[uChildCount];
+        rgullChildTotalSpace = new ULONGLONG[uChildCount];
+        rguChildVolumeType = new UINT[uChildCount];
 
-        if( 
+        if (
             !rgpszChildNames ||
             !rgulChildShellAttributes ||
             !rgullChildFreeSpace ||
             !rgullChildTotalSpace ||
-            !rguChildVolumeType
-        )
+            !rguChildVolumeType)
         {
-            delete [] rgpszChildNames;
-            delete [] rgulChildShellAttributes;
-            delete [] rgullChildFreeSpace;
-            delete [] rgullChildTotalSpace;
-            delete [] rguChildVolumeType;
+            delete[] rgpszChildNames;
+            delete[] rgulChildShellAttributes;
+            delete[] rgullChildFreeSpace;
+            delete[] rgullChildTotalSpace;
+            delete[] rguChildVolumeType;
             return E_OUTOFMEMORY;
-
-        } else
+        }
+        else
         {
-            if(m_uChildCount)
+            if (m_uChildCount)
             {
-                memcpy(rgpszChildNames,          m_rgpszChildNames,          sizeof(LPSTR)*m_uChildCount);
-                memcpy(rgulChildShellAttributes, m_rgulChildShellAttributes, sizeof(ULONG)*m_uChildCount);
-                memcpy(rgullChildFreeSpace,      m_rgullChildFreeSpace,      sizeof(ULONGLONG)*m_uChildCount);
-                memcpy(rgullChildTotalSpace,     m_rgullChildTotalSpace,     sizeof(ULONGLONG)*m_uChildCount);
-                memcpy(rguChildVolumeType,       m_rguChildVolumeType,       sizeof(UINT)*m_uChildCount);
+                memcpy(rgpszChildNames, m_rgpszChildNames, sizeof(LPSTR) * m_uChildCount);
+                memcpy(rgulChildShellAttributes, m_rgulChildShellAttributes, sizeof(ULONG) * m_uChildCount);
+                memcpy(rgullChildFreeSpace, m_rgullChildFreeSpace, sizeof(ULONGLONG) * m_uChildCount);
+                memcpy(rgullChildTotalSpace, m_rgullChildTotalSpace, sizeof(ULONGLONG) * m_uChildCount);
+                memcpy(rguChildVolumeType, m_rguChildVolumeType, sizeof(UINT) * m_uChildCount);
             }
-            
-            delete [] m_rgpszChildNames;
-            delete [] m_rgulChildShellAttributes;
-            delete [] m_rgullChildFreeSpace;
-            delete [] m_rgullChildTotalSpace;
-            delete [] m_rguChildVolumeType;
-            
-            m_rgpszChildNames          = rgpszChildNames;
+
+            delete[] m_rgpszChildNames;
+            delete[] m_rgulChildShellAttributes;
+            delete[] m_rgullChildFreeSpace;
+            delete[] m_rgullChildTotalSpace;
+            delete[] m_rguChildVolumeType;
+
+            m_rgpszChildNames = rgpszChildNames;
             m_rgulChildShellAttributes = rgulChildShellAttributes;
-            m_rgullChildFreeSpace      = rgullChildFreeSpace;
-            m_rgullChildTotalSpace     = rgullChildTotalSpace;
-            m_rguChildVolumeType       = rguChildVolumeType;
+            m_rgullChildFreeSpace = rgullChildFreeSpace;
+            m_rgullChildTotalSpace = rgullChildTotalSpace;
+            m_rguChildVolumeType = rguChildVolumeType;
 
             m_uAllocatedChildCount = uChildCount;
         }
@@ -2239,56 +2247,55 @@ HRESULT CXboxConsole::ReallocateChildren(UINT uChildCount)
 
 HRESULT CXboxFileSystemFolder::ReallocateChildren(UINT uChildCount)
 {
-    
-    if(uChildCount > m_uAllocatedChildCount)
+
+    if (uChildCount > m_uAllocatedChildCount)
     {
-        LPSTR              *rgpszChildNames;
-        ULONG              *rgulChildShellAttributes;
+        LPSTR *rgpszChildNames;
+        ULONG *rgulChildShellAttributes;
         DM_FILE_ATTRIBUTES *rgChildFileAttributes;
-        LPSTR              *rgszChildTypeNames;
+        LPSTR *rgszChildTypeNames;
 
         //
         // Allocate new arrays
         //
 
-        rgpszChildNames            = new LPSTR[uChildCount];
-        rgulChildShellAttributes   = new ULONG[uChildCount];
-        rgChildFileAttributes      = new DM_FILE_ATTRIBUTES[uChildCount];
-        rgszChildTypeNames         = new LPSTR[uChildCount];
+        rgpszChildNames = new LPSTR[uChildCount];
+        rgulChildShellAttributes = new ULONG[uChildCount];
+        rgChildFileAttributes = new DM_FILE_ATTRIBUTES[uChildCount];
+        rgszChildTypeNames = new LPSTR[uChildCount];
 
-        if( 
+        if (
             !rgpszChildNames ||
             !rgulChildShellAttributes ||
             !rgChildFileAttributes ||
-            !rgszChildTypeNames
-        )
+            !rgszChildTypeNames)
         {
-            delete [] rgpszChildNames;
-            delete [] rgulChildShellAttributes;
-            delete [] rgChildFileAttributes;
-            delete [] rgszChildTypeNames;
+            delete[] rgpszChildNames;
+            delete[] rgulChildShellAttributes;
+            delete[] rgChildFileAttributes;
+            delete[] rgszChildTypeNames;
             return E_OUTOFMEMORY;
-
-        } else
+        }
+        else
         {
-            if(m_uChildCount)
+            if (m_uChildCount)
             {
-                memcpy(rgpszChildNames,          m_rgpszChildNames,          sizeof(LPSTR)*m_uChildCount);
-                memcpy(rgulChildShellAttributes, m_rgulChildShellAttributes, sizeof(ULONG)*m_uChildCount);
+                memcpy(rgpszChildNames, m_rgpszChildNames, sizeof(LPSTR) * m_uChildCount);
+                memcpy(rgulChildShellAttributes, m_rgulChildShellAttributes, sizeof(ULONG) * m_uChildCount);
 
-                memcpy(rgChildFileAttributes,    m_rgChildFileAttributes,    sizeof(DM_FILE_ATTRIBUTES)*m_uChildCount);
-                memcpy(rgszChildTypeNames,       m_rgszChildTypeNames,       sizeof(LPSTR)*m_uChildCount);
+                memcpy(rgChildFileAttributes, m_rgChildFileAttributes, sizeof(DM_FILE_ATTRIBUTES) * m_uChildCount);
+                memcpy(rgszChildTypeNames, m_rgszChildTypeNames, sizeof(LPSTR) * m_uChildCount);
             }
-            
-            delete [] m_rgpszChildNames;
-            delete [] m_rgulChildShellAttributes;
-            delete [] m_rgChildFileAttributes;
-            delete [] m_rgszChildTypeNames;
-            
-            m_rgpszChildNames          = rgpszChildNames;
+
+            delete[] m_rgpszChildNames;
+            delete[] m_rgulChildShellAttributes;
+            delete[] m_rgChildFileAttributes;
+            delete[] m_rgszChildTypeNames;
+
+            m_rgpszChildNames = rgpszChildNames;
             m_rgulChildShellAttributes = rgulChildShellAttributes;
-            m_rgChildFileAttributes    = rgChildFileAttributes;
-            m_rgszChildTypeNames       = rgszChildTypeNames;
+            m_rgChildFileAttributes = rgChildFileAttributes;
+            m_rgszChildTypeNames = rgszChildTypeNames;
 
             m_uAllocatedChildCount = uChildCount;
         }
@@ -2304,26 +2311,26 @@ void CXboxRoot::FreeChildren()
 {
     UINT uIndex;
 
-    for(uIndex = 0; uIndex < m_uChildCount; uIndex++)
+    for (uIndex = 0; uIndex < m_uChildCount; uIndex++)
     {
         delete m_rgpszChildNames[uIndex];
-        
-        //XBOX_USE_USER_PROVIDED_NAME - means that the actual name is the same as the name
-        //                       thus, it is not really a pointer, not is it NULL, so don't delete!
-        if(XBOX_USE_USER_PROVIDED_NAME!=m_rgpszActualNames[uIndex])
-            delete [] m_rgpszActualNames[uIndex];
+
+        // XBOX_USE_USER_PROVIDED_NAME - means that the actual name is the same as the name
+        //                        thus, it is not really a pointer, not is it NULL, so don't delete!
+        if (XBOX_USE_USER_PROVIDED_NAME != m_rgpszActualNames[uIndex])
+            delete[] m_rgpszActualNames[uIndex];
     }
 
-    delete [] m_rgpszChildNames;
-    delete [] m_rgulChildShellAttributes;
-    delete [] m_rgdwChildIPAddresses;
-    delete [] m_rgpszActualNames;
-    
+    delete[] m_rgpszChildNames;
+    delete[] m_rgulChildShellAttributes;
+    delete[] m_rgdwChildIPAddresses;
+    delete[] m_rgpszActualNames;
+
     m_rgpszChildNames = NULL;
     m_rgulChildShellAttributes = NULL;
     m_rgdwChildIPAddresses = NULL;
     m_rgpszActualNames = NULL;
-    
+
     m_uAllocatedChildCount = 0;
     m_uChildCount = 0;
     m_uLastChildIndex = 0;
@@ -2335,18 +2342,18 @@ void CXboxConsole::FreeChildren()
     Frees the data structues associate with children of a console.
 --*/
 {
-    delete [] m_rgpszChildNames;
-    delete [] m_rgulChildShellAttributes;
-    
-    delete [] m_rgullChildFreeSpace;
-    delete [] m_rgullChildTotalSpace;
-    delete [] m_rguChildVolumeType;
-  
-    m_rgpszChildNames          = NULL;
+    delete[] m_rgpszChildNames;
+    delete[] m_rgulChildShellAttributes;
+
+    delete[] m_rgullChildFreeSpace;
+    delete[] m_rgullChildTotalSpace;
+    delete[] m_rguChildVolumeType;
+
+    m_rgpszChildNames = NULL;
     m_rgulChildShellAttributes = NULL;
-    m_rgullChildFreeSpace      = NULL;
-    m_rgullChildTotalSpace     = NULL;
-    m_rguChildVolumeType       = NULL;
+    m_rgullChildFreeSpace = NULL;
+    m_rgullChildTotalSpace = NULL;
+    m_rguChildVolumeType = NULL;
 
     m_uAllocatedChildCount = 0;
     m_uChildCount = 0;
@@ -2361,29 +2368,27 @@ void CXboxFileSystemFolder::FreeChildren()
 {
     UINT uIndex;
 
-    for(uIndex = 0; uIndex < m_uChildCount; uIndex++)
+    for (uIndex = 0; uIndex < m_uChildCount; uIndex++)
     {
-        if(!(m_rgChildFileAttributes[uIndex].Attributes&FILE_ATTRIBUTE_DIRECTORY))
+        if (!(m_rgChildFileAttributes[uIndex].Attributes & FILE_ATTRIBUTE_DIRECTORY))
         {
             delete m_rgszChildTypeNames[uIndex];
         }
     }
-    delete [] m_rgpszChildNames;
-    delete [] m_rgulChildShellAttributes;
-    delete [] m_rgChildFileAttributes;
-    delete [] m_rgszChildTypeNames;
+    delete[] m_rgpszChildNames;
+    delete[] m_rgulChildShellAttributes;
+    delete[] m_rgChildFileAttributes;
+    delete[] m_rgszChildTypeNames;
 
-    m_rgpszChildNames          = NULL;
+    m_rgpszChildNames = NULL;
     m_rgulChildShellAttributes = NULL;
-    m_rgChildFileAttributes    = NULL;
-    m_rgszChildTypeNames       = NULL;
+    m_rgChildFileAttributes = NULL;
+    m_rgszChildTypeNames = NULL;
 
     m_uAllocatedChildCount = 0;
     m_uChildCount = 0;
     m_uLastChildIndex = 0;
 }
-
-
 
 HRESULT CXboxRoot::ValidateItem(LPCSTR pszPathName, UINT uRelativeDepth, DWORD *pdwAttributes)
 /*++
@@ -2401,106 +2406,108 @@ HRESULT CXboxRoot::ValidateItem(LPCSTR pszPathName, UINT uRelativeDepth, DWORD *
     various errors if it does not.
 --*/
 {
-  HRESULT            hr;
-  char               szNameBuffer[MAX_PATH];
-  LPSTR              pszTarget;
-  LPCSTR             pszSource;
-  IXboxConnection    *pConnection = NULL;
-  DM_FILE_ATTRIBUTES dmFileAttributes;
-
-  //
-  //  Is it the "Add New Console Wizard"
-  //  TODO: Implement this.
-  //
-
-
-  //
-  //  Get a console connection
-  //
-  pszTarget = szNameBuffer;
-  pszSource = pszPathName;
-  while(('\0'!=*pszSource) && ('\\'!=*pszSource))
-  {
-    *pszTarget++ = *pszSource++;
-  }
-  *pszTarget = '\0';
-  hr = Utils::GetXboxConnection(szNameBuffer, &pConnection);
-  if(FAILED(hr)) return hr;
-
-  //
-  //  If item is a console, we are done.
-  //
-  if(1==uRelativeDepth)
-  {
-    
-    //
-    //  Don't need to the box anymore.
-    //
-
-    pConnection->Release();
+    HRESULT hr;
+    char szNameBuffer[MAX_PATH];
+    LPSTR pszTarget;
+    LPCSTR pszSource;
+    IXboxConnection *pConnection = NULL;
+    DM_FILE_ATTRIBUTES dmFileAttributes;
 
     //
-    //  If we are going to succeed, and the attributes
-    //  are requested, then fill out the attributes.
+    //  Is it the "Add New Console Wizard"
+    //  TODO: Implement this.
     //
-    if(SUCCEEDED(hr) && pdwAttributes)
+
+    //
+    //  Get a console connection
+    //
+    pszTarget = szNameBuffer;
+    pszSource = pszPathName;
+    while (('\0' != *pszSource) && ('\\' != *pszSource))
     {
-        *pdwAttributes &= CONSOLE_SHELL_ATTRIBUTES;
+        *pszTarget++ = *pszSource++;
+    }
+    *pszTarget = '\0';
+    hr = Utils::GetXboxConnection(szNameBuffer, &pConnection);
+    if (FAILED(hr))
+        return hr;
+
+    //
+    //  If item is a console, we are done.
+    //
+    if (1 == uRelativeDepth)
+    {
+
+        //
+        //  Don't need to the box anymore.
+        //
+
+        pConnection->Release();
+
+        //
+        //  If we are going to succeed, and the attributes
+        //  are requested, then fill out the attributes.
+        //
+        if (SUCCEEDED(hr) && pdwAttributes)
+        {
+            *pdwAttributes &= CONSOLE_SHELL_ATTRIBUTES;
+        }
+        return hr;
+    }
+
+    //
+    //  Build the wire name, and try to get the file attributes.
+    //
+
+    GetWireName(szNameBuffer, NULL, pszPathName);
+    hr = pConnection->HrGetFileAttributes(szNameBuffer, &dmFileAttributes);
+    pConnection->Release(); // Done with the connection, success or not.
+    if (SUCCEEDED(hr))
+    {
+        DWORD dwAttributes;
+
+        //
+        //  Is it a volume?
+        //
+        if (2 == uRelativeDepth)
+        {
+            _ASSERTE(dmFileAttributes.Attributes & FILE_ATTRIBUTE_DIRECTORY);
+            dwAttributes = VOLUME_SHELL_ATTRIBUTES;
+        }
+        else if (dmFileAttributes.Attributes & FILE_ATTRIBUTE_DIRECTORY)
+        //
+        //  Or a directory?
+        //
+        {
+            dwAttributes = DIRECTORY_SHELL_ATTRIBUTES;
+        }
+        else
+        //
+        //  Then must be a file.
+        //
+        {
+            dwAttributes = FILE_SHELL_ATTRIBUTES;
+        }
+
+        //
+        //  OR in SFGAO_READONLY and SFGAO_HIDDEN if applicable.
+        //
+
+        if (dmFileAttributes.Attributes & FILE_ATTRIBUTE_READONLY)
+        {
+            dwAttributes |= SFGAO_READONLY;
+        }
+        if (dmFileAttributes.Attributes & FILE_ATTRIBUTE_HIDDEN)
+        {
+            dwAttributes |= (SFGAO_HIDDEN | SFGAO_GHOSTED);
+        }
+
+        //
+        // Set the out parameter
+        //
+        *pdwAttributes &= dwAttributes;
     }
     return hr;
-  }
-
-  //
-  //  Build the wire name, and try to get the file attributes.
-  //
-
-  GetWireName(szNameBuffer, NULL, pszPathName);
-  hr = pConnection->HrGetFileAttributes(szNameBuffer, &dmFileAttributes);
-  pConnection->Release(); //Done with the connection, success or not.
-  if(SUCCEEDED(hr))
-  {
-    DWORD dwAttributes;
-    
-    //
-    //  Is it a volume?
-    //
-    if(2==uRelativeDepth)
-    {
-        _ASSERTE(dmFileAttributes.Attributes&FILE_ATTRIBUTE_DIRECTORY);
-        dwAttributes = VOLUME_SHELL_ATTRIBUTES;
-    } else if(dmFileAttributes.Attributes&FILE_ATTRIBUTE_DIRECTORY)
-    //
-    //  Or a directory?
-    //
-    {
-        dwAttributes = DIRECTORY_SHELL_ATTRIBUTES;
-    } else
-    //
-    //  Then must be a file.
-    //
-    {
-        dwAttributes = FILE_SHELL_ATTRIBUTES;
-    }
-
-    //
-    //  OR in SFGAO_READONLY and SFGAO_HIDDEN if applicable.
-    //
-
-    if(dmFileAttributes.Attributes&FILE_ATTRIBUTE_READONLY)
-    {
-        dwAttributes |= SFGAO_READONLY;
-    }
-    if(dmFileAttributes.Attributes&FILE_ATTRIBUTE_HIDDEN)
-    {
-        dwAttributes |= (SFGAO_HIDDEN|SFGAO_GHOSTED);
-    }
-
-    //
-    // Set the out parameter
-    //
-    *pdwAttributes &= dwAttributes;
-  }
-  return hr;
 }
 
 HRESULT CXboxConsole::ValidateItem(LPCSTR pszPathName, UINT uRelativeDepth, DWORD *pdwAttributes)
@@ -2519,60 +2526,62 @@ HRESULT CXboxConsole::ValidateItem(LPCSTR pszPathName, UINT uRelativeDepth, DWOR
     various errors if it does not.
 --*/
 {
-  HRESULT            hr;
-  char               szNameBuffer[MAX_PATH];
-  DM_FILE_ATTRIBUTES dmFileAttributes;
+    HRESULT hr;
+    char szNameBuffer[MAX_PATH];
+    DM_FILE_ATTRIBUTES dmFileAttributes;
 
-  //
-  //  Build the wire name, and try to get the file attributes.
-  //
+    //
+    //  Build the wire name, and try to get the file attributes.
+    //
 
-  GetWireName(szNameBuffer, m_pszPathName , pszPathName);
-  hr = m_pConnection->HrGetFileAttributes(szNameBuffer, &dmFileAttributes);
-  if(SUCCEEDED(hr))
-  {
-    DWORD dwAttributes;
-    
-    //
-    //  Is it a volume?
-    //
-    if(1==uRelativeDepth)
+    GetWireName(szNameBuffer, m_pszPathName, pszPathName);
+    hr = m_pConnection->HrGetFileAttributes(szNameBuffer, &dmFileAttributes);
+    if (SUCCEEDED(hr))
     {
-        _ASSERTE(dmFileAttributes.Attributes&FILE_ATTRIBUTE_DIRECTORY);
-        dwAttributes = VOLUME_SHELL_ATTRIBUTES;
-    } else if(dmFileAttributes.Attributes&FILE_ATTRIBUTE_DIRECTORY)
-    //
-    //  Or a directory?
-    //
-    {
-        dwAttributes = DIRECTORY_SHELL_ATTRIBUTES;
-    } else
-    //
-    //  Then must be a file.
-    //
-    {
-        dwAttributes = FILE_SHELL_ATTRIBUTES;
+        DWORD dwAttributes;
+
+        //
+        //  Is it a volume?
+        //
+        if (1 == uRelativeDepth)
+        {
+            _ASSERTE(dmFileAttributes.Attributes & FILE_ATTRIBUTE_DIRECTORY);
+            dwAttributes = VOLUME_SHELL_ATTRIBUTES;
+        }
+        else if (dmFileAttributes.Attributes & FILE_ATTRIBUTE_DIRECTORY)
+        //
+        //  Or a directory?
+        //
+        {
+            dwAttributes = DIRECTORY_SHELL_ATTRIBUTES;
+        }
+        else
+        //
+        //  Then must be a file.
+        //
+        {
+            dwAttributes = FILE_SHELL_ATTRIBUTES;
+        }
+
+        //
+        //  OR in SFGAO_READONLY and SFGAO_HIDDEN if applicable.
+        //
+
+        if (dmFileAttributes.Attributes & FILE_ATTRIBUTE_READONLY)
+        {
+            dwAttributes |= SFGAO_READONLY;
+        }
+        if (dmFileAttributes.Attributes & FILE_ATTRIBUTE_HIDDEN)
+        {
+            dwAttributes |= (SFGAO_HIDDEN | SFGAO_GHOSTED);
+        }
+
+        //
+        // Set the out parameter
+        //
+        *pdwAttributes &= dwAttributes;
     }
-
-    //
-    //  OR in SFGAO_READONLY and SFGAO_HIDDEN if applicable.
-    //
-
-    if(dmFileAttributes.Attributes&FILE_ATTRIBUTE_READONLY)
-    {
-        dwAttributes |= SFGAO_READONLY;
-    }
-    if(dmFileAttributes.Attributes&FILE_ATTRIBUTE_HIDDEN)
-    {
-        dwAttributes |= (SFGAO_HIDDEN|SFGAO_GHOSTED);
-    }
-
-    //
-    // Set the out parameter
-    //
-    *pdwAttributes &= dwAttributes;
-  }
-  return hr;
+    return hr;
 }
 
 HRESULT CXboxFileSystemFolder::ValidateItem(LPCSTR pszPathName, UINT, DWORD *pdwAttributes)
@@ -2591,53 +2600,54 @@ HRESULT CXboxFileSystemFolder::ValidateItem(LPCSTR pszPathName, UINT, DWORD *pdw
     various errors if it does not.
 --*/
 {
-  HRESULT            hr;
-  char               szNameBuffer[MAX_PATH];
-  DM_FILE_ATTRIBUTES dmFileAttributes;
+    HRESULT hr;
+    char szNameBuffer[MAX_PATH];
+    DM_FILE_ATTRIBUTES dmFileAttributes;
 
-  //
-  //  Build the wire name, and try to get the file attributes.
-  //
+    //
+    //  Build the wire name, and try to get the file attributes.
+    //
 
-  GetWireName(szNameBuffer, m_pszPathName , pszPathName);
-  hr = m_pConnection->HrGetFileAttributes(szNameBuffer, &dmFileAttributes);
-  if(SUCCEEDED(hr))
-  {
-    DWORD dwAttributes;
-    
-    //
-    //  Is it a directory?
-    //
-    if(dmFileAttributes.Attributes&FILE_ATTRIBUTE_DIRECTORY)
+    GetWireName(szNameBuffer, m_pszPathName, pszPathName);
+    hr = m_pConnection->HrGetFileAttributes(szNameBuffer, &dmFileAttributes);
+    if (SUCCEEDED(hr))
     {
-        dwAttributes = DIRECTORY_SHELL_ATTRIBUTES;
-    } else
-    //
-    //  Then must be a file.
-    //
-    {
-        dwAttributes = FILE_SHELL_ATTRIBUTES;
+        DWORD dwAttributes;
+
+        //
+        //  Is it a directory?
+        //
+        if (dmFileAttributes.Attributes & FILE_ATTRIBUTE_DIRECTORY)
+        {
+            dwAttributes = DIRECTORY_SHELL_ATTRIBUTES;
+        }
+        else
+        //
+        //  Then must be a file.
+        //
+        {
+            dwAttributes = FILE_SHELL_ATTRIBUTES;
+        }
+
+        //
+        //  OR in SFGAO_READONLY and SFGAO_HIDDEN if applicable.
+        //
+
+        if (dmFileAttributes.Attributes & FILE_ATTRIBUTE_READONLY)
+        {
+            dwAttributes |= SFGAO_READONLY;
+        }
+        if (dmFileAttributes.Attributes & FILE_ATTRIBUTE_HIDDEN)
+        {
+            dwAttributes |= (SFGAO_HIDDEN | SFGAO_GHOSTED);
+        }
+
+        //
+        // Set the out parameter
+        //
+        *pdwAttributes &= dwAttributes;
     }
-
-    //
-    //  OR in SFGAO_READONLY and SFGAO_HIDDEN if applicable.
-    //
-
-    if(dmFileAttributes.Attributes&FILE_ATTRIBUTE_READONLY)
-    {
-        dwAttributes |= SFGAO_READONLY;
-    }
-    if(dmFileAttributes.Attributes&FILE_ATTRIBUTE_HIDDEN)
-    {
-        dwAttributes |= (SFGAO_HIDDEN|SFGAO_GHOSTED);
-    }
-
-    //
-    // Set the out parameter
-    //
-    *pdwAttributes &= dwAttributes;
-  }
-  return hr;
+    return hr;
 }
 
 HRESULT CXboxFileSystemFolder::ReceiveFile(LPSTR pszRelativeRemoteFile, LPSTR szLocalFile)
@@ -2656,19 +2666,20 @@ HRESULT CXboxFileSystemFolder::ReceiveFile(LPSTR pszRelativeRemoteFile, LPSTR sz
     //
     //  If this has children, then the path is relative to our main path
     //
-    if(m_uChildCount)
+    if (m_uChildCount)
     {
         GetWireName(szWireName, m_pszPathName, pszRelativeRemoteFile);
-    } else
+    }
+    else
     //
     //  Otherwise, the first part of the relative path is just our name
     //  we should skip it.
     //
     {
         UINT uNameLen = strlen(m_pszName);
-        _ASSERT(0==_strnicmp(pszRelativeRemoteFile, m_pszName, uNameLen));
+        _ASSERT(0 == _strnicmp(pszRelativeRemoteFile, m_pszName, uNameLen));
         pszRelativeRemoteFile += uNameLen;
-        _ASSERT('\\'==*pszRelativeRemoteFile);
+        _ASSERT('\\' == *pszRelativeRemoteFile);
         GetWireName(szWireName, m_pszPathName, ++pszRelativeRemoteFile);
     }
     return m_pConnection->HrReceiveFile(szLocalFile, szWireName);
@@ -2687,35 +2698,38 @@ void CXboxFolder::GetTargetWireName(LPSTR pszWireName, LPSTR pszRelativeRemoteFi
          that only child.
 
     It is illegal to call this on a selection clone with more than one child, the method ASSERTs.
-    
+
 --*/
 {
     BOOL fFirstChild = FALSE;
-    if(m_fSelectionClone)
+    if (m_fSelectionClone)
     {
         _ASSERT(m_fChildrenValid);
         _ASSERT(m_uChildCount < 2);
-        if(1==m_uChildCount)
+        if (1 == m_uChildCount)
         {
-            fFirstChild=TRUE;
+            fFirstChild = TRUE;
         }
     }
 
-    if(fFirstChild)
+    if (fFirstChild)
     {
         GetWireName(pszWireName, m_pszPathName, m_rgpszChildNames[0]);
-        if(pszRelativeRemoteFile)
+        if (pszRelativeRemoteFile)
         {
             UINT uWirePos = strlen(pszWireName) - 1;
-            if(pszWireName[uWirePos++]!='\\') pszWireName[uWirePos++] = '\\';
-            strcpy(pszWireName+uWirePos, pszRelativeRemoteFile);
+            if (pszWireName[uWirePos++] != '\\')
+                pszWireName[uWirePos++] = '\\';
+            strcpy(pszWireName + uWirePos, pszRelativeRemoteFile);
         }
-    } else
+    }
+    else
     {
-        if(pszRelativeRemoteFile)
+        if (pszRelativeRemoteFile)
         {
             GetWireName(pszWireName, m_pszPathName, pszRelativeRemoteFile);
-        } else
+        }
+        else
         {
             GetWireName(pszWireName, NULL, m_pszPathName);
         }
@@ -2725,7 +2739,7 @@ void CXboxFolder::GetTargetWireName(LPSTR pszWireName, LPSTR pszRelativeRemoteFi
 BOOL CXboxFolder::IsXbeFile(LPCSTR pszFileName)
 {
     LPCSTR pszExtension = strrchr(pszFileName, '.');
-    return pszExtension ? !_stricmp( ++pszExtension, "XBE") : FALSE;
+    return pszExtension ? !_stricmp(++pszExtension, "XBE") : FALSE;
 }
 
 LPITEMIDLIST CXboxFolder::GetTargetPidl(LPSTR pszRelativeRemoteFile)
@@ -2744,48 +2758,49 @@ LPITEMIDLIST CXboxFolder::GetTargetPidl(LPSTR pszRelativeRemoteFile)
 {
     BOOL fFirstChild = FALSE;
     UINT uFirstChildLen = 0;
-    //If this is a selection clone (generally it will be), we need to make some checks.
-    if(m_fSelectionClone)
+    // If this is a selection clone (generally it will be), we need to make some checks.
+    if (m_fSelectionClone)
     {
-        //It better be a valid clone with a single child in the selection.
+        // It better be a valid clone with a single child in the selection.
         _ASSERT(m_fChildrenValid);
         _ASSERT(m_uChildCount < 2);
-        //If there is a child, the first child must be included in the pidl
-        if(1==m_uChildCount)
+        // If there is a child, the first child must be included in the pidl
+        if (1 == m_uChildCount)
         {
-            fFirstChild=TRUE;
+            fFirstChild = TRUE;
         }
     }
 
     // For starters, we don't need any extra bytes at the end our pidl
     UINT uExtraAllocation = 0;
-    
+
     // Add in space for the first child if we need it.
-    if(fFirstChild)
+    if (fFirstChild)
     {
-        uFirstChildLen = strlen(m_rgpszChildNames[0])+1;
-        uExtraAllocation = sizeof(USHORT)+uFirstChildLen;
+        uFirstChildLen = strlen(m_rgpszChildNames[0]) + 1;
+        uExtraAllocation = sizeof(USHORT) + uFirstChildLen;
     }
-    
+
     // Compute the pidl size for the relative part.
     LPSTR pszWalk = pszRelativeRemoteFile;
-    //For each path element, add a USHORT for the cb of the ItemID.
-    while(pszWalk)
+    // For each path element, add a USHORT for the cb of the ItemID.
+    while (pszWalk)
     {
         uExtraAllocation += sizeof(USHORT);
         pszWalk = strchr(pszWalk, '\\');
-        if(pszWalk) pszWalk++;
+        if (pszWalk)
+            pszWalk++;
     }
 
-    //Add in the lenght of the actual path.  Basically, each '\\' will be replaced
-    //by a '\0'.  We already accounted for the cb portions.  Add one for the final
+    // Add in the lenght of the actual path.  Basically, each '\\' will be replaced
+    // by a '\0'.  We already accounted for the cb portions.  Add one for the final
     //'\0' which strlen leaves out.
-    if(pszRelativeRemoteFile)
-        uExtraAllocation += strlen(pszRelativeRemoteFile)+1;
+    if (pszRelativeRemoteFile)
+        uExtraAllocation += strlen(pszRelativeRemoteFile) + 1;
 
     // Get our pidl, and ask for the extra allocation at the end that we need.
     LPITEMIDLIST pidlReturn = GetPidl(CPidlUtils::PidlTypeAbsolute, uExtraAllocation);
-    if(pidlReturn)
+    if (pidlReturn)
     {
         LPSTR pszPidlWalk;
         LPITEMIDLIST pidlWalk;
@@ -2793,36 +2808,37 @@ LPITEMIDLIST CXboxFolder::GetTargetPidl(LPSTR pszRelativeRemoteFile)
 
         // Walk to the end of our pidl.
         pidlWalk = pidlReturn;
-        while(pidlWalk->mkid.cb)
+        while (pidlWalk->mkid.cb)
         {
             pidlWalk = AdvancePtr(pidlWalk, pidlWalk->mkid.cb);
         }
 
         // If we need to include the first child, do it here.
-        if(fFirstChild)
+        if (fFirstChild)
         {
-            pidlWalk->mkid.cb=uFirstChildLen+sizeof(USHORT);
+            pidlWalk->mkid.cb = uFirstChildLen + sizeof(USHORT);
             memcpy(pidlWalk->mkid.abID, m_rgpszChildNames[0], uFirstChildLen);
             pidlWalk = AdvancePtr(pidlWalk, pidlWalk->mkid.cb);
             pidlWalk->mkid.cb = 0;
         }
 
         // Now add the relative portion, if there is one.
-        if(pszRelativeRemoteFile)
+        if (pszRelativeRemoteFile)
         {
             pszWalk = pszRelativeRemoteFile;
             pszPidlWalk = (LPSTR)pidlWalk->mkid.abID;
             uSimpleNameLength = 0;
-            while(*pszWalk)
+            while (*pszWalk)
             {
                 uSimpleNameLength++;
-                if(*pszWalk != '\\')
+                if (*pszWalk != '\\')
                 {
                     *pszPidlWalk++ = *pszWalk;
-                } else
+                }
+                else
                 {
                     *pszPidlWalk = '\0';
-                    pidlWalk->mkid.cb = uSimpleNameLength+sizeof(USHORT);
+                    pidlWalk->mkid.cb = uSimpleNameLength + sizeof(USHORT);
                     pidlWalk = AdvancePtr(pidlWalk, pidlWalk->mkid.cb);
                     uSimpleNameLength = 0;
                     pszPidlWalk = (LPSTR)pidlWalk->mkid.abID;
@@ -2830,7 +2846,7 @@ LPITEMIDLIST CXboxFolder::GetTargetPidl(LPSTR pszRelativeRemoteFile)
                 pszWalk++;
             }
             *pszPidlWalk = '\0';
-            pidlWalk->mkid.cb = uSimpleNameLength+sizeof(UCHAR)+sizeof(USHORT);
+            pidlWalk->mkid.cb = uSimpleNameLength + sizeof(UCHAR) + sizeof(USHORT);
             pidlWalk = AdvancePtr(pidlWalk, pidlWalk->mkid.cb);
             pidlWalk->mkid.cb = 0;
         }
@@ -2842,50 +2858,52 @@ LPITEMIDLIST CXboxFolder::GetSourcePidl(LPCSTR pszFolder, LPCSTR pszItem)
 {
     UINT uAllocLength = m_uRootPidlLen;
     UINT uLoop;
-    
-    LPCSTR pszWalk = pszFolder; 
-    for(uLoop=0;uLoop<2;uLoop++)
+
+    LPCSTR pszWalk = pszFolder;
+    for (uLoop = 0; uLoop < 2; uLoop++)
     {
-        while(pszWalk)
+        while (pszWalk)
         {
             uAllocLength += sizeof(USHORT);
             pszWalk = strchr(pszWalk, '\\');
-            if(pszWalk) pszWalk++;
+            if (pszWalk)
+                pszWalk++;
         }
-        
+
         pszWalk = pszItem;
     }
-    uAllocLength += strlen(pszFolder)+strlen(pszItem)+2;
+    uAllocLength += strlen(pszFolder) + strlen(pszItem) + 2;
 
-    LPITEMIDLIST pidlOut = (LPITEMIDLIST) g_pShellMalloc->Alloc(uAllocLength);
+    LPITEMIDLIST pidlOut = (LPITEMIDLIST)g_pShellMalloc->Alloc(uAllocLength);
     LPITEMIDLIST pidlWalk;
-    LPSTR        pszPidlWalk;
-    UINT         uSimpleNameLength;
-    if(pidlOut)
+    LPSTR pszPidlWalk;
+    UINT uSimpleNameLength;
+    if (pidlOut)
     {
         pidlWalk = pidlOut;
         memcpy(pidlWalk, m_pidlRoot, m_uRootPidlLen);
-        //Go to the end of the root
-        while(pidlWalk->mkid.cb)
+        // Go to the end of the root
+        while (pidlWalk->mkid.cb)
         {
             pidlWalk = AdvancePtr(pidlWalk, pidlWalk->mkid.cb);
         }
 
         pszWalk = pszFolder;
-        for(uLoop=0;uLoop<2;uLoop++)
+        for (uLoop = 0; uLoop < 2; uLoop++)
         {
             pszPidlWalk = (LPSTR)pidlWalk->mkid.abID;
             uSimpleNameLength = 0;
-            while(*pszWalk)
+            while (*pszWalk)
             {
                 uSimpleNameLength++;
-                if(*pszWalk != '\\')
+                if (*pszWalk != '\\')
                 {
                     *pszPidlWalk++ = *pszWalk;
-                } else
+                }
+                else
                 {
                     *pszPidlWalk = '\0';
-                    pidlWalk->mkid.cb = uSimpleNameLength+sizeof(USHORT);
+                    pidlWalk->mkid.cb = uSimpleNameLength + sizeof(USHORT);
                     pidlWalk = AdvancePtr(pidlWalk, pidlWalk->mkid.cb);
                     uSimpleNameLength = 0;
                     pszPidlWalk = (LPSTR)pidlWalk->mkid.abID;
@@ -2893,7 +2911,7 @@ LPITEMIDLIST CXboxFolder::GetSourcePidl(LPCSTR pszFolder, LPCSTR pszItem)
                 pszWalk++;
             }
             *pszPidlWalk = '\0';
-            pidlWalk->mkid.cb = uSimpleNameLength+sizeof(UCHAR)+sizeof(USHORT);
+            pidlWalk->mkid.cb = uSimpleNameLength + sizeof(UCHAR) + sizeof(USHORT);
             pidlWalk = AdvancePtr(pidlWalk, pidlWalk->mkid.cb);
             pszWalk = pszItem;
         }
@@ -2905,46 +2923,46 @@ LPITEMIDLIST CXboxFolder::GetSourcePidl(LPCSTR pszFolder, LPCSTR pszItem)
 void CXboxFolder::GetConsoleName(LPSTR pszConsole)
 {
     LPSTR pszParse = m_pszPathName;
-    while(*pszParse!='\\' && *pszParse)
+    while (*pszParse != '\\' && *pszParse)
     {
         *pszConsole++ = *pszParse++;
     }
     *pszConsole = '\0';
 }
 
-
 UINT CXboxFolder::PathFromPidl(LPCITEMIDLIST pidl, LPSTR pszPathName)
 /*++
  Routine Description:
    A utility that parse an Xbox pidl and turns it into a path name.
    It returns the depth of the path.
-   
+
 --*/
 {
     LPSTR pszName = pszPathName;
     LPCITEMIDLIST pidlWalk = pidl;
-    UINT uPathLength; //With NULL termination
+    UINT uPathLength; // With NULL termination
     UINT uDepth = 0;
 
-    while(pidlWalk->mkid.cb)
+    while (pidlWalk->mkid.cb)
     {
         uDepth++;
 
         //
         // Safely copy the name
         //
-        uPathLength = pidlWalk->mkid.cb-sizeof(USHORT);
-        
-        //If first character is '?' skip it.
-        if('?'==pidl->mkid.abID[0])
+        uPathLength = pidlWalk->mkid.cb - sizeof(USHORT);
+
+        // If first character is '?' skip it.
+        if ('?' == pidl->mkid.abID[0])
         {
             uPathLength--;
-            memcpy(pszName, pidlWalk->mkid.abID+1, uPathLength--);
-        } else
+            memcpy(pszName, pidlWalk->mkid.abID + 1, uPathLength--);
+        }
+        else
         {
             memcpy(pszName, pidlWalk->mkid.abID, uPathLength--);
         }
-        _ASSERT('\0'==pszName[uPathLength]);
+        _ASSERT('\0' == pszName[uPathLength]);
         pszName += uPathLength;
 
         //
@@ -2962,12 +2980,13 @@ UINT CXboxFolder::PathFromPidl(LPCITEMIDLIST pidl, LPSTR pszPathName)
     //  Cut the '\\' off the end.  If the depth is zero there
     //  is no '\\' so don't do it.
     //
-    if(uDepth) pszName--;
-    
+    if (uDepth)
+        pszName--;
+
     //
     //  NULL terminate the string.
     //
-    *pszName =  '\0';
+    *pszName = '\0';
 
     return uDepth;
 }
@@ -2978,38 +2997,36 @@ CXboxFolder::PidlFromPath(
     UINT *puPathLength,
     UINT *puPathDepth,
     BOOL *pfLeadingSlash,
-    BOOL *pfTrailingSlash
-    )
+    BOOL *pfTrailingSlash)
 /*++
  Routine Description:
    Allocates and creates a pidl from a path.  Also computes display
    name length, and path.
-   
+
 --*/
 {
-    LPCWSTR      pwszParse = pwszPathName;
-    UINT         uPathLength = 0;
-    UINT         uRelativeDepth = 1;
-    UINT         uPidlLength;
+    LPCWSTR pwszParse = pwszPathName;
+    UINT uPathLength = 0;
+    UINT uRelativeDepth = 1;
+    UINT uPidlLength;
     LPITEMIDLIST pidl;
     LPITEMIDLIST pidlParse;
-    UINT         uItemLength;    
-    
-    
+    UINT uItemLength;
+
     _ASSERTE(pfLeadingSlash);
     _ASSERTE(pfTrailingSlash);
-
 
     //
     //  Determine if it has a leading slash
     //
 
-    if(L'\\' == *pwszParse)
+    if (L'\\' == *pwszParse)
     {
         uPathLength++;
         pwszParse++;
         *pfLeadingSlash = TRUE;
-    } else
+    }
+    else
     {
         *pfLeadingSlash = FALSE;
     }
@@ -3017,15 +3034,15 @@ CXboxFolder::PidlFromPath(
     //
     //  First Pass: Determine the length and depth
     //
-    
+
     *pfTrailingSlash = FALSE;
-    while(*pwszParse)
+    while (*pwszParse)
     {
-        if(L'\\' == *pwszParse)
+        if (L'\\' == *pwszParse)
         {
             uPathLength++;
             pwszParse++;
-            if(L'\0'==*pwszParse)
+            if (L'\0' == *pwszParse)
             {
                 *pfTrailingSlash = TRUE;
                 break;
@@ -3048,12 +3065,13 @@ CXboxFolder::PidlFromPath(
     //  Finally subtract one if there was a leading slash.
     //
 
-    uPidlLength = ((uRelativeDepth+1)*sizeof(USHORT))+uPathLength;
-    if(!*pfTrailingSlash) uPidlLength++;
-    if(*pfLeadingSlash)
+    uPidlLength = ((uRelativeDepth + 1) * sizeof(USHORT)) + uPathLength;
+    if (!*pfTrailingSlash)
+        uPidlLength++;
+    if (*pfLeadingSlash)
     {
         uPidlLength--;
-        pwszParse++;  //while we are at it, skip the leading slash
+        pwszParse++; // while we are at it, skip the leading slash
     }
 
     //
@@ -3061,29 +3079,30 @@ CXboxFolder::PidlFromPath(
     //
 
     pidl = (LPITEMIDLIST)g_pShellMalloc->Alloc(uPidlLength);
-    
+
     //
     //  Create pidl if we managed to allocate it.
     //
 
-    if(pidl)
+    if (pidl)
     {
-        
+
         //
         //  Second Pass: Copy the names from the path to the pidl
         //
         pidlParse = pidl;
         uItemLength = 0;
-        while(*pwszParse)
+        while (*pwszParse)
         {
-            if(L'\\' == *pwszParse)
+            if (L'\\' == *pwszParse)
             {
                 pwszParse++;
                 pidlParse->mkid.abID[uItemLength++] = '\0';
                 pidlParse->mkid.cb = (uItemLength + sizeof(USHORT));
                 pidlParse = AdvancePtr(pidlParse, pidlParse->mkid.cb);
                 uItemLength = 0;
-            } else
+            }
+            else
             {
                 pidlParse->mkid.abID[uItemLength++] = (UCHAR)(*pwszParse++);
             }
@@ -3092,7 +3111,7 @@ CXboxFolder::PidlFromPath(
         //
         //  If there was not a trailing '\\', terminate the last item.
         //
-        if(!*pfTrailingSlash)
+        if (!*pfTrailingSlash)
         {
             pidlParse->mkid.abID[uItemLength++] = '\0';
             pidlParse->mkid.cb = (uItemLength + sizeof(USHORT));
@@ -3104,15 +3123,15 @@ CXboxFolder::PidlFromPath(
         //
         pidlParse->mkid.cb = 0;
     }
-    
+
     //
     //  Fill out the OUT paramteres
     //
-    if(puPathLength)
+    if (puPathLength)
     {
         *puPathLength = uPathLength;
     }
-    if(puPathDepth)
+    if (puPathDepth)
     {
         *puPathDepth = uRelativeDepth;
     }
@@ -3142,18 +3161,19 @@ void CXboxFolder::GetWireName(LPSTR pszWireName, LPCSTR pszInitialPath, LPCSTR p
 --*/
 {
     LPCSTR pszNextElement;
-    BOOL   fFinalPart;
+    BOOL fFinalPart;
     _ASSERTE(pszFinalPath);
-    
+
     //
     //  Initialize pszNextElement
     //
 
-    if(pszInitialPath)
+    if (pszInitialPath)
     {
         pszNextElement = pszInitialPath;
         fFinalPart = FALSE;
-    } else
+    }
+    else
     {
         pszNextElement = pszFinalPath;
         fFinalPart = TRUE;
@@ -3165,13 +3185,13 @@ void CXboxFolder::GetWireName(LPSTR pszWireName, LPCSTR pszInitialPath, LPCSTR p
     //
 
     pszNextElement = strchr(pszNextElement, '\\');
-    if(!pszNextElement || ('\0' == *(++pszNextElement)))
+    if (!pszNextElement || ('\0' == *(++pszNextElement)))
     {
-        _ASSERTE(!fFinalPart);  //Malformed path
+        _ASSERTE(!fFinalPart); // Malformed path
         pszNextElement = pszFinalPath;
-        fFinalPart = TRUE;   
+        fFinalPart = TRUE;
     }
-    
+
     //
     //  Now process the volume. Always one character.
     //
@@ -3182,7 +3202,7 @@ void CXboxFolder::GetWireName(LPSTR pszWireName, LPCSTR pszInitialPath, LPCSTR p
     //
     //  If the next character is '\\' then skip it.
     //
-    if('\\' == *pszNextElement)
+    if ('\\' == *pszNextElement)
     {
         pszNextElement++;
     }
@@ -3190,26 +3210,26 @@ void CXboxFolder::GetWireName(LPSTR pszWireName, LPCSTR pszInitialPath, LPCSTR p
     //
     //  Handle the case where the paths are split at the volume.
     //
-    if('\0' == *pszNextElement)
+    if ('\0' == *pszNextElement)
     {
-        if(fFinalPart)
+        if (fFinalPart)
         {
             *pszWireName = '\0';
             return;
         }
         pszNextElement = pszFinalPath;
-        fFinalPart = TRUE; 
+        fFinalPart = TRUE;
     }
-    
+
     //
     //  Loop until a break;
     //
-    while(TRUE)
+    while (TRUE)
     {
         //
         //  Copy a path element.
         //
-        while(('\\' != *pszNextElement) && ('\0' != *pszNextElement))
+        while (('\\' != *pszNextElement) && ('\0' != *pszNextElement))
         {
             *pszWireName++ = *pszNextElement++;
         }
@@ -3218,7 +3238,7 @@ void CXboxFolder::GetWireName(LPSTR pszWireName, LPCSTR pszInitialPath, LPCSTR p
         //  Skip '\\' if we see one.
         //
 
-        if('\\' == *pszNextElement)
+        if ('\\' == *pszNextElement)
         {
             pszNextElement++;
         }
@@ -3227,20 +3247,21 @@ void CXboxFolder::GetWireName(LPSTR pszWireName, LPCSTR pszInitialPath, LPCSTR p
         //  Check if we have hit the end of the
         //  current string.
 
-        if('\0' == *pszNextElement)
+        if ('\0' == *pszNextElement)
         {
             //
             //  If this was the final part, we
             //  are done.
             //
 
-            if(fFinalPart) break;
+            if (fFinalPart)
+                break;
 
             //
             //  Otherwise, move to the final part.
             //
             pszNextElement = pszFinalPath;
-            fFinalPart = TRUE; 
+            fFinalPart = TRUE;
         }
 
         //
@@ -3262,22 +3283,21 @@ LPSTR CXboxFileSystemFolder::GetFileTypeName(PDM_FILE_ATTRIBUTES pdmFileAttribut
 {
 
     SHFILEINFOA shellFileInfo;
-    LPSTR       pszTypeName = NULL;
-    
-    if( SHGetFileInfoA(
-          pdmFileAttributes->Name,
-          pdmFileAttributes->Attributes,
-          &shellFileInfo,
-          sizeof(shellFileInfo),
-          SHGFI_USEFILEATTRIBUTES | SHGFI_TYPENAME 
-          )
-    ){
-      UINT uTypeNameSize = strlen(shellFileInfo.szTypeName)+1;
-      pszTypeName = new char[uTypeNameSize];
-      if(pszTypeName)
-      {
-        memcpy(pszTypeName, shellFileInfo.szTypeName, uTypeNameSize);
-      }
+    LPSTR pszTypeName = NULL;
+
+    if (SHGetFileInfoA(
+            pdmFileAttributes->Name,
+            pdmFileAttributes->Attributes,
+            &shellFileInfo,
+            sizeof(shellFileInfo),
+            SHGFI_USEFILEATTRIBUTES | SHGFI_TYPENAME))
+    {
+        UINT uTypeNameSize = strlen(shellFileInfo.szTypeName) + 1;
+        pszTypeName = new char[uTypeNameSize];
+        if (pszTypeName)
+        {
+            memcpy(pszTypeName, shellFileInfo.szTypeName, uTypeNameSize);
+        }
     }
 
     return pszTypeName;

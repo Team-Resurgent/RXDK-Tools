@@ -26,20 +26,18 @@ Abstract:
 #include "modes.h"
 
 //
-// Reverse ASN.1 Encodings of possible hash identifiers.  
+// Reverse ASN.1 Encodings of possible hash identifiers.
 //
 static PBYTE shaEncodings[] = {
-            //      1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17  18
-            "\x0f\x14\x04\x00\x05\x1a\x02\x03\x0e\x2b\x05\x06\x09\x30\x21\x30",
-            "\x0d\x14\x04\x1a\x02\x03\x0e\x2b\x05\x06\x07\x30\x1f\x30",
-            "\x00" };
+    //      1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17  18
+    "\x0f\x14\x04\x00\x05\x1a\x02\x03\x0e\x2b\x05\x06\x09\x30\x21\x30",
+    "\x0d\x14\x04\x1a\x02\x03\x0e\x2b\x05\x06\x07\x30\x1f\x30",
+    "\x00"};
 
-VOID
-XCCalcDigest(
-    IN  PBYTE   pbMsgData,
-    IN  DWORD   dwMsgDataLen,
-    IN  PBYTE   pbDigest
-    )
+VOID XCCalcDigest(
+    IN PBYTE pbMsgData,
+    IN DWORD dwMsgDataLen,
+    IN PBYTE pbDigest)
 /*++
 
 Routine Description:
@@ -54,8 +52,8 @@ Return Value:
 
 --*/
 {
-    A_SHA_CTX   SHAHash;
-    BYTE        abSHADigest[A_SHA_DIGEST_LEN];
+    A_SHA_CTX SHAHash;
+    BYTE abSHADigest[A_SHA_DIGEST_LEN];
 
     A_SHAInit(&SHAHash);
     A_SHAUpdate(&SHAHash, (PBYTE)&dwMsgDataLen, sizeof(DWORD));
@@ -65,15 +63,11 @@ Return Value:
     memcpy(pbDigest, abSHADigest, A_SHA_DIGEST_LEN);
 }
 
-
-
-VOID
-XCSymmetricEncDec(
-    IN PBYTE  pbMsgData,
-    IN DWORD  dwMsgDataLen,
-    IN PBYTE  pbKey,
-    IN DWORD  dwKeyBytes
-    )
+VOID XCSymmetricEncDec(
+    IN PBYTE pbMsgData,
+    IN DWORD dwMsgDataLen,
+    IN PBYTE pbKey,
+    IN DWORD dwKeyBytes)
 /*++
 
 Routine Description:
@@ -96,14 +90,10 @@ Return Value:
     rc4(&rc4KeyCtl, (UINT)dwMsgDataLen, pbMsgData);
 }
 
-
-
-VOID
-XCApplyPKCS1SigningFmt(
-    IN  PBYTE pbKey,
-    IN  PBYTE pbDigest,
-    OUT PBYTE pbPKCS1Format
-    )
+VOID XCApplyPKCS1SigningFmt(
+    IN PBYTE pbKey,
+    IN PBYTE pbDigest,
+    OUT PBYTE pbPKCS1Format)
 /*++
 
 Routine Description:
@@ -119,68 +109,70 @@ Return Value:
 
 --*/
 {
-    PBYTE   pbStart;
-    PBYTE   pbEnd;
-    BYTE    bTmp;
-    DWORD   i;
+    PBYTE pbStart;
+    PBYTE pbEnd;
+    BYTE bTmp;
+    DWORD i;
     LPBSAFE_PUB_KEY pPubKey = (LPBSAFE_PUB_KEY)pbKey;
 
-    // 
+    //
     // insert the block type
     //
     pbPKCS1Format[pPubKey->datalen - 1] = 0x01;
 
-    // 
+    //
     // insert the type I padding
     //
     memset(pbPKCS1Format, 0xff, pPubKey->datalen - 1);
 
-    // 
+    //
     // reverse it
     //
-    for (i = 0; i < A_SHA_DIGEST_LEN; i++) {
+    for (i = 0; i < A_SHA_DIGEST_LEN; i++)
+    {
         pbPKCS1Format[i] = pbDigest[A_SHA_DIGEST_LEN - (i + 1)];
     }
 
-    // 
+    //
     // PKCS delimit the hash value
     //
     pbEnd = (LPBYTE)shaEncodings[0];
     pbStart = pbPKCS1Format + A_SHA_DIGEST_LEN;
     bTmp = *pbEnd++;
-    while (0 < bTmp--) {
+    while (0 < bTmp--)
+    {
         *pbStart++ = *pbEnd++;
     }
     *pbStart++ = 0;
 }
 
-
 BOOL XCVerifyPKCS1SigningFmt(
-    IN  BSAFE_PUB_KEY* pKey,
-    IN  BYTE* pbDigest,
-    IN  BYTE* pbPKCS1Format
-    )
+    IN BSAFE_PUB_KEY *pKey,
+    IN BYTE *pbDigest,
+    IN BYTE *pbPKCS1Format)
 {
-    BYTE**    rgEncOptions;
-    BYTE      rgbTmpHash[A_SHA_DIGEST_LEN + 16];
-    DWORD     i;
-    DWORD     cb;
-    BYTE*     pbStart;
-    DWORD     cbTmp;
+    BYTE **rgEncOptions;
+    BYTE rgbTmpHash[A_SHA_DIGEST_LEN + 16];
+    DWORD i;
+    DWORD cb;
+    BYTE *pbStart;
+    DWORD cbTmp;
 
     rgEncOptions = shaEncodings;
 
-    // 
+    //
     // reverse the hash to match the signature.
     //
-    for (i = 0; i < A_SHA_DIGEST_LEN; i++) {
+    for (i = 0; i < A_SHA_DIGEST_LEN; i++)
+    {
         rgbTmpHash[i] = pbDigest[A_SHA_DIGEST_LEN - (i + 1)];
     }
 
-    // 
+    //
     // see if it matches.
     //
-    if (memcmp(rgbTmpHash, pbPKCS1Format, A_SHA_DIGEST_LEN)) {
+    if (memcmp(rgbTmpHash, pbPKCS1Format, A_SHA_DIGEST_LEN))
+    {
         return FALSE;
     }
 
@@ -189,26 +181,31 @@ BOOL XCVerifyPKCS1SigningFmt(
     //
     // check for any signature type identifiers
     //
-    for (i = 0; 0 != *rgEncOptions[i]; i += 1) {
+    for (i = 0; 0 != *rgEncOptions[i]; i += 1)
+    {
         pbStart = (LPBYTE)rgEncOptions[i];
         cbTmp = *pbStart++;
-        if (0 == memcmp(&pbPKCS1Format[cb], pbStart, cbTmp)) {
-            // adjust the end of the hash data. 
-            cb += cbTmp;   
+        if (0 == memcmp(&pbPKCS1Format[cb], pbStart, cbTmp))
+        {
+            // adjust the end of the hash data.
+            cb += cbTmp;
             break;
         }
     }
 
-    // 
+    //
     // check to make sure the rest of the PKCS #1 padding is correct
     //
     if ((0x00 != pbPKCS1Format[cb]) || (0x00 != pbPKCS1Format[pKey->datalen]) ||
-         (0x1 != pbPKCS1Format[pKey->datalen - 1])) {
+        (0x1 != pbPKCS1Format[pKey->datalen - 1]))
+    {
         return FALSE;
     }
 
-    for (i = cb + 1; i < (DWORD)pKey->datalen - 1; i++) {
-        if (0xff != pbPKCS1Format[i]) {
+    for (i = cb + 1; i < (DWORD)pKey->datalen - 1; i++)
+    {
+        if (0xff != pbPKCS1Format[i])
+        {
             return FALSE;
         }
     }
@@ -216,12 +213,9 @@ BOOL XCVerifyPKCS1SigningFmt(
     return TRUE;
 }
 
-
-
 DWORD
 XCCalcSigSize(
-    IN  PBYTE  pbPrivateKey
-    )
+    IN PBYTE pbPrivateKey)
 /*++
 
 Routine Description:
@@ -241,11 +235,9 @@ Return Value:
     return (pPrvKey->bitlen + 7) / 8;
 }
 
-
 DWORD
 XCCalcKeyLen(
-    IN  PBYTE  pbPublicKey
-    )
+    IN PBYTE pbPublicKey)
 /*++
 
 Routine Description:
@@ -256,7 +248,7 @@ Arguments:
 
 Return Value:
 
-    Returns the value of keylen 
+    Returns the value of keylen
 
 --*/
 {
@@ -265,15 +257,11 @@ Return Value:
     return pPubKey->keylen;
 }
 
-
-
-
 BOOLEAN
 XCSignDigest(
-    IN   PBYTE    pbDigest,
-    IN   PBYTE    pbPrivateKey,
-    OUT  PBYTE    pbSig
-    )
+    IN PBYTE pbDigest,
+    IN PBYTE pbPrivateKey,
+    OUT PBYTE pbSig)
 /*++
 
 Routine Description:
@@ -288,10 +276,10 @@ Return Value:
 
 --*/
 {
-    PBYTE           pbInput;
-    PBYTE           pbOutput;
+    PBYTE pbInput;
+    PBYTE pbOutput;
     LPBSAFE_PRV_KEY pPrvKey = (LPBSAFE_PRV_KEY)pbPrivateKey;
-    DWORD           dwSigLen;
+    DWORD dwSigLen;
 
     dwSigLen = (pPrvKey->bitlen + 7) / 8;
 
@@ -301,8 +289,8 @@ Return Value:
     memset(pbInput, 0, pPrvKey->keylen);
     memset(pbOutput, 0, pPrvKey->keylen);
 
-    // 
-    // initialize the input buffer to PKCS 1 signing format 
+    //
+    // initialize the input buffer to PKCS 1 signing format
     //
     XCApplyPKCS1SigningFmt(pbPrivateKey, pbDigest, pbInput);
 
@@ -322,15 +310,12 @@ Return Value:
     return TRUE;
 }
 
-
-
 BOOLEAN
 XCVerifyDigest(
-    IN   PBYTE   pbSig,
-    IN   PBYTE   pbPublicKey,
-    IN   PBYTE   pbWorkspace,
-    IN   PBYTE   pbCompareDigest
-    )
+    IN PBYTE pbSig,
+    IN PBYTE pbPublicKey,
+    IN PBYTE pbWorkspace,
+    IN PBYTE pbCompareDigest)
 /*++
 
 Routine Description:
@@ -346,7 +331,7 @@ Arguments:
     pbWorkspace - Supplies a buffer to be used as workspace.  This
                   must be at least 2 * keylen
 
-    pbCompareDigest - Supplies the digest to compare 
+    pbCompareDigest - Supplies the digest to compare
 
 
 Return Value:
@@ -356,9 +341,9 @@ Return Value:
 --*/
 {
     LPBSAFE_PUB_KEY pPubKey = (LPBSAFE_PUB_KEY)pbPublicKey;
-    PBYTE           pbOutput;
-    PBYTE           pbInput;
-    DWORD           dwSigLen;
+    PBYTE pbOutput;
+    PBYTE pbInput;
+    DWORD dwSigLen;
 
     dwSigLen = (pPubKey->bitlen + 7) / 8;
 
@@ -368,12 +353,13 @@ Return Value:
     memset(pbInput, 0, pPubKey->keylen);
     memcpy(pbInput, pbSig, dwSigLen);
 
-    if (!BSafeEncPublic(pPubKey, pbInput, pbOutput)) {
+    if (!BSafeEncPublic(pPubKey, pbInput, pbOutput))
+    {
         return FALSE;
     }
 
-
-    if (!XCVerifyPKCS1SigningFmt(pPubKey, pbCompareDigest, pbOutput)) {
+    if (!XCVerifyPKCS1SigningFmt(pPubKey, pbCompareDigest, pbOutput))
+    {
         return FALSE;
     }
 
@@ -384,55 +370,44 @@ Return Value:
 // Crypto APIs the ROM exports
 //
 
-void
-XCryptSHAInit(
-    IN PUCHAR pbSHAContext
-    )
+void XCryptSHAInit(
+    IN PUCHAR pbSHAContext)
 {
-    A_SHAInit((A_SHA_CTX*)pbSHAContext);
+    A_SHAInit((A_SHA_CTX *)pbSHAContext);
 }
-   
-void
-XCryptSHAUpdate(
+
+void XCryptSHAUpdate(
     IN PUCHAR pbSHAContext,
     IN PUCHAR pbInput,
-    IN ULONG dwInputLength
-    )
+    IN ULONG dwInputLength)
 {
-    A_SHAUpdate((A_SHA_CTX*)pbSHAContext, pbInput, dwInputLength);
+    A_SHAUpdate((A_SHA_CTX *)pbSHAContext, pbInput, dwInputLength);
 }
-   
-void
-XCryptSHAFinal(
+
+void XCryptSHAFinal(
     IN PUCHAR pbSHAContext,
-    IN PUCHAR pbDigest
-    )
+    IN PUCHAR pbDigest)
 {
-    A_SHAFinal((A_SHA_CTX*)pbSHAContext, pbDigest);
+    A_SHAFinal((A_SHA_CTX *)pbSHAContext, pbDigest);
 }
-   
-void
-XCryptRC4Key(
+
+void XCryptRC4Key(
     IN PUCHAR pbKeyStruct,
     IN ULONG dwKeyLength,
-    IN PUCHAR pbKey
-    )
+    IN PUCHAR pbKey)
 {
-    rc4_key((RC4_KEYSTRUCT*)pbKeyStruct, dwKeyLength, pbKey);
+    rc4_key((RC4_KEYSTRUCT *)pbKeyStruct, dwKeyLength, pbKey);
 }
-   
-void
-XCryptRC4Crypt(
+
+void XCryptRC4Crypt(
     IN PUCHAR pbKeyStruct,
     IN ULONG dwInputLength,
-    IN PUCHAR pbInput
-    )
+    IN PUCHAR pbInput)
 {
-    rc4((RC4_KEYSTRUCT*)pbKeyStruct, dwInputLength, pbInput);
+    rc4((RC4_KEYSTRUCT *)pbKeyStruct, dwInputLength, pbInput);
 }
-   
-void
-XCryptHMAC(
+
+void XCryptHMAC(
     IN PBYTE pbKeyMaterial,
     IN ULONG cbKeyMaterial,
     IN PBYTE pbData,
@@ -440,12 +415,12 @@ XCryptHMAC(
     IN PBYTE pbData2,
     IN ULONG cbData2,
     OUT PBYTE HmacData // length must be A_SHA_DIGEST_LEN
-    )
+)
 {
-#define HMAC_K_PADSIZE              64
+#define HMAC_K_PADSIZE 64
     BYTE Kipad[HMAC_K_PADSIZE];
     BYTE Kopad[HMAC_K_PADSIZE];
-    BYTE HMACTmp[HMAC_K_PADSIZE+A_SHA_DIGEST_LEN];
+    BYTE HMACTmp[HMAC_K_PADSIZE + A_SHA_DIGEST_LEN];
     ULONG dwBlock;
     A_SHA_CTX shaHash;
 
@@ -462,10 +437,10 @@ XCryptHMAC(
     //
     // Kipad, Kopad are padded sMacKey. Now XOR across...
     //
-    for(dwBlock=0; dwBlock<HMAC_K_PADSIZE/sizeof(DWORD); dwBlock++)
+    for (dwBlock = 0; dwBlock < HMAC_K_PADSIZE / sizeof(DWORD); dwBlock++)
     {
-        ((DWORD*)Kipad)[dwBlock] ^= 0x36363636;
-        ((DWORD*)Kopad)[dwBlock] ^= 0x5C5C5C5C;
+        ((DWORD *)Kipad)[dwBlock] ^= 0x36363636;
+        ((DWORD *)Kopad)[dwBlock] ^= 0x5C5C5C5C;
     }
 
     //
@@ -484,41 +459,38 @@ XCryptHMAC(
     }
 
     // Finish off the hash
-    A_SHAFinal(&shaHash,HMACTmp+HMAC_K_PADSIZE);
+    A_SHAFinal(&shaHash, HMACTmp + HMAC_K_PADSIZE);
 
     // prepend Kopad to H1, hash to get HMAC
     RtlCopyMemory(HMACTmp, Kopad, HMAC_K_PADSIZE);
 
     // final hash: output value into passed-in buffer
     A_SHAInit(&shaHash);
-    A_SHAUpdate(&shaHash,HMACTmp, sizeof(HMACTmp));
-    A_SHAFinal(&shaHash,HmacData);
+    A_SHAUpdate(&shaHash, HMACTmp, sizeof(HMACTmp));
+    A_SHAFinal(&shaHash, HmacData);
 }
 
 ULONG
 XCryptPKEncPublic(
     IN PUCHAR pbPubKey,
     IN PUCHAR pbInput,
-    IN PUCHAR pbOutput
-    )
+    IN PUCHAR pbOutput)
 {
     return BSafeEncPublic((LPBSAFE_PUB_KEY)pbPubKey, pbInput, pbOutput);
 }
-   
+
 ULONG
 XCryptPKDecPrivate(
     IN PUCHAR pbPrvKey,
     IN PUCHAR pbInput,
-    IN PUCHAR pbOutput
-    )
+    IN PUCHAR pbOutput)
 {
     return BSafeDecPrivate((LPBSAFE_PRV_KEY)pbPrvKey, pbInput, pbOutput);
 }
 
 ULONG
 XCryptPKGetKeyLen(
-    IN PUCHAR pbPubKey
-    )
+    IN PUCHAR pbPubKey)
 {
     return XCCalcKeyLen(pbPubKey);
 }
@@ -527,17 +499,16 @@ BOOLEAN
 XCryptVerifyPKCS1Signature(
     IN PUCHAR pbSig,
     IN PUCHAR pbPubKey,
-    IN PUCHAR pbDigest
-    )
+    IN PUCHAR pbDigest)
 {
-    BYTE* pbWorkspace = _alloca( 2 * XCCalcKeyLen(pbPubKey) );
-    if ( pbWorkspace == NULL )
+    BYTE *pbWorkspace = _alloca(2 * XCCalcKeyLen(pbPubKey));
+    if (pbWorkspace == NULL)
     {
         return FALSE;
     }
     return XCVerifyDigest(pbSig, pbPubKey, pbWorkspace, pbDigest);
 }
-   
+
 // compute A = B ^ C mod D, N = len of params in DWORDs
 ULONG
 XCryptModExp(
@@ -545,34 +516,29 @@ XCryptModExp(
     IN LPDWORD pB,
     IN LPDWORD pC,
     IN LPDWORD pD,
-    IN ULONG dwN
-    )
+    IN ULONG dwN)
 {
     //
     // compute A = B ^ C mod D
     //
     return BenalohModExp(pA, pB, pC, pD, dwN);
 }
-   
-void
-XCryptDESKeyParity(
+
+void XCryptDESKeyParity(
     IN PUCHAR pbKey,
-    IN ULONG dwKeyLength
-    )
+    IN ULONG dwKeyLength)
 {
     desparityonkey(pbKey, dwKeyLength);
 }
-   
-void
-XCryptKeyTable(
+
+void XCryptKeyTable(
     IN ULONG dwCipher,
     OUT PUCHAR pbKeyTable,
-    IN PUCHAR pbKey
-    )
+    IN PUCHAR pbKey)
 {
     if (dwCipher == XC_SERVICE_DES_CIPHER)
     {
-        deskey((DESTable*)pbKeyTable, pbKey);
+        deskey((DESTable *)pbKeyTable, pbKey);
     }
     else
     {
@@ -580,33 +546,29 @@ XCryptKeyTable(
         tripledes3key((PDES3TABLE)pbKeyTable, pbKey);
     }
 }
-   
-void
-XCryptBlockCrypt(
+
+void XCryptBlockCrypt(
     IN ULONG dwCipher,
     IN PUCHAR pbOutput,
     IN PUCHAR pbInput,
     IN PUCHAR pbKeyTable,
-    IN ULONG dwOp
-    )
+    IN ULONG dwOp)
 {
-    void (RSA32API *pCipher)(BYTE *, BYTE *, void *, int) = (dwCipher == XC_SERVICE_DES_CIPHER) ? des : tripledes;
-    (*pCipher)( pbOutput, pbInput, pbKeyTable, dwOp );
+    void(RSA32API * pCipher)(BYTE *, BYTE *, void *, int) = (dwCipher == XC_SERVICE_DES_CIPHER) ? des : tripledes;
+    (*pCipher)(pbOutput, pbInput, pbKeyTable, dwOp);
 }
-   
-void
-XCryptBlockCryptCBC(
+
+void XCryptBlockCryptCBC(
     IN ULONG dwCipher,
     IN ULONG dwInputLength,
     IN PUCHAR pbOutput,
     IN PUCHAR pbInput,
     IN PUCHAR pbKeyTable,
     IN ULONG dwOp,
-    IN PUCHAR pbFeedback
-    )
+    IN PUCHAR pbFeedback)
 {
     BYTE *pbInputEnd = pbInput + dwInputLength;
-    void (RSA32API *pCipher)(BYTE *, BYTE *, void *, int) = (dwCipher == XC_SERVICE_DES_CIPHER) ? des : tripledes;
+    void(RSA32API * pCipher)(BYTE *, BYTE *, void *, int) = (dwCipher == XC_SERVICE_DES_CIPHER) ? des : tripledes;
     while (pbInput < pbInputEnd)
     {
         CBC(pCipher, XC_SERVICE_DES_BLOCKLEN, pbOutput, pbInput, pbKeyTable, dwOp, pbFeedback);
@@ -618,8 +580,7 @@ XCryptBlockCryptCBC(
 ULONG
 XCryptCryptService(
     IN ULONG dwOp,
-    IN void* pArgs
-    )
+    IN void *pArgs)
 {
     return 0;
 }
@@ -628,24 +589,23 @@ XCryptCryptService(
 // original ROM Crypto vector, never gets changed.
 //
 const CRYPTO_VECTOR originalCryptoVector =
-{
-    XCryptSHAInit,
-    XCryptSHAUpdate,
-    XCryptSHAFinal,
-    XCryptRC4Key,
-    XCryptRC4Crypt,
-    XCryptHMAC,
-    XCryptPKEncPublic,
-    XCryptPKDecPrivate,
-    XCryptPKGetKeyLen,
-    XCryptVerifyPKCS1Signature,
-    XCryptModExp,
-    XCryptDESKeyParity,
-    XCryptKeyTable,
-    XCryptBlockCrypt,
-    XCryptBlockCryptCBC,
-    XCryptCryptService
-};
+    {
+        XCryptSHAInit,
+        XCryptSHAUpdate,
+        XCryptSHAFinal,
+        XCryptRC4Key,
+        XCryptRC4Crypt,
+        XCryptHMAC,
+        XCryptPKEncPublic,
+        XCryptPKDecPrivate,
+        XCryptPKGetKeyLen,
+        XCryptVerifyPKCS1Signature,
+        XCryptModExp,
+        XCryptDESKeyParity,
+        XCryptKeyTable,
+        XCryptBlockCrypt,
+        XCryptBlockCryptCBC,
+        XCryptCryptService};
 
 //
 // Updated crypto vector, contains pointers to
@@ -653,95 +613,92 @@ const CRYPTO_VECTOR originalCryptoVector =
 // Initial is the same as originalCryptoVector.
 //
 CRYPTO_VECTOR updatedCryptoVector =
-{
-    XCryptSHAInit,
-    XCryptSHAUpdate,
-    XCryptSHAFinal,
-    XCryptRC4Key,
-    XCryptRC4Crypt,
-    XCryptHMAC,
-    XCryptPKEncPublic,
-    XCryptPKDecPrivate,
-    XCryptPKGetKeyLen,
-    XCryptVerifyPKCS1Signature,
-    XCryptModExp,
-    XCryptDESKeyParity,
-    XCryptKeyTable,
-    XCryptBlockCrypt,
-    XCryptBlockCryptCBC,
-    XCryptCryptService
-};
+    {
+        XCryptSHAInit,
+        XCryptSHAUpdate,
+        XCryptSHAFinal,
+        XCryptRC4Key,
+        XCryptRC4Crypt,
+        XCryptHMAC,
+        XCryptPKEncPublic,
+        XCryptPKDecPrivate,
+        XCryptPKGetKeyLen,
+        XCryptVerifyPKCS1Signature,
+        XCryptModExp,
+        XCryptDESKeyParity,
+        XCryptKeyTable,
+        XCryptBlockCrypt,
+        XCryptBlockCryptCBC,
+        XCryptCryptService};
 
-void
-XcUpdateCrypto(
+void XcUpdateCrypto(
     IN PCRYPTO_VECTOR pNewVector,
-    OUT OPTIONAL PCRYPTO_VECTOR pROMVector
-    )
+    OUT OPTIONAL PCRYPTO_VECTOR pROMVector)
 {
     //
     // Patch the non null routines
     //
-    if ( pNewVector->pXcSHAInit )
+    if (pNewVector->pXcSHAInit)
     {
         updatedCryptoVector.pXcSHAInit = pNewVector->pXcSHAInit;
     }
-    if ( pNewVector->pXcSHAUpdate )
+    if (pNewVector->pXcSHAUpdate)
     {
         updatedCryptoVector.pXcSHAUpdate = pNewVector->pXcSHAUpdate;
     }
-    if ( pNewVector->pXcSHAFinal )
+    if (pNewVector->pXcSHAFinal)
     {
         updatedCryptoVector.pXcSHAFinal = pNewVector->pXcSHAFinal;
     }
-    if ( pNewVector->pXcRC4Key )
+    if (pNewVector->pXcRC4Key)
     {
         updatedCryptoVector.pXcRC4Key = pNewVector->pXcRC4Key;
     }
-    if ( pNewVector->pXcRC4Crypt )
+    if (pNewVector->pXcRC4Crypt)
     {
         updatedCryptoVector.pXcRC4Crypt = pNewVector->pXcRC4Crypt;
     }
-    if ( pNewVector->pXcHMAC )
+    if (pNewVector->pXcHMAC)
     {
         updatedCryptoVector.pXcHMAC = pNewVector->pXcHMAC;
     }
-    if ( pNewVector->pXcPKEncPublic )
+    if (pNewVector->pXcPKEncPublic)
     {
         updatedCryptoVector.pXcPKEncPublic = pNewVector->pXcPKEncPublic;
     }
-    if ( pNewVector->pXcPKDecPrivate )
+    if (pNewVector->pXcPKDecPrivate)
     {
         updatedCryptoVector.pXcPKDecPrivate = pNewVector->pXcPKDecPrivate;
     }
-    if ( pNewVector->pXcPKGetKeyLen )
+    if (pNewVector->pXcPKGetKeyLen)
     {
         updatedCryptoVector.pXcPKGetKeyLen = pNewVector->pXcPKGetKeyLen;
     }
-    if ( pNewVector->pXcVerifyPKCS1Signature )
+    if (pNewVector->pXcVerifyPKCS1Signature)
     {
         updatedCryptoVector.pXcVerifyPKCS1Signature = pNewVector->pXcVerifyPKCS1Signature;
     }
-    if ( pNewVector->pXcModExp )
+    if (pNewVector->pXcModExp)
     {
         updatedCryptoVector.pXcModExp = pNewVector->pXcModExp;
     }
-    if ( pNewVector->pXcDESKeyParity )
+    if (pNewVector->pXcDESKeyParity)
     {
         updatedCryptoVector.pXcDESKeyParity = pNewVector->pXcDESKeyParity;
     }
-    if ( pNewVector->pXcKeyTable )
+    if (pNewVector->pXcKeyTable)
     {
         updatedCryptoVector.pXcKeyTable = pNewVector->pXcKeyTable;
     }
-    if ( pNewVector->pXcBlockCrypt )
+    if (pNewVector->pXcBlockCrypt)
     {
         updatedCryptoVector.pXcBlockCrypt = pNewVector->pXcBlockCrypt;
     }
-    if ( pNewVector->pXcBlockCryptCBC )
+    if (pNewVector->pXcBlockCryptCBC)
     {
         updatedCryptoVector.pXcBlockCryptCBC = pNewVector->pXcBlockCryptCBC;
     }
-    if ( pNewVector->pXcCryptService )
+    if (pNewVector->pXcCryptService)
     {
         updatedCryptoVector.pXcCryptService = pNewVector->pXcCryptService;
     }
@@ -758,63 +715,51 @@ XcUpdateCrypto(
 //
 // Exposed ROM crypto routines that jump using the updated vector
 //
-void
-XcSHAInit(
-    IN PUCHAR pbSHAContext
-    )
+void XcSHAInit(
+    IN PUCHAR pbSHAContext)
 {
     (*updatedCryptoVector.pXcSHAInit)(pbSHAContext);
 }
-   
-void
-XcSHAUpdate(
+
+void XcSHAUpdate(
     IN PUCHAR pbSHAContext,
     IN PUCHAR pbInput,
-    IN ULONG dwInputLength
-    )
+    IN ULONG dwInputLength)
 {
     (*updatedCryptoVector.pXcSHAUpdate)(pbSHAContext, pbInput, dwInputLength);
 }
-   
-void
-XcSHAFinal(
+
+void XcSHAFinal(
     IN PUCHAR pbSHAContext,
-    IN PUCHAR pbDigest
-    )
+    IN PUCHAR pbDigest)
 {
     (*updatedCryptoVector.pXcSHAFinal)(pbSHAContext, pbDigest);
 }
-   
-void
-XcRC4Key(
+
+void XcRC4Key(
     IN PUCHAR pbKeyStruct,
     IN ULONG dwKeyLength,
-    IN PUCHAR pbKey
-    )
+    IN PUCHAR pbKey)
 {
     (*updatedCryptoVector.pXcRC4Key)(pbKeyStruct, dwKeyLength, pbKey);
 }
-   
-void
-XcRC4Crypt(
+
+void XcRC4Crypt(
     IN PUCHAR pbKeyStruct,
     IN ULONG dwInputLength,
-    IN PUCHAR pbInput
-    )
+    IN PUCHAR pbInput)
 {
     (*updatedCryptoVector.pXcRC4Crypt)(pbKeyStruct, dwInputLength, pbInput);
 }
-   
-void
-XcHMAC(
+
+void XcHMAC(
     IN PBYTE pbKeyMaterial,
     IN ULONG cbKeyMaterial,
     IN PBYTE pbData,
     IN ULONG cbData,
     IN PBYTE pbData2,
     IN ULONG cbData2,
-    OUT PBYTE pbDigest
-    )
+    OUT PBYTE pbDigest)
 {
     (*updatedCryptoVector.pXcHMAC)(pbKeyMaterial, cbKeyMaterial, pbData, cbData, pbData2, cbData2, pbDigest);
 }
@@ -823,26 +768,23 @@ ULONG
 XcPKEncPublic(
     IN PUCHAR pbPubKey,
     IN PUCHAR pbInput,
-    IN PUCHAR pbOutput
-    )
+    IN PUCHAR pbOutput)
 {
     return (*updatedCryptoVector.pXcPKEncPublic)(pbPubKey, pbInput, pbOutput);
 }
-   
+
 ULONG
 XcPKDecPrivate(
     IN PUCHAR pbPrvKey,
     IN PUCHAR pbInput,
-    IN PUCHAR pbOutput
-    )
+    IN PUCHAR pbOutput)
 {
     return (*updatedCryptoVector.pXcPKDecPrivate)(pbPrvKey, pbInput, pbOutput);
 }
 
 ULONG
 XcPKGetKeyLen(
-    IN PUCHAR pbPubKey
-    )
+    IN PUCHAR pbPubKey)
 {
     return (*updatedCryptoVector.pXcPKGetKeyLen)(pbPubKey);
 }
@@ -851,65 +793,55 @@ BOOLEAN
 XcVerifyPKCS1Signature(
     IN PUCHAR pbSig,
     IN PUCHAR pbPubKey,
-    IN PUCHAR pbDigest
-    )
+    IN PUCHAR pbDigest)
 {
     return (*updatedCryptoVector.pXcVerifyPKCS1Signature)(pbSig, pbPubKey, pbDigest);
 }
-   
+
 ULONG
 XcModExp(
     IN LPDWORD pA,
     IN LPDWORD pB,
     IN LPDWORD pC,
     IN LPDWORD pD,
-    IN ULONG dwN
-    )
+    IN ULONG dwN)
 {
     return (*updatedCryptoVector.pXcModExp)(pA, pB, pC, pD, dwN);
 }
-   
-void
-XcDESKeyParity(
+
+void XcDESKeyParity(
     IN PUCHAR pbKey,
-    IN ULONG dwKeyLength
-    )
+    IN ULONG dwKeyLength)
 {
     (*updatedCryptoVector.pXcDESKeyParity)(pbKey, dwKeyLength);
 }
-   
-void
-XcKeyTable(
+
+void XcKeyTable(
     IN ULONG dwCipher,
     OUT PUCHAR pbKeyTable,
-    IN PUCHAR pbKey
-    )
+    IN PUCHAR pbKey)
 {
     (*updatedCryptoVector.pXcKeyTable)(dwCipher, pbKeyTable, pbKey);
 }
-   
-void
-XcBlockCrypt(
+
+void XcBlockCrypt(
     IN ULONG dwCipher,
     IN PUCHAR pbOutput,
     IN PUCHAR pbInput,
     IN PUCHAR pbKeyTable,
-    IN ULONG dwOp
-    )
+    IN ULONG dwOp)
 {
     (*updatedCryptoVector.pXcBlockCrypt)(dwCipher, pbOutput, pbInput, pbKeyTable, dwOp);
 }
-   
-void
-XcBlockCryptCBC(
+
+void XcBlockCryptCBC(
     IN ULONG dwCipher,
     IN ULONG dwInputLength,
     IN PUCHAR pbOutput,
     IN PUCHAR pbInput,
     IN PUCHAR pbKeyTable,
     IN ULONG dwOp,
-    IN PUCHAR pbFeedback
-    )
+    IN PUCHAR pbFeedback)
 {
     (*updatedCryptoVector.pXcBlockCryptCBC)(dwCipher, dwInputLength, pbOutput, pbInput, pbKeyTable, dwOp, pbFeedback);
 }
@@ -917,11 +849,7 @@ XcBlockCryptCBC(
 ULONG
 XcCryptService(
     IN ULONG dwOp,
-    IN void* pArgs
-    )
+    IN void *pArgs)
 {
     return (*updatedCryptoVector.pXcCryptService)(dwOp, pArgs);
 }
-
-
-

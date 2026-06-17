@@ -12,12 +12,12 @@ Abstract:
 
 Environment:
 
-    Windows 2000 and Later 
+    Windows 2000 and Later
     User Mode
     Compiles UNICODE, but uses many ANSI APIs explictly.
 
 Revision History:
-    
+
     06-29-2001 : created
 
 --*/
@@ -36,13 +36,20 @@ class CManageConsoles
     BOOL SetDefault(LPSTR pszConsoleName);
     BOOL IsDefault(LPSTR pszConsoleName);
     //  Enum
-    void  ResetEnum() {m_dwEnumIndex=0;}
-    BOOL  GetNext(LPSTR pszConsoleName, DWORD *pdwConsoleNameLength);
-    DWORD GetMaxCount() {return m_dwMaxCount;}
+    void ResetEnum()
+    {
+        m_dwEnumIndex = 0;
+    }
+    BOOL GetNext(LPSTR pszConsoleName, DWORD *pdwConsoleNameLength);
+    DWORD GetMaxCount()
+    {
+        return m_dwMaxCount;
+    }
+
   private:
-    HKEY  m_hKey;
+    HKEY m_hKey;
     DWORD m_dwEnumIndex;
     DWORD m_dwMaxCount;
-    char  m_szDefaultConsole[60];
-    bool  m_fDefaultConsoleValid;
+    char m_szDefaultConsole[60];
+    bool m_fDefaultConsoleValid;
 };

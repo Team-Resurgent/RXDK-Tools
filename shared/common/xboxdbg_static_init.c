@@ -44,4 +44,4 @@ static void __cdecl XboxdbgStaticCtor(void)
 // force a /include of this exact symbol so the linker keeps it (and this object)
 // too.  Every consumer of xboxdbg.h links xbdbgs.lib, so the symbol resolves.
 //
-__declspec(allocate(".CRT$XCU")) void (__cdecl *g_pXboxdbgStaticCtor)(void) = XboxdbgStaticCtor;
+__declspec(allocate(".CRT$XCU")) void(__cdecl *g_pXboxdbgStaticCtor)(void) = XboxdbgStaticCtor;

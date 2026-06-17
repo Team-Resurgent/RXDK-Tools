@@ -21,12 +21,12 @@
 #include <modes.h>
 
 /* Tables extracted from rsa32 (defined in xrsa_des_tables.c). */
-extern const unsigned long Spbox[512];          /* des_SPtrans[8][64] */
-extern const unsigned long Sel[512];            /* des_skb[8][64]     */
+extern const unsigned long Spbox[512]; /* des_SPtrans[8][64] */
+extern const unsigned long Sel[512];   /* des_skb[8][64]     */
 extern const unsigned char double_shift[16];
 extern const unsigned char DESParityTable[16];
 
-#define SP(box)  (&Spbox[(box) * 64])
+#define SP(box) (&Spbox[(box) * 64])
 #define SKB(box) (&Sel[(box) * 64])
 
 /* rotate right by n (libdes ROTATE) */
@@ -34,11 +34,12 @@ extern const unsigned char DESParityTable[16];
 /* rotate left by n */
 #define ROTL(a, n) (((a) << (n)) | ((a) >> (32 - (n))))
 
-#define PERM_OP(a, b, t, n, m)            \
-    do {                                  \
+#define PERM_OP(a, b, t, n, m)              \
+    do                                      \
+    {                                       \
         (t) = ((((a) >> (n)) ^ (b)) & (m)); \
-        (b) ^= (t);                       \
-        (a) ^= ((t) << (n));              \
+        (b) ^= (t);                         \
+        (a) ^= ((t) << (n));                \
     } while (0)
 
 static __inline DWORD load_le32(const BYTE *p)
@@ -85,7 +86,7 @@ void RSA32API deskey(DESTable *pTable, unsigned char *key)
     PERM_OP(d, c, t, 1, 0x55555555UL);
 
     d = (((d & 0x000000ffUL) << 16) |
-          (d & 0x0000ff00UL) |
+         (d & 0x0000ff00UL) |
          ((d & 0x00ff0000UL) >> 16) |
          ((c & 0xf0000000UL) >> 4));
     c &= 0x0fffffffUL;
@@ -105,14 +106,14 @@ void RSA32API deskey(DESTable *pTable, unsigned char *key)
         c &= 0x0fffffffUL;
         d &= 0x0fffffffUL;
 
-        s = SKB(0)[ (c)        & 0x3f] |
-            SKB(1)[((c >>  6) & 0x03) | ((c >>  7) & 0x3c)] |
+        s = SKB(0)[(c) & 0x3f] |
+            SKB(1)[((c >> 6) & 0x03) | ((c >> 7) & 0x3c)] |
             SKB(2)[((c >> 13) & 0x0f) | ((c >> 14) & 0x30)] |
             SKB(3)[((c >> 20) & 0x01) | ((c >> 21) & 0x06) | ((c >> 22) & 0x38)];
 
-        t = SKB(4)[ (d)        & 0x3f] |
-            SKB(5)[((d >>  7) & 0x03) | ((d >>  8) & 0x3c)] |
-            SKB(6)[ (d >> 15) & 0x3f] |
+        t = SKB(4)[(d) & 0x3f] |
+            SKB(5)[((d >> 7) & 0x03) | ((d >> 8) & 0x3c)] |
+            SKB(6)[(d >> 15) & 0x3f] |
             SKB(7)[((d >> 21) & 0x0f) | ((d >> 22) & 0x30)];
 
         /* table contains pre-rotated values; cook into the schedule */
@@ -123,20 +124,21 @@ void RSA32API deskey(DESTable *pTable, unsigned char *key)
     }
 }
 
-#define D_ENCRYPT(LL, R, S)                                  \
-    do {                                                     \
-        u = (R) ^ s[(S)];                                    \
-        t = (R) ^ s[(S) + 1];                                \
-        t = ROTR(t, 4);                                      \
-        (LL) ^=                                              \
-            SP(0)[(u >>  2) & 0x3f] ^                        \
-            SP(2)[(u >> 10) & 0x3f] ^                        \
-            SP(4)[(u >> 18) & 0x3f] ^                        \
-            SP(6)[(u >> 26) & 0x3f] ^                        \
-            SP(1)[(t >>  2) & 0x3f] ^                        \
-            SP(3)[(t >> 10) & 0x3f] ^                        \
-            SP(5)[(t >> 18) & 0x3f] ^                        \
-            SP(7)[(t >> 26) & 0x3f];                         \
+#define D_ENCRYPT(LL, R, S)           \
+    do                                \
+    {                                 \
+        u = (R) ^ s[(S)];             \
+        t = (R) ^ s[(S) + 1];         \
+        t = ROTR(t, 4);               \
+        (LL) ^=                       \
+            SP(0)[(u >> 2) & 0x3f] ^  \
+            SP(2)[(u >> 10) & 0x3f] ^ \
+            SP(4)[(u >> 18) & 0x3f] ^ \
+            SP(6)[(u >> 26) & 0x3f] ^ \
+            SP(1)[(t >> 2) & 0x3f] ^  \
+            SP(3)[(t >> 10) & 0x3f] ^ \
+            SP(5)[(t >> 18) & 0x3f] ^ \
+            SP(7)[(t >> 26) & 0x3f];  \
     } while (0)
 
 void RSA32API des(BYTE *pbOut, BYTE *pbIn, void *key, int op)
@@ -207,14 +209,14 @@ void RSA32API tripledes(BYTE *pbOut, BYTE *pbIn, void *pKey, int op)
 
     if (op == ENCRYPT)
     {
-        des(tmp,  pbIn, &p->keytab1, ENCRYPT);
-        des(tmp2, tmp,  &p->keytab2, DECRYPT);
+        des(tmp, pbIn, &p->keytab1, ENCRYPT);
+        des(tmp2, tmp, &p->keytab2, DECRYPT);
         des(pbOut, tmp2, &p->keytab3, ENCRYPT);
     }
     else
     {
-        des(tmp,  pbIn, &p->keytab3, DECRYPT);
-        des(tmp2, tmp,  &p->keytab2, ENCRYPT);
+        des(tmp, pbIn, &p->keytab3, DECRYPT);
+        des(tmp2, tmp, &p->keytab2, ENCRYPT);
         des(pbOut, tmp2, &p->keytab1, DECRYPT);
     }
 }

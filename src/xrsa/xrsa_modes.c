@@ -15,16 +15,15 @@
 #define CBC_MAX_BLOCKLEN 32
 
 void
-RSA32API
-CBC(
-    void   RSA32API Cipher(BYTE *, BYTE *, void *, int),
-    DWORD  dwBlockLen,
-    BYTE   *output,
-    BYTE   *input,
-    void   *keyTable,
-    int    op,
-    BYTE   *feedback
-    )
+    RSA32API
+    CBC(
+        void RSA32API Cipher(BYTE *, BYTE *, void *, int),
+        DWORD dwBlockLen,
+        BYTE *output,
+        BYTE *input,
+        void *keyTable,
+        int op,
+        BYTE *feedback)
 {
     BYTE work[CBC_MAX_BLOCKLEN];
     BYTE saved[CBC_MAX_BLOCKLEN];

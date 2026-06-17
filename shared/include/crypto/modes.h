@@ -11,66 +11,62 @@
     block cipher.
 */
 
-
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 // constants for operations
-#define ENCRYPT     1
-#define DECRYPT     0
+#define ENCRYPT 1
+#define DECRYPT 0
 
-/* CBC()
- *
- * Performs a XOR on the plaintext with the previous ciphertext
- *
- * Parameters:
- *
- *      output      Input buffer    -- MUST be RC2_BLOCKLEN
- *      input       Output buffer   -- MUST be RC2_BLOCKLEN
- *      keyTable
- *      op      ENCRYPT, or DECRYPT
- *      feedback    feedback register
- *
- */
-void
-RSA32API
-CBC(
-         void   RSA32API Cipher(BYTE *, BYTE *, void *, int),
-         DWORD  dwBlockLen,
-         BYTE   *output,
-         BYTE   *input,
-         void   *keyTable,
-         int    op,
-         BYTE   *feedback
-         );
+    /* CBC()
+     *
+     * Performs a XOR on the plaintext with the previous ciphertext
+     *
+     * Parameters:
+     *
+     *      output      Input buffer    -- MUST be RC2_BLOCKLEN
+     *      input       Output buffer   -- MUST be RC2_BLOCKLEN
+     *      keyTable
+     *      op      ENCRYPT, or DECRYPT
+     *      feedback    feedback register
+     *
+     */
+    void
+        RSA32API
+        CBC(
+            void RSA32API Cipher(BYTE *, BYTE *, void *, int),
+            DWORD dwBlockLen,
+            BYTE *output,
+            BYTE *input,
+            void *keyTable,
+            int op,
+            BYTE *feedback);
 
-
-/* CFB (cipher feedback)
- *
- *
- * Parameters:
- *
- *
- *      output      Input buffer    -- MUST be RC2_BLOCKLEN
- *      input       Output buffer   -- MUST be RC2_BLOCKLEN
- *      keyTable
- *      op      ENCRYPT, or DECRYPT
- *      feedback    feedback register
- *
- */
-void
-RSA32API
-CFB(
-         void   RSA32API Cipher(BYTE *, BYTE *, void *, int),
-         DWORD  dwBlockLen,
-         BYTE   *output,
-         BYTE   *input,
-         void   *keyTable,
-         int    op,
-         BYTE   *feedback
-         );
-
+    /* CFB (cipher feedback)
+     *
+     *
+     * Parameters:
+     *
+     *
+     *      output      Input buffer    -- MUST be RC2_BLOCKLEN
+     *      input       Output buffer   -- MUST be RC2_BLOCKLEN
+     *      keyTable
+     *      op      ENCRYPT, or DECRYPT
+     *      feedback    feedback register
+     *
+     */
+    void
+        RSA32API
+        CFB(
+            void RSA32API Cipher(BYTE *, BYTE *, void *, int),
+            DWORD dwBlockLen,
+            BYTE *output,
+            BYTE *input,
+            void *keyTable,
+            int op,
+            BYTE *feedback);
 
 #ifdef __cplusplus
 }

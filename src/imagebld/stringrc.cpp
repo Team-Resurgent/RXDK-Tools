@@ -15,31 +15,28 @@ Abstract:
 
 #include "imgbldp.h"
 
-VOID
-ImgbResourcePrintfV(
+VOID ImgbResourcePrintfV(
     FILE *file,
     UINT uStringID,
-    va_list args
-    )
+    va_list args)
 {
     CHAR szResource[256];
     CHAR szMessage[1024];
 
-    if (LoadString(NULL, uStringID, szResource, sizeof(szResource)) > 0) {
+    if (LoadString(NULL, uStringID, szResource, sizeof(szResource)) > 0)
+    {
 
         FormatMessage(FORMAT_MESSAGE_FROM_STRING, szResource, 0, 0, szMessage,
-            sizeof(szMessage), &args);
+                      sizeof(szMessage), &args);
 
         fputs(szMessage, file);
     }
 }
 
-VOID
-ImgbResourcePrintf(
+VOID ImgbResourcePrintf(
     FILE *file,
     UINT uStringID,
-    ...
-    )
+    ...)
 {
     va_list args;
 
@@ -50,10 +47,8 @@ ImgbResourcePrintf(
     va_end(args);
 }
 
-VOID
-ImgbResourcePrintLogoBanner(
-    VOID
-    )
+VOID ImgbResourcePrintLogoBanner(
+    VOID)
 {
     ImgbResourcePrintf(stderr, IDS_LOGO_NAME_AND_VERSION, VER_PRODUCTVERSION_STR);
     fputs("\n", stderr);
@@ -61,11 +56,9 @@ ImgbResourcePrintLogoBanner(
     fputs("\n\n", stderr);
 }
 
-VOID
-ImgbResourcePrintErrorAndExit(
+VOID ImgbResourcePrintErrorAndExit(
     UINT uStringID,
-    ...
-    )
+    ...)
 {
     va_list args;
 
@@ -81,11 +74,9 @@ ImgbResourcePrintErrorAndExit(
     ImgbExitProcess(1);
 }
 
-VOID
-ImgbResourcePrintWarning(
+VOID ImgbResourcePrintWarning(
     UINT uStringID,
-    ...
-    )
+    ...)
 {
     va_list args;
 
@@ -99,24 +90,25 @@ ImgbResourcePrintWarning(
     va_end(args);
 }
 
-VOID
-ImgbResourcePrintRange(
+VOID ImgbResourcePrintRange(
     FILE *file,
-    UINT uStartingStringID
-    )
+    UINT uStartingStringID)
 {
     UINT uStringID;
     CHAR szResource[256];
 
     uStringID = uStartingStringID;
 
-    for (;;) {
+    for (;;)
+    {
 
-        if (LoadString(NULL, uStringID, szResource, sizeof(szResource)) == 0) {
+        if (LoadString(NULL, uStringID, szResource, sizeof(szResource)) == 0)
+        {
             break;
         }
 
-        if (szResource[0] == '~') {
+        if (szResource[0] == '~')
+        {
             break;
         }
 

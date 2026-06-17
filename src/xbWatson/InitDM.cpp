@@ -7,14 +7,12 @@
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++ INCLUDE FILES +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 // "stdafx.h"       -- Precompiled header file
 #include "stdafx.h"
-
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++ GLOBAL VARIABLES ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -23,14 +21,12 @@
 // gs_hthreadConnect -- Handle to the thread that takes care of connecting to the Xbox
 HANDLE gs_hthreadConnect;
 
-
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++ LOCAL GLOBAL VARIABLES ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 // gs_pdmsession     -- Current Debug Monitor Session.
 static PDMN_SESSION gs_pdmsession = NULL;
-
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++ FUNCTIONS +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -49,8 +45,8 @@ HRESULT HrInitDM(void)
     HRESULT hr;
     bool fConnected = false;
     int idm;
-    static int rgdm[] = { DM_DEBUGSTR, DM_RIP, DM_ASSERT, DM_EXEC, DM_BREAK,
-        DM_EXCEPTION, DM_DATABREAK, DM_NONE };
+    static int rgdm[] = {DM_DEBUGSTR, DM_RIP, DM_ASSERT, DM_EXEC, DM_BREAK,
+                         DM_EXCEPTION, DM_DATABREAK, DM_NONE};
 
     // Determine to which Xbox we're talking.
     DWORD dw = MAX_PATH;
@@ -61,22 +57,25 @@ HRESULT HrInitDM(void)
     // connection is attempted.
     DmUseSharedConnection(TRUE);
     hr = DmOpenNotificationSession(DM_DEBUGSESSION | DM_ASYNCSESSION,
-        &gs_pdmsession);
-    if(FAILED(hr))
+                                   &gs_pdmsession);
+    if (FAILED(hr))
         gs_pdmsession = NULL;
 
     // Setup the notification callbacks.  'NotifyProc' will automatically be called whenever the
     // specified events are signaled.
-    for(idm = 0; rgdm[idm] != DM_NONE; ++idm) {
-        if(SUCCEEDED(hr))
+    for (idm = 0; rgdm[idm] != DM_NONE; ++idm)
+    {
+        if (SUCCEEDED(hr))
             hr = DmNotify(gs_pdmsession, rgdm[idm], NotifyProc);
     }
 
-    if(FAILED(hr)) {
+    if (FAILED(hr))
+    {
         // Something went wrong - clean up after ourselves and return 'failure'.
 
         // Inform XBDM that we're done being notified
-        if (gs_pdmsession) {
+        if (gs_pdmsession)
+        {
             DmCloseNotificationSession(gs_pdmsession);
             gs_pdmsession = NULL;
         }
@@ -98,7 +97,8 @@ HRESULT HrInitDM(void)
 void UninitDM()
 {
     // Inform XBDM that we're done being notified
-    if (gs_pdmsession) {
+    if (gs_pdmsession)
+    {
         // inform XBDM that we're done being notified
         DmCloseNotificationSession(gs_pdmsession);
         gs_pdmsession = NULL;

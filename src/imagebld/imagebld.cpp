@@ -37,7 +37,7 @@ LPVOID ImgbInputFileMappingView;
 //
 // Stores the fully resolved input file path.
 //
-CHAR ImgbInputFileFullPath[MAX_PATH+1];
+CHAR ImgbInputFileFullPath[MAX_PATH + 1];
 
 //
 // Stores the pointer to the file name in the ImgbInputFileFullPath buffer.
@@ -68,7 +68,7 @@ BYTE ImgbTransferBuffer[128 * 1024];
 // Stores the compressed Microsoft logo bitmap stored in every XBE image.
 //
 const UCHAR ImgbMicrosoftLogo[] = {
-    #include "msftlogo.h"
+#include "msftlogo.h"
 };
 
 //
@@ -77,12 +77,11 @@ const UCHAR ImgbMicrosoftLogo[] = {
 BOOLEAN ImgbNoWarnLibraryApproval;
 
 DECLSPEC_NORETURN
-VOID
-ImgbExitProcess(
-    int ExitCode
-    )
+VOID ImgbExitProcess(
+    int ExitCode)
 {
-    if (ImgbOutputFileHandle != INVALID_HANDLE_VALUE) {
+    if (ImgbOutputFileHandle != INVALID_HANDLE_VALUE)
+    {
 
         CloseHandle(ImgbOutputFileHandle);
 
@@ -90,7 +89,8 @@ ImgbExitProcess(
         // If an error has occurred, then delete the output file.
         //
 
-        if (ExitCode != 0) {
+        if (ExitCode != 0)
+        {
             DeleteFile(ImgbOutputFilePath);
         }
     }
@@ -98,20 +98,20 @@ ImgbExitProcess(
     exit(ExitCode);
 }
 
-VOID
-ImgbOpenInputOutputFiles(
-    VOID
-    )
+VOID ImgbOpenInputOutputFiles(
+    VOID)
 {
     //
     // Verify that the input and output file paths were specified.
     //
 
-    if (ImgbInputFilePath == NULL) {
+    if (ImgbInputFilePath == NULL)
+    {
         ImgbResourcePrintErrorAndExit(IDS_MISSING_REQUIRED_OPTION, "/IN:");
     }
 
-    if (ImgbOutputFilePath == NULL) {
+    if (ImgbOutputFilePath == NULL)
+    {
         ImgbResourcePrintErrorAndExit(IDS_MISSING_REQUIRED_OPTION, "/OUT:");
     }
 
@@ -120,7 +120,8 @@ ImgbOpenInputOutputFiles(
     //
 
     if (GetFullPathName(ImgbInputFilePath, MAX_PATH, ImgbInputFileFullPath,
-        &ImgbInputFileFilePart) == 0) {
+                        &ImgbInputFileFilePart) == 0)
+    {
         ImgbResourcePrintErrorAndExit(IDS_CANNOT_OPEN_INPUT_FILE, ImgbInputFilePath);
     }
 
@@ -128,10 +129,10 @@ ImgbOpenInputOutputFiles(
     // Create the output file.
     //
 
-    ImgbOutputFileHandle = CreateFile(ImgbOutputFilePath, GENERIC_READ |
-        GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    ImgbOutputFileHandle = CreateFile(ImgbOutputFilePath, GENERIC_READ | GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 
-    if (ImgbOutputFileHandle == INVALID_HANDLE_VALUE) {
+    if (ImgbOutputFileHandle == INVALID_HANDLE_VALUE)
+    {
         ImgbResourcePrintErrorAndExit(IDS_CANNOT_CREATE_OUTPUT_FILE, ImgbOutputFilePath);
     }
 
@@ -140,9 +141,10 @@ ImgbOpenInputOutputFiles(
     //
 
     ImgbInputFileHandle = CreateFile(ImgbInputFileFullPath, GENERIC_READ,
-        FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+                                     FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
 
-    if (ImgbInputFileHandle == INVALID_HANDLE_VALUE) {
+    if (ImgbInputFileHandle == INVALID_HANDLE_VALUE)
+    {
         ImgbResourcePrintErrorAndExit(IDS_CANNOT_OPEN_INPUT_FILE, ImgbInputFilePath);
     }
 
@@ -157,9 +159,10 @@ ImgbOpenInputOutputFiles(
     //
 
     ImgbInputFileMappingHandle = CreateFileMapping(ImgbInputFileHandle, NULL,
-        PAGE_WRITECOPY, 0, 0, NULL);
+                                                   PAGE_WRITECOPY, 0, 0, NULL);
 
-    if (ImgbInputFileMappingHandle == NULL) {
+    if (ImgbInputFileMappingHandle == NULL)
+    {
         ImgbResourcePrintErrorAndExit(IDS_CANNOT_READ_INPUT_FILE, ImgbInputFilePath);
     }
 
@@ -168,17 +171,16 @@ ImgbOpenInputOutputFiles(
     //
 
     ImgbInputFileMappingView = MapViewOfFile(ImgbInputFileMappingHandle,
-        FILE_MAP_COPY, 0, 0, 0);
+                                             FILE_MAP_COPY, 0, 0, 0);
 
-    if (ImgbInputFileMappingView == NULL) {
+    if (ImgbInputFileMappingView == NULL)
+    {
         ImgbResourcePrintErrorAndExit(IDS_CANNOT_READ_INPUT_FILE, ImgbInputFilePath);
     }
 }
 
-VOID
-ImgbProcessInputSectionHeaders(
-    VOID
-    )
+VOID ImgbProcessInputSectionHeaders(
+    VOID)
 {
     ULONG SectionsRemaining;
     ULONG SectionMask;
@@ -196,12 +198,14 @@ ImgbProcessInputSectionHeaders(
 
     SectionsRemaining = ImgbNtHeader->FileHeader.NumberOfSections;
 
-    while (SectionsRemaining) {
+    while (SectionsRemaining)
+    {
 
         SectionHeader = IMAGE_FIRST_SECTION(ImgbNtHeader) +
-            SectionsRemaining - 1;
+                        SectionsRemaining - 1;
 
-        if ((SectionHeader->Characteristics & IMAGE_SCN_MEM_DISCARDABLE) == 0) {
+        if ((SectionHeader->Characteristics & IMAGE_SCN_MEM_DISCARDABLE) == 0)
+        {
 
             //
             // Compute the number of bytes that will be required to map the
@@ -218,7 +222,8 @@ ImgbProcessInputSectionHeaders(
             ImgbXbeImageHeader->SizeOfExecutableImage =
                 (ImgbXbeImageHeader->SizeOfExecutableImage + SectionMask) & ~SectionMask;
 
-            if (ImgbXbeImageHeader->SizeOfExecutableImage > IMGB_MAXIMUM_IMAGE_SIZE) {
+            if (ImgbXbeImageHeader->SizeOfExecutableImage > IMGB_MAXIMUM_IMAGE_SIZE)
+            {
                 ImgbResourcePrintErrorAndExit(IDS_IMAGE_TOO_LARGE);
             }
 
@@ -237,14 +242,16 @@ ImgbProcessInputSectionHeaders(
     LastEndingVirtualAddress = 0;
     SectionHeader = IMAGE_FIRST_SECTION(ImgbNtHeader);
 
-    while (SectionsRemaining) {
+    while (SectionsRemaining)
+    {
 
         //
         // Verify that the section headers are in increasing virtual address
         // order.
         //
 
-        if (SectionHeader->VirtualAddress <= LastVirtualAddress) {
+        if (SectionHeader->VirtualAddress <= LastVirtualAddress)
+        {
             ImgbResourcePrintErrorAndExit(IDS_INVALID_CORRUPT_INPUT_FILE, ImgbInputFilePath);
         }
 
@@ -253,7 +260,8 @@ ImgbProcessInputSectionHeaders(
         //
 
         if ((SectionHeader->PointerToRawData > ImgbInputFileSize) ||
-            (SectionHeader->PointerToRawData + SectionHeader->SizeOfRawData > ImgbInputFileSize)) {
+            (SectionHeader->PointerToRawData + SectionHeader->SizeOfRawData > ImgbInputFileSize))
+        {
             ImgbResourcePrintErrorAndExit(IDS_INVALID_CORRUPT_INPUT_FILE, ImgbInputFilePath);
         }
 
@@ -264,7 +272,8 @@ ImgbProcessInputSectionHeaders(
         // zero.
         //
 
-        if (SectionHeader->Misc.VirtualSize == 0) {
+        if (SectionHeader->Misc.VirtualSize == 0)
+        {
             ImgbResourcePrintErrorAndExit(IDS_INVALID_CORRUPT_INPUT_FILE, ImgbInputFilePath);
         }
 
@@ -298,9 +307,12 @@ ImgbProcessInputSectionHeaders(
         // Check if the section is a preload section or not.
         //
 
-        if (ImgbSearchNoPreloadList((PSTR)SectionName)) {
+        if (ImgbSearchNoPreloadList((PSTR)SectionName))
+        {
             SectionHeader->Characteristics &= ~IMAGE_SCN_MEM_PRELOAD;
-        } else {
+        }
+        else
+        {
             SectionHeader->Characteristics |= IMAGE_SCN_MEM_PRELOAD;
         }
 
@@ -311,7 +323,7 @@ ImgbProcessInputSectionHeaders(
         //
 
         RelativeLoadAddress = SectionHeader->VirtualAddress -
-            IMAGE_FIRST_SECTION(ImgbNtHeader)->VirtualAddress;
+                              IMAGE_FIRST_SECTION(ImgbNtHeader)->VirtualAddress;
 
         //
         // If this the first section or if the section does not start on the
@@ -321,8 +333,9 @@ ImgbProcessInputSectionHeaders(
 
         if ((RelativeLoadAddress == 0) ||
             (PAGE_ALIGN(RelativeLoadAddress) !=
-                PAGE_ALIGN(LastEndingVirtualAddress -
-                IMAGE_FIRST_SECTION(ImgbNtHeader)->VirtualAddress))) {
+             PAGE_ALIGN(LastEndingVirtualAddress -
+                        IMAGE_FIRST_SECTION(ImgbNtHeader)->VirtualAddress)))
+        {
             ImgbXbeImageHeader->SectionHeaders.NumberOfSharedPageReferenceCounts++;
         }
 
@@ -333,7 +346,8 @@ ImgbProcessInputSectionHeaders(
         //
 
         if (PAGE_ALIGN(RelativeLoadAddress) !=
-            PAGE_ALIGN(RelativeLoadAddress + SectionHeader->Misc.VirtualSize - 1)) {
+            PAGE_ALIGN(RelativeLoadAddress + SectionHeader->Misc.VirtualSize - 1))
+        {
             ImgbXbeImageHeader->SectionHeaders.NumberOfSharedPageReferenceCounts++;
         }
 
@@ -349,20 +363,19 @@ ImgbProcessInputSectionHeaders(
     //
 
     InsertTailList(&ImgbXbeImageHeader->HeadersListHead,
-        &ImgbXbeImageHeader->SectionHeaders.HeadersListEntry);
+                   &ImgbXbeImageHeader->SectionHeaders.HeadersListEntry);
 }
 
-VOID
-ImgbEnsureVirtualAddressIsPreload(
-    ULONG VirtualAddress
-    )
+VOID ImgbEnsureVirtualAddressIsPreload(
+    ULONG VirtualAddress)
 {
     PIMAGE_SECTION_HEADER SectionHeader;
     UCHAR SectionName[IMAGE_SIZEOF_SHORT_NAME + 1];
 
     SectionHeader = ImgbVirtualAddressToSectionHeader(ImgbNtHeader, VirtualAddress);
 
-    if ((SectionHeader->Characteristics & IMAGE_SCN_MEM_PRELOAD) == 0) {
+    if ((SectionHeader->Characteristics & IMAGE_SCN_MEM_PRELOAD) == 0)
+    {
 
         memcpy(SectionName, SectionHeader->Name, IMAGE_SIZEOF_SHORT_NAME);
         SectionName[IMAGE_SIZEOF_SHORT_NAME] = '\0';
@@ -373,10 +386,8 @@ ImgbEnsureVirtualAddressIsPreload(
     }
 }
 
-VOID
-ImgbProcessInputImportDescriptors(
-    VOID
-    )
+VOID ImgbProcessInputImportDescriptors(
+    VOID)
 {
     ULONG ImportDescriptorBytesRemaining;
     PIMAGE_IMPORT_DESCRIPTOR ImportDescriptor;
@@ -391,7 +402,8 @@ ImgbProcessInputImportDescriptors(
     // thunks that the XBE loader needs to use.
     //
 
-    if (ImgbNtHeader->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_BOUND_IMPORT].Size != 0) {
+    if (ImgbNtHeader->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_BOUND_IMPORT].Size != 0)
+    {
         ImgbResourcePrintErrorAndExit(IDS_BOUND_IMAGES_UNSUPPORTED);
     }
 
@@ -406,13 +418,15 @@ ImgbProcessInputImportDescriptors(
     NumberOfNonKernelImports = 0;
     SizeOfNonKernelImageNames = 0;
 
-    while (ImportDescriptorBytesRemaining >= sizeof(IMAGE_IMPORT_DESCRIPTOR)) {
+    while (ImportDescriptorBytesRemaining >= sizeof(IMAGE_IMPORT_DESCRIPTOR))
+    {
 
         //
         // If we find the NULL import descriptor, then break out now.
         //
 
-        if (ImportDescriptor->Characteristics == 0) {
+        if (ImportDescriptor->Characteristics == 0)
+        {
             break;
         }
 
@@ -426,10 +440,13 @@ ImgbProcessInputImportDescriptors(
 
         ImageName = (LPCSTR)ImgbVirtualAddressToData(ImgbNtHeader, ImportDescriptor->Name);
 
-        if (_stricmp(ImageName, "xboxkrnl.exe") == 0) {
+        if (_stricmp(ImageName, "xboxkrnl.exe") == 0)
+        {
             ImgbXbeImageHeader->ImageHeader.XboxKernelThunkData =
                 ImportDescriptor->FirstThunk;
-        } else {
+        }
+        else
+        {
             NumberOfNonKernelImports++;
             SizeOfNonKernelImageNames += (strlen(ImageName) + sizeof(UCHAR)) * sizeof(WCHAR);
         }
@@ -440,11 +457,12 @@ ImgbProcessInputImportDescriptors(
         //
 
         OriginalImageThunkData = (PIMAGE_THUNK_DATA)ImgbVirtualAddressToData(ImgbNtHeader,
-            ImportDescriptor->OriginalFirstThunk);
+                                                                             ImportDescriptor->OriginalFirstThunk);
         ImageThunkData = (PIMAGE_THUNK_DATA)ImgbVirtualAddressToData(ImgbNtHeader,
-            ImportDescriptor->FirstThunk);
+                                                                     ImportDescriptor->FirstThunk);
 
-        while (ImageThunkData->u1.Ordinal != 0) {
+        while (ImageThunkData->u1.Ordinal != 0)
+        {
 
             //
             // Verify that the original image thunk data matches the actual
@@ -453,16 +471,18 @@ ImgbProcessInputImportDescriptors(
             // with ordinals.
             //
 
-            if (OriginalImageThunkData->u1.Ordinal != ImageThunkData->u1.Ordinal) {
+            if (OriginalImageThunkData->u1.Ordinal != ImageThunkData->u1.Ordinal)
+            {
                 ImgbResourcePrintErrorAndExit(IDS_INVALID_CORRUPT_INPUT_FILE,
-                    ImgbInputFilePath);
+                                              ImgbInputFilePath);
             }
 
             //
             // Verify that this is a ordinal import.
             //
 
-            if (!IMAGE_SNAP_BY_ORDINAL(ImageThunkData->u1.Ordinal)) {
+            if (!IMAGE_SNAP_BY_ORDINAL(ImageThunkData->u1.Ordinal))
+            {
                 ImgbResourcePrintErrorAndExit(IDS_CANNOT_IMPORT_BY_NAME, ImageName);
             }
 
@@ -491,7 +511,8 @@ ImgbProcessInputImportDescriptors(
     // import from anything besides the kernel.
     //
 
-    if (NumberOfNonKernelImports != 0) {
+    if (NumberOfNonKernelImports != 0)
+    {
 
         ImgbXbeImageHeader->ImportDescriptorHeader.NumberOfNonKernelImports =
             NumberOfNonKernelImports;
@@ -513,17 +534,16 @@ ImgbProcessInputImportDescriptors(
         //
 
         InsertTailList(&ImgbXbeImageHeader->HeadersListHead,
-            &ImgbXbeImageHeader->ImportDescriptorHeader.HeadersListEntry);
-
-    } else {
+                       &ImgbXbeImageHeader->ImportDescriptorHeader.HeadersListEntry);
+    }
+    else
+    {
         ImgbXbeImageHeader->ImportDescriptorHeader.VirtualSize = 0;
     }
 }
 
-VOID
-ImgbProcessInputTlsDirectory(
-    VOID
-    )
+VOID ImgbProcessInputTlsDirectory(
+    VOID)
 {
     PIMAGE_TLS_DIRECTORY TlsDirectory;
     LPBYTE RawData;
@@ -533,7 +553,8 @@ ImgbProcessInputTlsDirectory(
     // There's only work to do if the TLS data directory entry is valid.
     //
 
-    if (ImgbNtHeader->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_TLS].Size != 0) {
+    if (ImgbNtHeader->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_TLS].Size != 0)
+    {
 
         TlsDirectory = (PIMAGE_TLS_DIRECTORY)
             ImgbImageDataDirectoryToData(ImgbNtHeader, IMAGE_DIRECTORY_ENTRY_TLS);
@@ -562,7 +583,8 @@ ImgbProcessInputTlsDirectory(
         // common).
         //
 
-        if ((TlsDirectory->EndAddressOfRawData - TlsDirectory->StartAddressOfRawData) != 0) {
+        if ((TlsDirectory->EndAddressOfRawData - TlsDirectory->StartAddressOfRawData) != 0)
+        {
 
             //
             // The linker doesn't bother to fill in SizeOfZeroFill.  The common
@@ -571,13 +593,15 @@ ImgbProcessInputTlsDirectory(
             //
 
             RawData = (LPBYTE)ImgbLoadAddressToData(ImgbNtHeader,
-                TlsDirectory->StartAddressOfRawData);
+                                                    TlsDirectory->StartAddressOfRawData);
             EndRawData = (LPBYTE)ImgbLoadAddressToData(ImgbNtHeader,
-                TlsDirectory->EndAddressOfRawData);
+                                                       TlsDirectory->EndAddressOfRawData);
 
-            while (EndRawData > RawData) {
+            while (EndRawData > RawData)
+            {
 
-                if (*(EndRawData - 1) != 0) {
+                if (*(EndRawData - 1) != 0)
+                {
                     break;
                 }
 
@@ -591,7 +615,8 @@ ImgbProcessInputTlsDirectory(
             // when we throw away discardable sections.
             //
 
-            if (EndRawData > RawData) {
+            if (EndRawData > RawData)
+            {
 
                 ImgbXbeImageHeader->TlsRawDataHeader.VirtualSize = EndRawData - RawData;
                 ImgbXbeImageHeader->TlsRawDataHeader.RawData = RawData;
@@ -601,22 +626,21 @@ ImgbProcessInputTlsDirectory(
                 //
 
                 InsertTailList(&ImgbXbeImageHeader->HeadersListHead,
-                    &ImgbXbeImageHeader->TlsRawDataHeader.HeadersListEntry);
+                               &ImgbXbeImageHeader->TlsRawDataHeader.HeadersListEntry);
             }
         }
     }
 }
 
-VOID
-ImgbPrintUnapprovedLibraryWarning(
+VOID ImgbPrintUnapprovedLibraryWarning(
     PXBEIMAGE_LIBRARY_VERSION LibraryVersion,
-    int ApprovalLevel
-    )
+    int ApprovalLevel)
 {
     char LibraryName[9];
     int ids;
 
-    switch(ApprovalLevel) {
+    switch (ApprovalLevel)
+    {
     default:
         ids = IDS_UNAPPROVED;
         break;
@@ -628,19 +652,18 @@ ImgbPrintUnapprovedLibraryWarning(
         break;
     }
 
-    if(ApprovalLevel >= 0)
+    if (ApprovalLevel >= 0)
         LibraryVersion->ApprovedLibrary = ApprovalLevel;
-    if(!ImgbNoWarnLibraryApproval) {
+    if (!ImgbNoWarnLibraryApproval)
+    {
         memcpy(LibraryName, LibraryVersion->LibraryName, 8);
         LibraryName[8] = 0;
         ImgbResourcePrintWarning(ids, LibraryName);
     }
 }
 
-VOID
-ImgbProcessLibraryVersions(
-    VOID
-    )
+VOID ImgbProcessLibraryVersions(
+    VOID)
 {
     PIMAGE_SECTION_HEADER SectionHeader;
     ULONG SectionIndex;
@@ -655,10 +678,11 @@ ImgbProcessLibraryVersions(
     ImgbXbeImageHeader->LibraryVersionHeader.XapiOffset = MAXULONG;
     XapiLibraryVersion = NULL;
 
-    SectionHeader = ImgbNameToSectionHeader(ImgbNtHeader, (PUCHAR)".xbld",
-        &SectionIndex);
+    SectionHeader = ImgbNameToSectionHeader(ImgbNtHeader, (PUCHAR) ".xbld",
+                                            &SectionIndex);
 
-    if (SectionHeader != NULL) {
+    if (SectionHeader != NULL)
+    {
 
         //
         // The .XBLD section should be marked as discardable.  We're going to
@@ -669,19 +693,18 @@ ImgbProcessLibraryVersions(
         // to need to make a copy of the version stamps so that we can
         // compress out the empty space
         //
-        
+
         StartingLibraryVersion = (PXBEIMAGE_LIBRARY_VERSION)
             ImgbAllocateMemory(SectionHeader->Misc.VirtualSize);
-        
+
         //
         // Compute the starting and ending pointers to the library versions.
         //
 
         SourceLibraryVersion =
             (PXBEIMAGE_LIBRARY_VERSION)ImgbVirtualAddressToData(ImgbNtHeader,
-            SectionHeader->VirtualAddress);
-        EndingLibraryVersion = (PXBEIMAGE_LIBRARY_VERSION)
-            ((PUCHAR)SourceLibraryVersion + (SectionHeader->Misc.VirtualSize));
+                                                                SectionHeader->VirtualAddress);
+        EndingLibraryVersion = (PXBEIMAGE_LIBRARY_VERSION)((PUCHAR)SourceLibraryVersion + (SectionHeader->Misc.VirtualSize));
 
         ImgbXbeImageHeader->LibraryVersionHeader.LibraryVersions =
             StartingLibraryVersion;
@@ -693,30 +716,33 @@ ImgbProcessLibraryVersions(
 
         LibraryVersion = StartingLibraryVersion;
 
-        while (SourceLibraryVersion + 1 <= EndingLibraryVersion) {
+        while (SourceLibraryVersion + 1 <= EndingLibraryVersion)
+        {
 
-            if(*(PULONG)SourceLibraryVersion == 0) {
+            if (*(PULONG)SourceLibraryVersion == 0)
+            {
 
                 //
                 // Filler from the ilink.  Skip one dword and try again
                 //
 
-                SourceLibraryVersion = (PXBEIMAGE_LIBRARY_VERSION)
-                    ((ULONG_PTR)SourceLibraryVersion + sizeof(ULONG));
+                SourceLibraryVersion = (PXBEIMAGE_LIBRARY_VERSION)((ULONG_PTR)SourceLibraryVersion + sizeof(ULONG));
                 continue;
             }
 
             memcpy(LibraryVersion, SourceLibraryVersion,
-                sizeof(XBEIMAGE_LIBRARY_VERSION));
+                   sizeof(XBEIMAGE_LIBRARY_VERSION));
             ++SourceLibraryVersion;
 
-            if (memcmp(LibraryVersion->LibraryName, "XBOXKRNL", XBEIMAGE_LIBRARY_VERSION_NAME_LENGTH) == 0) {
+            if (memcmp(LibraryVersion->LibraryName, "XBOXKRNL", XBEIMAGE_LIBRARY_VERSION_NAME_LENGTH) == 0)
+            {
                 ImgbXbeImageHeader->LibraryVersionHeader.XboxKernelOffset =
                     (PUCHAR)LibraryVersion - (PUCHAR)StartingLibraryVersion;
             }
 
             if ((memcmp(LibraryVersion->LibraryName, "XAPILIB\0", XBEIMAGE_LIBRARY_VERSION_NAME_LENGTH) == 0) ||
-                (memcmp(LibraryVersion->LibraryName, "XAPILIBD", XBEIMAGE_LIBRARY_VERSION_NAME_LENGTH) == 0)) {
+                (memcmp(LibraryVersion->LibraryName, "XAPILIBD", XBEIMAGE_LIBRARY_VERSION_NAME_LENGTH) == 0))
+            {
                 ImgbXbeImageHeader->LibraryVersionHeader.XapiOffset =
                     (PUCHAR)LibraryVersion - (PUCHAR)StartingLibraryVersion;
                 XapiLibraryVersion = LibraryVersion;
@@ -730,21 +756,19 @@ ImgbProcessLibraryVersions(
         ImgbXbeImageHeader->LibraryVersionHeader.VirtualSize =
             (PUCHAR)LibraryVersion - (PUCHAR)StartingLibraryVersion;
 
-
         //
         // Check the library approval status
         //
 
         ApprovedStatus = CheckLibraryApprovalStatus(XapiLibraryVersion,
-            StartingLibraryVersion, LibraryVersion -
-            StartingLibraryVersion, ImgbPrintUnapprovedLibraryWarning);
+                                                    StartingLibraryVersion, LibraryVersion - StartingLibraryVersion, ImgbPrintUnapprovedLibraryWarning);
 
         //
         // Attach the library version header to the list of headers.
         //
 
         InsertTailList(&ImgbXbeImageHeader->HeadersListHead,
-            &ImgbXbeImageHeader->LibraryVersionHeader.HeadersListEntry);
+                       &ImgbXbeImageHeader->LibraryVersionHeader.HeadersListEntry);
     }
 
     //
@@ -752,11 +776,13 @@ ImgbProcessLibraryVersions(
     // out a warning.
     //
 
-    if (ImgbXbeImageHeader->LibraryVersionHeader.XboxKernelOffset == MAXULONG) {
+    if (ImgbXbeImageHeader->LibraryVersionHeader.XboxKernelOffset == MAXULONG)
+    {
         ImgbResourcePrintWarning(IDS_NO_VERSION_DETECTED, "XBOXKRNL");
     }
 
-    if (ImgbXbeImageHeader->LibraryVersionHeader.XapiOffset == MAXULONG) {
+    if (ImgbXbeImageHeader->LibraryVersionHeader.XapiOffset == MAXULONG)
+    {
         ImgbResourcePrintWarning(IDS_NO_VERSION_DETECTED, "XAPI");
     }
 
@@ -764,7 +790,7 @@ ImgbProcessLibraryVersions(
     // Check to see whether we're linking to any imports other than the kernel
     //
 
-    if(!ImgbNoWarnLibraryApproval &&
+    if (!ImgbNoWarnLibraryApproval &&
         ImgbXbeImageHeader->ImportDescriptorHeader.VirtualSize != 0)
     {
         ImgbResourcePrintWarning(IDS_UNAPPROVED, "<debug extension import>");
@@ -775,14 +801,12 @@ ImgbProcessLibraryVersions(
     // If we're linking to any unapproved libraries, the print out a warning
     //
 
-    if(ApprovedStatus < 2 && !ImgbNoWarnLibraryApproval)
+    if (ApprovedStatus < 2 && !ImgbNoWarnLibraryApproval)
         ImgbResourcePrintWarning(IDS_APPROVAL);
 }
 
-VOID
-ImgbAddDebugPaths(
-    VOID
-    )
+VOID ImgbAddDebugPaths(
+    VOID)
 {
     //
     // Compute the size of the header.  We need enough space to write out the
@@ -799,13 +823,11 @@ ImgbAddDebugPaths(
     //
 
     InsertTailList(&ImgbXbeImageHeader->HeadersListHead,
-        &ImgbXbeImageHeader->DebugPathsHeader.HeadersListEntry);
+                   &ImgbXbeImageHeader->DebugPathsHeader.HeadersListEntry);
 }
 
-VOID
-ImgbCheckDuplicateInsertFileSection(
-    PIMGB_INSERTFILE CheckInsertFileLink
-    )
+VOID ImgbCheckDuplicateInsertFileSection(
+    PIMGB_INSERTFILE CheckInsertFileLink)
 {
     PLIST_ENTRY NextListEntry;
     PIMGB_INSERTFILE InsertFileLink;
@@ -820,14 +842,16 @@ ImgbCheckDuplicateInsertFileSection(
 
     NextListEntry = ImgbInsertFileList.Flink;
 
-    while (NextListEntry != &CheckInsertFileLink->ListEntry) {
+    while (NextListEntry != &CheckInsertFileLink->ListEntry)
+    {
 
         InsertFileLink = CONTAINING_RECORD(NextListEntry, IMGB_INSERTFILE,
-            ListEntry);
+                                           ListEntry);
 
-        if (_stricmp(InsertFileLink->SectionName, CheckInsertFileLink->SectionName) == 0) {
+        if (_stricmp(InsertFileLink->SectionName, CheckInsertFileLink->SectionName) == 0)
+        {
             ImgbResourcePrintErrorAndExit(IDS_INSERTFILE_CONFLICTING_NAME,
-                CheckInsertFileLink->SectionName);
+                                          CheckInsertFileLink->SectionName);
         }
 
         NextListEntry = InsertFileLink->ListEntry.Flink;
@@ -840,14 +864,16 @@ ImgbCheckDuplicateInsertFileSection(
     SectionHeader = IMAGE_FIRST_SECTION(ImgbNtHeader);
     SectionsRemaining = ImgbNtHeader->FileHeader.NumberOfSections;
 
-    while (SectionsRemaining) {
+    while (SectionsRemaining)
+    {
 
         memcpy(SectionName, SectionHeader->Name, IMAGE_SIZEOF_SHORT_NAME);
         SectionName[IMAGE_SIZEOF_SHORT_NAME] = '\0';
 
-        if (_stricmp((PSTR)SectionName, CheckInsertFileLink->SectionName) == 0) {
+        if (_stricmp((PSTR)SectionName, CheckInsertFileLink->SectionName) == 0)
+        {
             ImgbResourcePrintErrorAndExit(IDS_INSERTFILE_CONFLICTING_EXE,
-                CheckInsertFileLink->SectionName);
+                                          CheckInsertFileLink->SectionName);
         }
 
         SectionHeader++;
@@ -855,10 +881,8 @@ ImgbCheckDuplicateInsertFileSection(
     }
 }
 
-VOID
-ImgbProcessInsertFiles(
-    VOID
-    )
+VOID ImgbProcessInsertFiles(
+    VOID)
 {
     PLIST_ENTRY NextListEntry;
     PIMGB_INSERTFILE InsertFileLink;
@@ -869,7 +893,8 @@ ImgbProcessInsertFiles(
     // Bail out early if there's no files to be inserted.
     //
 
-    if (IsListEmpty(&ImgbInsertFileList)) {
+    if (IsListEmpty(&ImgbInsertFileList))
+    {
         return;
     }
 
@@ -881,10 +906,11 @@ ImgbProcessInsertFiles(
 
     NextListEntry = ImgbInsertFileList.Flink;
 
-    while (NextListEntry != &ImgbInsertFileList) {
+    while (NextListEntry != &ImgbInsertFileList)
+    {
 
         InsertFileLink = CONTAINING_RECORD(NextListEntry, IMGB_INSERTFILE,
-            ListEntry);
+                                           ListEntry);
 
         ImgbCheckDuplicateInsertFileSection(InsertFileLink);
 
@@ -898,17 +924,19 @@ ImgbProcessInsertFiles(
     RelativeLoadAddress = ImgbXbeImageHeader->SizeOfExecutableImage;
     NextListEntry = ImgbInsertFileList.Flink;
 
-    while (NextListEntry != &ImgbInsertFileList) {
+    while (NextListEntry != &ImgbInsertFileList)
+    {
 
         InsertFileLink = CONTAINING_RECORD(NextListEntry, IMGB_INSERTFILE,
-            ListEntry);
+                                           ListEntry);
 
         //
         // If we don't already know that the section is a no preload section,
         // then go check the no preload list.
         //
 
-        if (!InsertFileLink->NoPreload) {
+        if (!InsertFileLink->NoPreload)
+        {
             InsertFileLink->NoPreload = ImgbSearchNoPreloadList(InsertFileLink->SectionName);
         }
 
@@ -917,12 +945,13 @@ ImgbProcessInsertFiles(
         //
 
         InsertFileLink->FileHandle = CreateFile(InsertFileLink->FilePath,
-            GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN,
-            NULL);
+                                                GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN,
+                                                NULL);
 
-        if (InsertFileLink->FileHandle == INVALID_HANDLE_VALUE) {
+        if (InsertFileLink->FileHandle == INVALID_HANDLE_VALUE)
+        {
             ImgbResourcePrintErrorAndExit(IDS_CANNOT_OPEN_INPUT_FILE,
-                InsertFileLink->FilePath);
+                                          InsertFileLink->FilePath);
         }
 
         //
@@ -931,20 +960,23 @@ ImgbProcessInsertFiles(
 
         InsertFileLink->FileSize = GetFileSize(InsertFileLink->FileHandle, NULL);
 
-        if (InsertFileLink->FileSize == INVALID_FILE_SIZE) {
+        if (InsertFileLink->FileSize == INVALID_FILE_SIZE)
+        {
             ImgbResourcePrintErrorAndExit(IDS_CANNOT_READ_INPUT_FILE,
-                InsertFileLink->FilePath);
+                                          InsertFileLink->FilePath);
         }
 
         AlignedFileSize = (InsertFileLink->FileSize +
-            IMGB_INSERTFILE_SECTION_ALIGNMENT - 1) & ~(IMGB_INSERTFILE_SECTION_ALIGNMENT - 1);
+                           IMGB_INSERTFILE_SECTION_ALIGNMENT - 1) &
+                          ~(IMGB_INSERTFILE_SECTION_ALIGNMENT - 1);
 
         //
         // Verify that adding this file doesn't throw us over the maximum
         // allowed size for an XBE image.
         //
 
-        if ((ULONGLONG)RelativeLoadAddress + AlignedFileSize > IMGB_MAXIMUM_IMAGE_SIZE) {
+        if ((ULONGLONG)RelativeLoadAddress + AlignedFileSize > IMGB_MAXIMUM_IMAGE_SIZE)
+        {
             ImgbResourcePrintErrorAndExit(IDS_IMAGE_TOO_LARGE);
         }
 
@@ -973,7 +1005,8 @@ ImgbProcessInsertFiles(
         // then we'll need another shared page reference counter.
         //
 
-        if (PAGE_ALIGN(RelativeLoadAddress) != PAGE_ALIGN(RelativeLoadAddress - 1)) {
+        if (PAGE_ALIGN(RelativeLoadAddress) != PAGE_ALIGN(RelativeLoadAddress - 1))
+        {
             ImgbXbeImageHeader->SectionHeaders.NumberOfSharedPageReferenceCounts++;
         }
 
@@ -984,7 +1017,8 @@ ImgbProcessInsertFiles(
         //
 
         if (PAGE_ALIGN(RelativeLoadAddress) !=
-            PAGE_ALIGN(RelativeLoadAddress + AlignedFileSize - 1)) {
+            PAGE_ALIGN(RelativeLoadAddress + AlignedFileSize - 1))
+        {
             ImgbXbeImageHeader->SectionHeaders.NumberOfSharedPageReferenceCounts++;
         }
 
@@ -994,13 +1028,11 @@ ImgbProcessInsertFiles(
     }
 
     ImgbXbeImageHeader->SizeOfInsertFilesImage = RelativeLoadAddress -
-        ImgbXbeImageHeader->SizeOfExecutableImage;
+                                                 ImgbXbeImageHeader->SizeOfExecutableImage;
 }
 
-VOID
-ImgbLayoutOutputHeaders(
-    VOID
-    )
+VOID ImgbLayoutOutputHeaders(
+    VOID)
 {
     ULONG SizeOfHeaders;
     PLIST_ENTRY NextListEntry;
@@ -1018,17 +1050,19 @@ ImgbLayoutOutputHeaders(
 
     NextListEntry = ImgbXbeImageHeader->HeadersListHead.Flink;
 
-    while (NextListEntry != &ImgbXbeImageHeader->HeadersListHead) {
+    while (NextListEntry != &ImgbXbeImageHeader->HeadersListHead)
+    {
 
         GenericHeader = CONTAINING_RECORD(NextListEntry, IMGB_GENERIC_HEADER,
-            HeadersListEntry);
+                                          HeadersListEntry);
 
         //
         // Compute how many bytes this portion of the header contributes to the
         // overall header.
         //
 
-        if (GenericHeader->VirtualSize != 0) {
+        if (GenericHeader->VirtualSize != 0)
+        {
 
             //
             // Align the total header size up to a DWORD boundary.
@@ -1048,8 +1082,9 @@ ImgbLayoutOutputHeaders(
             //
 
             SizeOfHeaders += GenericHeader->VirtualSize;
-
-        } else {
+        }
+        else
+        {
             GenericHeader->VirtualAddress = 0;
         }
 
@@ -1078,7 +1113,8 @@ ImgbLayoutOutputHeaders(
         ImgbXbeImageHeader->SizeOfExecutableImage +
         ImgbXbeImageHeader->SizeOfInsertFilesImage;
 
-    if (ImgbXbeImageHeader->ImageHeader.SizeOfImage > IMGB_MAXIMUM_IMAGE_SIZE) {
+    if (ImgbXbeImageHeader->ImageHeader.SizeOfImage > IMGB_MAXIMUM_IMAGE_SIZE)
+    {
         ImgbResourcePrintErrorAndExit(IDS_IMAGE_TOO_LARGE);
     }
 
@@ -1087,40 +1123,47 @@ ImgbLayoutOutputHeaders(
     // virtual addresses of these headers in the main image header.
     //
 
-    if (ImgbXbeImageHeader->CertificateHeader.VirtualSize != 0) {
+    if (ImgbXbeImageHeader->CertificateHeader.VirtualSize != 0)
+    {
         ImgbXbeImageHeader->ImageHeader.Certificate =
             ImgbXbeImageHeader->CertificateHeader.VirtualAddress;
     }
 
-    if (ImgbXbeImageHeader->SectionHeaders.VirtualSize != 0) {
+    if (ImgbXbeImageHeader->SectionHeaders.VirtualSize != 0)
+    {
         ImgbXbeImageHeader->ImageHeader.SectionHeaders =
             ImgbXbeImageHeader->SectionHeaders.VirtualAddress;
     }
 
-    if (ImgbXbeImageHeader->ImportDescriptorHeader.VirtualSize != 0) {
+    if (ImgbXbeImageHeader->ImportDescriptorHeader.VirtualSize != 0)
+    {
         ImgbXbeImageHeader->ImageHeader.ImportDirectory =
             ImgbXbeImageHeader->ImportDescriptorHeader.VirtualAddress;
     }
 
-    if (ImgbXbeImageHeader->LibraryVersionHeader.VirtualSize != 0) {
+    if (ImgbXbeImageHeader->LibraryVersionHeader.VirtualSize != 0)
+    {
 
         ImgbXbeImageHeader->ImageHeader.LibraryVersions =
             ImgbXbeImageHeader->LibraryVersionHeader.VirtualAddress;
 
-        if (ImgbXbeImageHeader->LibraryVersionHeader.XboxKernelOffset != MAXULONG) {
+        if (ImgbXbeImageHeader->LibraryVersionHeader.XboxKernelOffset != MAXULONG)
+        {
             ImgbXbeImageHeader->ImageHeader.XboxKernelLibraryVersion =
                 ImgbXbeImageHeader->LibraryVersionHeader.VirtualAddress +
                 ImgbXbeImageHeader->LibraryVersionHeader.XboxKernelOffset;
         }
 
-        if (ImgbXbeImageHeader->LibraryVersionHeader.XapiOffset != MAXULONG) {
+        if (ImgbXbeImageHeader->LibraryVersionHeader.XapiOffset != MAXULONG)
+        {
             ImgbXbeImageHeader->ImageHeader.XapiLibraryVersion =
                 ImgbXbeImageHeader->LibraryVersionHeader.VirtualAddress +
                 ImgbXbeImageHeader->LibraryVersionHeader.XapiOffset;
         }
     }
 
-    if (ImgbXbeImageHeader->DebugPathsHeader.VirtualSize != 0) {
+    if (ImgbXbeImageHeader->DebugPathsHeader.VirtualSize != 0)
+    {
 
         ImgbXbeImageHeader->ImageHeader.DebugUnicodeFileName =
             ImgbXbeImageHeader->DebugPathsHeader.VirtualAddress;
@@ -1134,7 +1177,8 @@ ImgbLayoutOutputHeaders(
             (ULONG)(ImgbInputFileFilePart - ImgbInputFileFullPath);
     }
 
-    if (ImgbXbeImageHeader->MicrosoftLogoHeader.VirtualSize != 0) {
+    if (ImgbXbeImageHeader->MicrosoftLogoHeader.VirtualSize != 0)
+    {
         ImgbXbeImageHeader->ImageHeader.MicrosoftLogo =
             ImgbXbeImageHeader->MicrosoftLogoHeader.VirtualAddress;
         ImgbXbeImageHeader->ImageHeader.SizeOfMicrosoftLogo =
@@ -1142,10 +1186,8 @@ ImgbLayoutOutputHeaders(
     }
 }
 
-VOID
-ImgbAddPEHeader(
-    VOID
-    )
+VOID ImgbAddPEHeader(
+    VOID)
 {
     ULONG SizeOfNtHeaders;
     ULONG AdjustedSizeOfHeaders;
@@ -1158,7 +1200,8 @@ ImgbAddPEHeader(
 
     SizeOfNtHeaders = IMAGE_FIRST_SECTION(ImgbNtHeader)->VirtualAddress;
 
-    if (ImgbEmitPEHeader) {
+    if (ImgbEmitPEHeader)
+    {
 
         //
         // The first section will start on a page boundary.  Take the current size
@@ -1183,7 +1226,7 @@ ImgbAddPEHeader(
         //
 
         InsertTailList(&ImgbXbeImageHeader->HeadersListHead,
-            &ImgbXbeImageHeader->PEHeaderHeader.HeadersListEntry);
+                       &ImgbXbeImageHeader->PEHeaderHeader.HeadersListEntry);
 
         //
         // Compute the number of bytes required to map the header, the executable
@@ -1195,11 +1238,13 @@ ImgbAddPEHeader(
             ImgbXbeImageHeader->SizeOfExecutableImage +
             ImgbXbeImageHeader->SizeOfInsertFilesImage;
 
-        if (ImgbXbeImageHeader->ImageHeader.SizeOfImage > IMGB_MAXIMUM_IMAGE_SIZE) {
+        if (ImgbXbeImageHeader->ImageHeader.SizeOfImage > IMGB_MAXIMUM_IMAGE_SIZE)
+        {
             ImgbResourcePrintErrorAndExit(IDS_IMAGE_TOO_LARGE);
         }
-
-    } else {
+    }
+    else
+    {
         AdjustedSizeOfHeaders =
             ROUND_TO_PAGES(ImgbXbeImageHeader->ImageHeader.SizeOfHeaders);
     }
@@ -1210,14 +1255,12 @@ ImgbAddPEHeader(
 
     ImgbXbeImageHeader->ImageHeader.NtBaseOfDll =
         ImgbXbeImageHeader->PEHeaderHeader.VirtualAddress =
-        XBEIMAGE_STANDARD_BASE_ADDRESS + AdjustedSizeOfHeaders -
-        SizeOfNtHeaders;
+            XBEIMAGE_STANDARD_BASE_ADDRESS + AdjustedSizeOfHeaders -
+            SizeOfNtHeaders;
 }
 
-VOID
-ImgbRelocateImageAfterHeaders(
-    VOID
-    )
+VOID ImgbRelocateImageAfterHeaders(
+    VOID)
 {
     ULONG SizeOfHeadersPageAligned;
     ULONG NewBaseAddress;
@@ -1235,7 +1278,7 @@ ImgbRelocateImageAfterHeaders(
     //
 
     NewBaseAddress = XBEIMAGE_STANDARD_BASE_ADDRESS + SizeOfHeadersPageAligned -
-        IMAGE_FIRST_SECTION(ImgbNtHeader)->VirtualAddress;
+                     IMAGE_FIRST_SECTION(ImgbNtHeader)->VirtualAddress;
 
     //
     // Verify that the image still has its relocation records.
@@ -1243,35 +1286,39 @@ ImgbRelocateImageAfterHeaders(
 
     RelocationBytesRemaining = ImgbNtHeader->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_BASERELOC].Size;
 
-    if (RelocationBytesRemaining == 0) {
+    if (RelocationBytesRemaining == 0)
+    {
         ImgbResourcePrintErrorAndExit(IDS_MISSING_RELOCATIONS);
     }
 
     RelocationBlock = (PIMAGE_BASE_RELOCATION)ImgbImageDataDirectoryToData(ImgbNtHeader,
-        IMAGE_DIRECTORY_ENTRY_BASERELOC);
+                                                                           IMAGE_DIRECTORY_ENTRY_BASERELOC);
 
     //
     // Relocate the image.
     //
 
     ImgbRelocateImage(ImgbNtHeader, (ULONG)ImgbNtHeader->OptionalHeader.ImageBase,
-        NewBaseAddress, RelocationBlock, RelocationBytesRemaining);
+                      NewBaseAddress, RelocationBlock, RelocationBytesRemaining);
 
     //
     // Relocate the addresses stored in the XBE image header.
     //
 
-    if (ImgbXbeImageHeader->ImageHeader.AddressOfEntryPoint != NULL) {
+    if (ImgbXbeImageHeader->ImageHeader.AddressOfEntryPoint != NULL)
+    {
         ImgbXbeImageHeader->ImageHeader.AddressOfEntryPoint =
             ImgbXbeImageHeader->ImageHeader.AddressOfEntryPoint + NewBaseAddress;
     }
 
-    if (ImgbXbeImageHeader->ImageHeader.XboxKernelThunkData != NULL) {
+    if (ImgbXbeImageHeader->ImageHeader.XboxKernelThunkData != NULL)
+    {
         ImgbXbeImageHeader->ImageHeader.XboxKernelThunkData =
             ImgbXbeImageHeader->ImageHeader.XboxKernelThunkData + NewBaseAddress;
     }
 
-    if (ImgbXbeImageHeader->ImageHeader.TlsDirectory != NULL) {
+    if (ImgbXbeImageHeader->ImageHeader.TlsDirectory != NULL)
+    {
 
         ImgbXbeImageHeader->ImageHeader.TlsDirectory =
             ImgbXbeImageHeader->ImageHeader.TlsDirectory + NewBaseAddress;
@@ -1298,83 +1345,79 @@ ImgbRelocateImageAfterHeaders(
     ImgbXbeImageHeader->NewBaseAddress = NewBaseAddress;
 }
 
-VOID
-ImgbWriteOutputFile(
+VOID ImgbWriteOutputFile(
     LPCVOID lpvBuffer,
-    DWORD cbNumberOfBytes
-    )
+    DWORD cbNumberOfBytes)
 {
     DWORD cbWritten;
 
     if (!WriteFile(ImgbOutputFileHandle, lpvBuffer, cbNumberOfBytes, &cbWritten,
-        NULL) || (cbWritten != cbNumberOfBytes)) {
+                   NULL) ||
+        (cbWritten != cbNumberOfBytes))
+    {
         ImgbResourcePrintErrorAndExit(IDS_CANNOT_WRITE_OUTPUT_FILE, ImgbOutputFilePath);
     }
 }
 
-VOID
-ImgbSeekByteOutputFile(
-    ULONG dwFileByteOffset
-    )
+VOID ImgbSeekByteOutputFile(
+    ULONG dwFileByteOffset)
 {
     LARGE_INTEGER liByteOffset;
 
     liByteOffset.QuadPart = dwFileByteOffset;
 
-    if (!SetFilePointerEx(ImgbOutputFileHandle, liByteOffset, NULL, FILE_BEGIN)) {
+    if (!SetFilePointerEx(ImgbOutputFileHandle, liByteOffset, NULL, FILE_BEGIN))
+    {
         ImgbResourcePrintErrorAndExit(IDS_CANNOT_WRITE_OUTPUT_FILE, ImgbOutputFilePath);
     }
 }
 
-VOID
-ImgbReadOutputFile(
+VOID ImgbReadOutputFile(
     LPVOID lpvBuffer,
-    DWORD cbNumberOfBytes
-    )
+    DWORD cbNumberOfBytes)
 {
     DWORD cbRead;
 
     if (!ReadFile(ImgbOutputFileHandle, lpvBuffer, cbNumberOfBytes, &cbRead,
-        NULL) || (cbRead != cbNumberOfBytes)) {
+                  NULL) ||
+        (cbRead != cbNumberOfBytes))
+    {
         ImgbResourcePrintErrorAndExit(IDS_CANNOT_WRITE_OUTPUT_FILE, ImgbOutputFilePath);
     }
 }
 
-VOID
-ImgbReadInputFile(
+VOID ImgbReadInputFile(
     LPVOID lpvBuffer,
-    DWORD cbNumberOfBytes
-    )
+    DWORD cbNumberOfBytes)
 {
     DWORD cbRead;
 
     if (!ReadFile(ImgbInputFileHandle, lpvBuffer, cbNumberOfBytes, &cbRead,
-        NULL) || (cbRead != cbNumberOfBytes)) {
+                  NULL) ||
+        (cbRead != cbNumberOfBytes))
+    {
         ImgbResourcePrintErrorAndExit(IDS_CANNOT_READ_INPUT_FILE, ImgbInputFilePath);
     }
 }
 
-VOID
-ImgbWriteZeroPadding(
-    ULONG NumberOfBytes
-    )
+VOID ImgbWriteZeroPadding(
+    ULONG NumberOfBytes)
 {
     BYTE Zeroes[1024];
     ULONG BytesThisPass;
 
     ZeroMemory(Zeroes, sizeof(Zeroes));
 
-    while (NumberOfBytes > 0) {
+    while (NumberOfBytes > 0)
+    {
         BytesThisPass = min(NumberOfBytes, sizeof(Zeroes));
         ImgbWriteOutputFile(Zeroes, BytesThisPass);
         NumberOfBytes -= BytesThisPass;
     }
 }
 
-VOID
-ImgbSignImageHeaders(
-    VOID
-    )
+VOID ImgbSignImageHeaders(
+    VOID)
 {
     PUCHAR PrivateKeyData;
     PXBEIMAGE_HEADER ImageHeader;
@@ -1403,14 +1446,14 @@ ImgbSignImageHeaders(
     //
 
     HeaderDigestLength = ImgbXbeImageHeader->ImageHeader.SizeOfHeaders -
-        FIELD_OFFSET(XBEIMAGE_HEADER, BaseAddress);
+                         FIELD_OFFSET(XBEIMAGE_HEADER, BaseAddress);
 
     //
     // Calculate the SHA1 digest for the headers.
     //
 
     XCCalcDigest((PUCHAR)&ImageHeader->BaseAddress, HeaderDigestLength,
-        HeaderDigest);
+                 HeaderDigest);
 
     ImgbFreeMemory(ImageHeader);
 
@@ -1419,7 +1462,7 @@ ImgbSignImageHeaders(
     //
 
     XCSignDigest(HeaderDigest, PrivateKeyData,
-        ImgbXbeImageHeader->ImageHeader.EncryptedDigest);
+                 ImgbXbeImageHeader->ImageHeader.EncryptedDigest);
 
     //
     // Write out the main image header with the encrypted header digest.
@@ -1429,10 +1472,8 @@ ImgbSignImageHeaders(
     ImgbWriteOutputFile(&ImgbXbeImageHeader->ImageHeader, sizeof(XBEIMAGE_HEADER));
 }
 
-VOID
-ImgbConfoundHeaderData(
-    VOID
-    )
+VOID ImgbConfoundHeaderData(
+    VOID)
 {
     ULONG *Key;
 
@@ -1440,7 +1481,7 @@ ImgbConfoundHeaderData(
     // Use part of the public key as the confounder
     //
 
-    Key = (ULONG*)&ImgbPublicKeyData[128];
+    Key = (ULONG *)&ImgbPublicKeyData[128];
 
     //
     // Confound the image base address and the location of the kernel import
@@ -1453,10 +1494,8 @@ ImgbConfoundHeaderData(
         Key[1] ^ Key[2];
 }
 
-VOID
-ImgbEmitOutputFile(
-    VOID
-    )
+VOID ImgbEmitOutputFile(
+    VOID)
 {
     PLIST_ENTRY NextListEntry;
     PIMGB_GENERIC_HEADER GenericHeader;
@@ -1474,18 +1513,20 @@ ImgbEmitOutputFile(
 
     NextListEntry = ImgbXbeImageHeader->HeadersListHead.Flink;
 
-    while (NextListEntry != &ImgbXbeImageHeader->HeadersListHead) {
+    while (NextListEntry != &ImgbXbeImageHeader->HeadersListHead)
+    {
 
         GenericHeader = CONTAINING_RECORD(NextListEntry, IMGB_GENERIC_HEADER,
-            HeadersListEntry);
+                                          HeadersListEntry);
 
         //
         // If this header is supposed to be emitted, then write it out.
         //
 
-        if (GenericHeader->VirtualSize != 0) {
+        if (GenericHeader->VirtualSize != 0)
+        {
             ImgbSeekByteOutputFile((ULONG)GenericHeader->VirtualAddress -
-                (ULONG)XBEIMAGE_STANDARD_BASE_ADDRESS);
+                                   (ULONG)XBEIMAGE_STANDARD_BASE_ADDRESS);
             GenericHeader->Write();
         }
 
@@ -1507,10 +1548,8 @@ ImgbEmitOutputFile(
     ImgbSignImageHeaders();
 }
 
-VOID
-_IMGB_XBEIMAGE_CERTIFICATE_HEADER::Write(
-    VOID
-    )
+VOID _IMGB_XBEIMAGE_CERTIFICATE_HEADER::Write(
+    VOID)
 {
     XBEIMAGE_CERTIFICATE Certificate;
 
@@ -1527,21 +1566,19 @@ _IMGB_XBEIMAGE_CERTIFICATE_HEADER::Write(
 
     RtlCopyMemory(Certificate.TitleName, ImgbTestTitleName, sizeof(ImgbTestTitleName));
     RtlCopyMemory(Certificate.AlternateTitleIDs, ImgbTestAlternateTitleIDs,
-        sizeof(ImgbTestAlternateTitleIDs));
+                  sizeof(ImgbTestAlternateTitleIDs));
 
     RtlCopyMemory(Certificate.LANKey, ImgbTestLANKey, XBEIMAGE_CERTIFICATE_KEY_LENGTH);
     RtlCopyMemory(Certificate.SignatureKey, ImgbTestSignatureKey, XBEIMAGE_CERTIFICATE_KEY_LENGTH);
 
     RtlCopyMemory(Certificate.AlternateSignatureKeys,
-        ImgbTestAlternateSignatureKeys, sizeof(ImgbTestAlternateSignatureKeys));
+                  ImgbTestAlternateSignatureKeys, sizeof(ImgbTestAlternateSignatureKeys));
 
     ImgbWriteOutputFile(&Certificate, sizeof(XBEIMAGE_CERTIFICATE));
 }
 
-VOID
-_IMGB_XBEIMAGE_IMPORT_DESCRIPTOR_HEADER::Write(
-    VOID
-    )
+VOID _IMGB_XBEIMAGE_IMPORT_DESCRIPTOR_HEADER::Write(
+    VOID)
 {
     ULONG ImportDirectoryByteOffset;
     ULONG ImportDirectoryNameByteOffset;
@@ -1557,10 +1594,10 @@ _IMGB_XBEIMAGE_IMPORT_DESCRIPTOR_HEADER::Write(
     //
 
     ImportDirectoryByteOffset = (ULONG)ImgbXbeImageHeader->ImportDescriptorHeader.VirtualAddress -
-        XBEIMAGE_STANDARD_BASE_ADDRESS;
+                                XBEIMAGE_STANDARD_BASE_ADDRESS;
     ImportDirectoryNameByteOffset = ImportDirectoryByteOffset +
-        (ImgbXbeImageHeader->ImportDescriptorHeader.NumberOfNonKernelImports + 1) *
-        sizeof(XBEIMAGE_IMPORT_DESCRIPTOR);
+                                    (ImgbXbeImageHeader->ImportDescriptorHeader.NumberOfNonKernelImports + 1) *
+                                        sizeof(XBEIMAGE_IMPORT_DESCRIPTOR);
 
     //
     // Walk through each of the import descriptors.
@@ -1571,13 +1608,15 @@ _IMGB_XBEIMAGE_IMPORT_DESCRIPTOR_HEADER::Write(
     ImportDescriptor = (PIMAGE_IMPORT_DESCRIPTOR)
         ImgbImageDataDirectoryToData(ImgbNtHeader, IMAGE_DIRECTORY_ENTRY_IMPORT);
 
-    while (ImportDescriptorBytesRemaining >= sizeof(IMAGE_IMPORT_DESCRIPTOR)) {
+    while (ImportDescriptorBytesRemaining >= sizeof(IMAGE_IMPORT_DESCRIPTOR))
+    {
 
         //
         // If we find the NULL import descriptor, then break out now.
         //
 
-        if (ImportDescriptor->Characteristics == 0) {
+        if (ImportDescriptor->Characteristics == 0)
+        {
             break;
         }
 
@@ -1588,10 +1627,11 @@ _IMGB_XBEIMAGE_IMPORT_DESCRIPTOR_HEADER::Write(
 
         ImageName = (LPCSTR)ImgbVirtualAddressToData(ImgbNtHeader, ImportDescriptor->Name);
 
-        if (_stricmp(ImageName, "xboxkrnl.exe") != 0) {
+        if (_stricmp(ImageName, "xboxkrnl.exe") != 0)
+        {
 
             MultiByteToWideChar(CP_ACP, 0, ImageName, -1, UnicodeImageName,
-                MAX_PATH);
+                                MAX_PATH);
 
             ImgbSeekByteOutputFile(ImportDirectoryNameByteOffset);
             ImgbWriteOutputFile(UnicodeImageName, wcslen(UnicodeImageName) * sizeof(WCHAR));
@@ -1600,7 +1640,7 @@ _IMGB_XBEIMAGE_IMPORT_DESCRIPTOR_HEADER::Write(
                 ImportDescriptor->FirstThunk +
                 ImgbXbeImageHeader->NewBaseAddress;
             XbeImportDescriptor.ImageName = ImportDirectoryNameByteOffset +
-                XBEIMAGE_STANDARD_BASE_ADDRESS;
+                                            XBEIMAGE_STANDARD_BASE_ADDRESS;
 
             ImgbSeekByteOutputFile(ImportDirectoryByteOffset);
             ImgbWriteOutputFile(&XbeImportDescriptor, sizeof(XBEIMAGE_IMPORT_DESCRIPTOR));
@@ -1628,29 +1668,24 @@ _IMGB_XBEIMAGE_IMPORT_DESCRIPTOR_HEADER::Write(
     ImgbWriteOutputFile(&XbeImportDescriptor, sizeof(XBEIMAGE_IMPORT_DESCRIPTOR));
 }
 
-VOID
-_IMGB_TLS_RAW_DATA_HEADER::Write(
-    VOID
-    )
+VOID _IMGB_TLS_RAW_DATA_HEADER::Write(
+    VOID)
 {
     ImgbWriteOutputFile(ImgbXbeImageHeader->TlsRawDataHeader.RawData,
-        ImgbXbeImageHeader->TlsRawDataHeader.VirtualSize);
+                        ImgbXbeImageHeader->TlsRawDataHeader.VirtualSize);
 }
 
-VOID
-_IMGB_XBEIMAGE_LIBRARY_VERSION_HEADER::Write(
-    VOID
-    )
+VOID _IMGB_XBEIMAGE_LIBRARY_VERSION_HEADER::Write(
+    VOID)
 {
     ImgbWriteOutputFile(ImgbXbeImageHeader->LibraryVersionHeader.LibraryVersions,
-        ImgbXbeImageHeader->LibraryVersionHeader.VirtualSize);
+                        ImgbXbeImageHeader->LibraryVersionHeader.VirtualSize);
 }
 
 BOOLEAN
 ImgbCheckForReadOnlyPage(
     PXBEIMAGE_SECTION SectionHeaders,
-    ULONG VirtualAddress
-    )
+    ULONG VirtualAddress)
 {
     ULONG Index;
     PXBEIMAGE_SECTION Section;
@@ -1663,8 +1698,9 @@ ImgbCheckForReadOnlyPage(
     //
 
     for (Index = 0, Section = SectionHeaders;
-        Index < ImgbXbeImageHeader->ImageHeader.NumberOfSections;
-        Index++, Section++) {
+         Index < ImgbXbeImageHeader->ImageHeader.NumberOfSections;
+         Index++, Section++)
+    {
 
         //
         // Only consider sections that have bytes allocated to them and that are
@@ -1672,13 +1708,15 @@ ImgbCheckForReadOnlyPage(
         //
 
         if ((Section->VirtualSize != 0) &&
-            ((Section->SectionFlags & XBEIMAGE_SECTION_WRITEABLE) != 0)) {
+            ((Section->SectionFlags & XBEIMAGE_SECTION_WRITEABLE) != 0))
+        {
 
             StartingAddress = (ULONG)(ULONG_PTR)PAGE_ALIGN(Section->VirtualAddress);
             EndingAddress = (ULONG)(ULONG_PTR)PAGE_ALIGN(Section->VirtualAddress +
-                Section->VirtualSize + PAGE_SIZE - 1);
+                                                         Section->VirtualSize + PAGE_SIZE - 1);
 
-            if (StartingAddress <= VirtualAddress && VirtualAddress < EndingAddress) {
+            if (StartingAddress <= VirtualAddress && VirtualAddress < EndingAddress)
+            {
                 return FALSE;
             }
         }
@@ -1687,10 +1725,8 @@ ImgbCheckForReadOnlyPage(
     return TRUE;
 }
 
-VOID
-ImgbPostProcessSectionHeaders(
-    VOID
-    )
+VOID ImgbPostProcessSectionHeaders(
+    VOID)
 {
     PXBEIMAGE_SECTION SectionHeaders;
     ULONG SectionHeaderByteOffset;
@@ -1699,10 +1735,10 @@ ImgbPostProcessSectionHeaders(
 
     SectionHeaders = (PXBEIMAGE_SECTION)
         ImgbAllocateMemory(ImgbXbeImageHeader->ImageHeader.NumberOfSections *
-        sizeof(XBEIMAGE_SECTION));
+                           sizeof(XBEIMAGE_SECTION));
 
     SectionHeaderByteOffset = (ULONG)ImgbXbeImageHeader->SectionHeaders.VirtualAddress -
-         XBEIMAGE_STANDARD_BASE_ADDRESS;
+                              XBEIMAGE_STANDARD_BASE_ADDRESS;
 
     //
     // Read the headers that we've written already written out to the file.
@@ -1710,7 +1746,7 @@ ImgbPostProcessSectionHeaders(
 
     ImgbSeekByteOutputFile(SectionHeaderByteOffset);
     ImgbReadOutputFile(SectionHeaders, ImgbXbeImageHeader->ImageHeader.NumberOfSections *
-        sizeof(XBEIMAGE_SECTION));
+                                           sizeof(XBEIMAGE_SECTION));
 
     //
     // Walk through the section headers and apply the head and tail read-only
@@ -1718,8 +1754,9 @@ ImgbPostProcessSectionHeaders(
     //
 
     for (Index = 0, Section = SectionHeaders;
-        Index < ImgbXbeImageHeader->ImageHeader.NumberOfSections;
-        Index++, Section++) {
+         Index < ImgbXbeImageHeader->ImageHeader.NumberOfSections;
+         Index++, Section++)
+    {
 
         //
         // Only consider sections that have bytes allocated to them and that is
@@ -1727,15 +1764,18 @@ ImgbPostProcessSectionHeaders(
         //
 
         if ((Section->VirtualSize != 0) &&
-            ((Section->SectionFlags & XBEIMAGE_SECTION_WRITEABLE) == 0)) {
+            ((Section->SectionFlags & XBEIMAGE_SECTION_WRITEABLE) == 0))
+        {
 
             if (ImgbCheckForReadOnlyPage(SectionHeaders,
-                Section->VirtualAddress)) {
+                                         Section->VirtualAddress))
+            {
                 Section->SectionFlags |= XBEIMAGE_SECTION_HEAD_PAGE_READONLY;
             }
 
             if (ImgbCheckForReadOnlyPage(SectionHeaders,
-                Section->VirtualAddress + Section->VirtualSize - 1)) {
+                                         Section->VirtualAddress + Section->VirtualSize - 1))
+            {
                 Section->SectionFlags |= XBEIMAGE_SECTION_TAIL_PAGE_READONLY;
             }
         }
@@ -1747,15 +1787,13 @@ ImgbPostProcessSectionHeaders(
 
     ImgbSeekByteOutputFile(SectionHeaderByteOffset);
     ImgbWriteOutputFile(SectionHeaders, ImgbXbeImageHeader->ImageHeader.NumberOfSections *
-        sizeof(XBEIMAGE_SECTION));
+                                            sizeof(XBEIMAGE_SECTION));
 
     ImgbFreeMemory(SectionHeaders);
 }
 
-VOID
-_IMGB_XBEIMAGE_SECTION_HEADERS::Write(
-    VOID
-    )
+VOID _IMGB_XBEIMAGE_SECTION_HEADERS::Write(
+    VOID)
 {
     ULONG SectionHeaderByteOffset;
     ULONG SectionHeaderNameByteOffset;
@@ -1784,18 +1822,18 @@ _IMGB_XBEIMAGE_SECTION_HEADERS::Write(
     A_SHA_CTX SHAHash;
 
     SectionHeaderByteOffset = (ULONG)ImgbXbeImageHeader->SectionHeaders.VirtualAddress -
-         XBEIMAGE_STANDARD_BASE_ADDRESS;
+                              XBEIMAGE_STANDARD_BASE_ADDRESS;
     SectionHeaderNameByteOffset = SectionHeaderByteOffset +
-        ImgbXbeImageHeader->ImageHeader.NumberOfSections * sizeof(XBEIMAGE_SECTION) +
-        ImgbXbeImageHeader->SectionHeaders.NumberOfSharedPageReferenceCounts * sizeof(USHORT);
+                                  ImgbXbeImageHeader->ImageHeader.NumberOfSections * sizeof(XBEIMAGE_SECTION) +
+                                  ImgbXbeImageHeader->SectionHeaders.NumberOfSharedPageReferenceCounts * sizeof(USHORT);
 
     //
     // Compute the base virtual address of the first section.
     //
 
     FirstSectionBaseAddress = XBEIMAGE_STANDARD_BASE_ADDRESS +
-        ROUND_TO_PAGES(ImgbXbeImageHeader->ImageHeader.SizeOfHeaders) -
-        IMAGE_FIRST_SECTION(ImgbNtHeader)->VirtualAddress;
+                              ROUND_TO_PAGES(ImgbXbeImageHeader->ImageHeader.SizeOfHeaders) -
+                              IMAGE_FIRST_SECTION(ImgbNtHeader)->VirtualAddress;
 
     //
     // Allocate stack storage to hold the file byte offsets of each of the image
@@ -1820,7 +1858,8 @@ _IMGB_XBEIMAGE_SECTION_HEADERS::Write(
     SectionHeader = IMAGE_FIRST_SECTION(ImgbNtHeader);
 
     for (CurrentSection = 0; CurrentSection < ImgbXbeImageHeader->SectionHeaders.NumberOfExecutableSections;
-        CurrentSection++, SectionHeader++) {
+         CurrentSection++, SectionHeader++)
+    {
 
         //
         // When building with a non-paged size alignment, the linker will always
@@ -1829,10 +1868,12 @@ _IMGB_XBEIMAGE_SECTION_HEADERS::Write(
         // data by scanning backwards for the first non-zero byte.
         //
 
-        if (SectionHeader->SizeOfRawData > 0) {
+        if (SectionHeader->SizeOfRawData > 0)
+        {
 
             EndOfSectionData = (PUCHAR)ImgbVirtualAddressToData(ImgbNtHeader,
-                SectionHeader->VirtualAddress) + SectionHeader->SizeOfRawData;
+                                                                SectionHeader->VirtualAddress) +
+                               SectionHeader->SizeOfRawData;
             RawDataRemaining = SectionHeader->SizeOfRawData;
 
             //
@@ -1841,9 +1882,11 @@ _IMGB_XBEIMAGE_SECTION_HEADERS::Write(
             //
 
             while ((RawDataRemaining > 0) &&
-                ((RawDataRemaining & (sizeof(ULONG) - 1)) != 0)) {
+                   ((RawDataRemaining & (sizeof(ULONG) - 1)) != 0))
+            {
 
-                if (*((PUCHAR)EndOfSectionData - 1) != 0) {
+                if (*((PUCHAR)EndOfSectionData - 1) != 0)
+                {
                     break;
                 }
 
@@ -1855,9 +1898,11 @@ _IMGB_XBEIMAGE_SECTION_HEADERS::Write(
             // Handle the aligned DWORDs.
             //
 
-            while (RawDataRemaining > sizeof(ULONG)) {
+            while (RawDataRemaining > sizeof(ULONG))
+            {
 
-                if (*((PULONG)EndOfSectionData - 1) != 0) {
+                if (*((PULONG)EndOfSectionData - 1) != 0)
+                {
                     break;
                 }
 
@@ -1868,7 +1913,8 @@ _IMGB_XBEIMAGE_SECTION_HEADERS::Write(
             SectionHeader->SizeOfRawData = RawDataRemaining;
         }
 
-        if ((SectionHeader->Characteristics & IMAGE_SCN_MEM_PRELOAD) != 0) {
+        if ((SectionHeader->Characteristics & IMAGE_SCN_MEM_PRELOAD) != 0)
+        {
 
             ImageFileByteOffsets[CurrentSection] = FileByteOffset;
             FileByteOffset += ROUND_TO_PAGES(SectionHeader->SizeOfRawData);
@@ -1882,12 +1928,14 @@ _IMGB_XBEIMAGE_SECTION_HEADERS::Write(
 
     NextListEntry = ImgbInsertFileList.Flink;
 
-    while (NextListEntry != &ImgbInsertFileList) {
+    while (NextListEntry != &ImgbInsertFileList)
+    {
 
         InsertFileLink = CONTAINING_RECORD(NextListEntry, IMGB_INSERTFILE,
-            ListEntry);
+                                           ListEntry);
 
-        if (!InsertFileLink->NoPreload) {
+        if (!InsertFileLink->NoPreload)
+        {
 
             InsertFileLink->FileByteOffset = FileByteOffset;
 
@@ -1905,17 +1953,19 @@ _IMGB_XBEIMAGE_SECTION_HEADERS::Write(
 
     NextListEntry = ImgbNoPreloadList.Flink;
 
-    while (NextListEntry != &ImgbNoPreloadList) {
+    while (NextListEntry != &ImgbNoPreloadList)
+    {
 
         NoPreloadLink = CONTAINING_RECORD(NextListEntry, IMGB_NOPRELOAD,
-            ListEntry);
+                                          ListEntry);
 
         SectionHeader = ImgbNameToSectionHeader(ImgbNtHeader,
-            (PUCHAR)NoPreloadLink->SectionName, &SectionIndex);
+                                                (PUCHAR)NoPreloadLink->SectionName, &SectionIndex);
 
         if ((SectionHeader != NULL) &&
             (SectionIndex < ImgbXbeImageHeader->SectionHeaders.NumberOfExecutableSections) &&
-            (ImageFileByteOffsets[SectionIndex] == 0)) {
+            (ImageFileByteOffsets[SectionIndex] == 0))
+        {
 
             ImageFileByteOffsets[SectionIndex] = FileByteOffset;
             FileByteOffset += ROUND_TO_PAGES(SectionHeader->SizeOfRawData);
@@ -1931,12 +1981,14 @@ _IMGB_XBEIMAGE_SECTION_HEADERS::Write(
 
     NextListEntry = ImgbInsertFileList.Flink;
 
-    while (NextListEntry != &ImgbInsertFileList) {
+    while (NextListEntry != &ImgbInsertFileList)
+    {
 
         InsertFileLink = CONTAINING_RECORD(NextListEntry, IMGB_INSERTFILE,
-            ListEntry);
+                                           ListEntry);
 
-        if (InsertFileLink->NoPreload) {
+        if (InsertFileLink->NoPreload)
+        {
 
             InsertFileLink->FileByteOffset = FileByteOffset;
 
@@ -1951,9 +2003,9 @@ _IMGB_XBEIMAGE_SECTION_HEADERS::Write(
     //
 
     SharedReferenceCount = (PUSHORT)(ULONG_PTR)(ImgbXbeImageHeader->SectionHeaders.VirtualAddress +
-        ImgbXbeImageHeader->ImageHeader.NumberOfSections * sizeof(XBEIMAGE_SECTION));
+                                                ImgbXbeImageHeader->ImageHeader.NumberOfSections * sizeof(XBEIMAGE_SECTION));
     EndingSharedReferenceCount = SharedReferenceCount +
-        ImgbXbeImageHeader->SectionHeaders.NumberOfSharedPageReferenceCounts;
+                                 ImgbXbeImageHeader->SectionHeaders.NumberOfSharedPageReferenceCounts;
     FirstSharedReferenceCount = TRUE;
 
     //
@@ -1964,11 +2016,15 @@ _IMGB_XBEIMAGE_SECTION_HEADERS::Write(
     SectionHeader = IMAGE_FIRST_SECTION(ImgbNtHeader);
 
     for (CurrentSection = 0; CurrentSection < ImgbXbeImageHeader->SectionHeaders.NumberOfExecutableSections;
-        CurrentSection++, SectionHeader++) {
+         CurrentSection++, SectionHeader++)
+    {
 
-        if (SectionHeader->SizeOfRawData > 0) {
+        if (SectionHeader->SizeOfRawData > 0)
+        {
             SectionData = ImgbVirtualAddressToData(ImgbNtHeader, SectionHeader->VirtualAddress);
-        } else {
+        }
+        else
+        {
             SectionData = NULL;
         }
 
@@ -2000,13 +2056,13 @@ _IMGB_XBEIMAGE_SECTION_HEADERS::Write(
         //
 
         XbeSection.VirtualAddress = SectionHeader->VirtualAddress +
-            FirstSectionBaseAddress;
+                                    FirstSectionBaseAddress;
         XbeSection.VirtualSize = max(SectionHeader->SizeOfRawData,
-            SectionHeader->Misc.VirtualSize);
+                                     SectionHeader->Misc.VirtualSize);
         XbeSection.PointerToRawData = ImageFileByteOffsets[CurrentSection];
         XbeSection.SizeOfRawData = SectionHeader->SizeOfRawData;
         XbeSection.SectionName = SectionHeaderNameByteOffset +
-            XBEIMAGE_STANDARD_BASE_ADDRESS;
+                                 XBEIMAGE_STANDARD_BASE_ADDRESS;
         XbeSection.SectionReferenceCount = 0;
 
         //
@@ -2015,11 +2071,13 @@ _IMGB_XBEIMAGE_SECTION_HEADERS::Write(
 
         XbeSection.SectionFlags = XBEIMAGE_SECTION_EXECUTABLE;
 
-        if ((SectionHeader->Characteristics & IMAGE_SCN_MEM_WRITE) != 0) {
+        if ((SectionHeader->Characteristics & IMAGE_SCN_MEM_WRITE) != 0)
+        {
             XbeSection.SectionFlags |= XBEIMAGE_SECTION_WRITEABLE;
         }
 
-        if ((SectionHeader->Characteristics & IMAGE_SCN_MEM_PRELOAD) != 0) {
+        if ((SectionHeader->Characteristics & IMAGE_SCN_MEM_PRELOAD) != 0)
+        {
             XbeSection.SectionFlags |= XBEIMAGE_SECTION_PRELOAD;
         }
 
@@ -2035,14 +2093,16 @@ _IMGB_XBEIMAGE_SECTION_HEADERS::Write(
         //
 
         if (!FirstSharedReferenceCount &&
-            (PAGE_ALIGN(XbeSection.VirtualAddress) != PAGE_ALIGN(LastEndingVirtualAddress))) {
+            (PAGE_ALIGN(XbeSection.VirtualAddress) != PAGE_ALIGN(LastEndingVirtualAddress)))
+        {
             SharedReferenceCount++;
         }
 
         XbeSection.HeadSharedPageReferenceCount = (XBEVA)(ULONG_PTR)SharedReferenceCount;
 
         if (PAGE_ALIGN(XbeSection.VirtualAddress) !=
-            PAGE_ALIGN(XbeSection.VirtualAddress + XbeSection.VirtualSize - 1)) {
+            PAGE_ALIGN(XbeSection.VirtualAddress + XbeSection.VirtualSize - 1))
+        {
             SharedReferenceCount++;
         }
 
@@ -2050,7 +2110,7 @@ _IMGB_XBEIMAGE_SECTION_HEADERS::Write(
 
         FirstSharedReferenceCount = FALSE;
         LastEndingVirtualAddress = XbeSection.VirtualAddress +
-            XbeSection.VirtualSize - 1;
+                                   XbeSection.VirtualSize - 1;
 
         //
         // Write out the section header.
@@ -2068,17 +2128,19 @@ _IMGB_XBEIMAGE_SECTION_HEADERS::Write(
     //
 
     InsertFileVirtualAddress = XBEIMAGE_STANDARD_BASE_ADDRESS +
-        ROUND_TO_PAGES(ImgbXbeImageHeader->ImageHeader.SizeOfHeaders) +
-        ImgbXbeImageHeader->SizeOfExecutableImage;
+                               ROUND_TO_PAGES(ImgbXbeImageHeader->ImageHeader.SizeOfHeaders) +
+                               ImgbXbeImageHeader->SizeOfExecutableImage;
     NextListEntry = ImgbInsertFileList.Flink;
 
-    while (NextListEntry != &ImgbInsertFileList) {
+    while (NextListEntry != &ImgbInsertFileList)
+    {
 
         InsertFileLink = CONTAINING_RECORD(NextListEntry, IMGB_INSERTFILE,
-            ListEntry);
+                                           ListEntry);
 
         AlignedFileSize = (InsertFileLink->FileSize +
-            IMGB_INSERTFILE_SECTION_ALIGNMENT - 1) & ~(IMGB_INSERTFILE_SECTION_ALIGNMENT - 1);
+                           IMGB_INSERTFILE_SECTION_ALIGNMENT - 1) &
+                          ~(IMGB_INSERTFILE_SECTION_ALIGNMENT - 1);
 
         //
         // Write out the section name.
@@ -2086,7 +2148,7 @@ _IMGB_XBEIMAGE_SECTION_HEADERS::Write(
 
         ImgbSeekByteOutputFile(SectionHeaderNameByteOffset);
         ImgbWriteOutputFile(InsertFileLink->SectionName,
-            strlen((PSTR)InsertFileLink->SectionName) + 1);
+                            strlen((PSTR)InsertFileLink->SectionName) + 1);
 
         //
         // Build the section header.
@@ -2097,7 +2159,7 @@ _IMGB_XBEIMAGE_SECTION_HEADERS::Write(
         XbeSection.PointerToRawData = InsertFileLink->FileByteOffset;
         XbeSection.SizeOfRawData = InsertFileLink->FileSize;
         XbeSection.SectionName = SectionHeaderNameByteOffset +
-            XBEIMAGE_STANDARD_BASE_ADDRESS;
+                                 XBEIMAGE_STANDARD_BASE_ADDRESS;
         XbeSection.SectionReferenceCount = 0;
 
         //
@@ -2106,11 +2168,13 @@ _IMGB_XBEIMAGE_SECTION_HEADERS::Write(
 
         XbeSection.SectionFlags = XBEIMAGE_SECTION_INSERTFILE;
 
-        if (!InsertFileLink->ReadOnly) {
+        if (!InsertFileLink->ReadOnly)
+        {
             XbeSection.SectionFlags |= XBEIMAGE_SECTION_WRITEABLE;
         }
 
-        if (!InsertFileLink->NoPreload) {
+        if (!InsertFileLink->NoPreload)
+        {
             XbeSection.SectionFlags |= XBEIMAGE_SECTION_PRELOAD;
         }
 
@@ -2120,14 +2184,16 @@ _IMGB_XBEIMAGE_SECTION_HEADERS::Write(
         //
 
         if (!FirstSharedReferenceCount &&
-            (PAGE_ALIGN(XbeSection.VirtualAddress) != PAGE_ALIGN(LastEndingVirtualAddress))) {
+            (PAGE_ALIGN(XbeSection.VirtualAddress) != PAGE_ALIGN(LastEndingVirtualAddress)))
+        {
             SharedReferenceCount++;
         }
 
         XbeSection.HeadSharedPageReferenceCount = (XBEVA)(ULONG_PTR)SharedReferenceCount;
 
         if (PAGE_ALIGN(XbeSection.VirtualAddress) !=
-            PAGE_ALIGN(XbeSection.VirtualAddress + XbeSection.VirtualSize - 1)) {
+            PAGE_ALIGN(XbeSection.VirtualAddress + XbeSection.VirtualSize - 1))
+        {
             SharedReferenceCount++;
         }
 
@@ -2135,7 +2201,7 @@ _IMGB_XBEIMAGE_SECTION_HEADERS::Write(
 
         FirstSharedReferenceCount = FALSE;
         LastEndingVirtualAddress = XbeSection.VirtualAddress +
-            XbeSection.VirtualSize - 1;
+                                   XbeSection.VirtualSize - 1;
 
         //
         // Write out the section and compute the section digest.
@@ -2148,15 +2214,16 @@ _IMGB_XBEIMAGE_SECTION_HEADERS::Write(
         A_SHAInit(&SHAHash);
         A_SHAUpdate(&SHAHash, (PUCHAR)&FileBytesRemaining, sizeof(ULONG));
 
-        while (FileBytesRemaining > 0) {
+        while (FileBytesRemaining > 0)
+        {
 
-            FileBytesThisPass = FileBytesRemaining >= sizeof(ImgbTransferBuffer) ?
-                sizeof(ImgbTransferBuffer) : FileBytesRemaining;
+            FileBytesThisPass = FileBytesRemaining >= sizeof(ImgbTransferBuffer) ? sizeof(ImgbTransferBuffer) : FileBytesRemaining;
 
             if (!ReadFile(InsertFileLink->FileHandle, ImgbTransferBuffer,
-                FileBytesThisPass, &FileBytesThisPass, NULL)) {
+                          FileBytesThisPass, &FileBytesThisPass, NULL))
+            {
                 ImgbResourcePrintErrorAndExit(IDS_CANNOT_READ_INPUT_FILE,
-                    InsertFileLink->FilePath);
+                                              InsertFileLink->FilePath);
             }
 
             A_SHAUpdate(&SHAHash, ImgbTransferBuffer, FileBytesThisPass);
@@ -2190,7 +2257,8 @@ _IMGB_XBEIMAGE_SECTION_HEADERS::Write(
     // shared page reference counters.
     //
 
-    if (SharedReferenceCount >= EndingSharedReferenceCount) {
+    if (SharedReferenceCount >= EndingSharedReferenceCount)
+    {
         ImgbResourcePrintErrorAndExit(IDS_INTERNAL_TOOL_ERROR, __LINE__);
     }
 
@@ -2202,10 +2270,8 @@ _IMGB_XBEIMAGE_SECTION_HEADERS::Write(
     ImgbPostProcessSectionHeaders();
 }
 
-VOID
-_IMGB_DEBUG_PATHS_HEADER::Write(
-    VOID
-    )
+VOID _IMGB_DEBUG_PATHS_HEADER::Write(
+    VOID)
 {
     WCHAR FileNameUnicode[MAX_PATH];
     LPSTR pszTemp;
@@ -2219,7 +2285,8 @@ _IMGB_DEBUG_PATHS_HEADER::Write(
     pszTemp = ImgbInputFileFilePart;
     pwszTemp = FileNameUnicode;
 
-    while (*pszTemp != '\0') {
+    while (*pszTemp != '\0')
+    {
         *pwszTemp++ = (WCHAR)*pszTemp++;
     }
 
@@ -2234,18 +2301,14 @@ _IMGB_DEBUG_PATHS_HEADER::Write(
     ImgbWriteOutputFile(ImgbInputFileFullPath, strlen(ImgbInputFileFullPath) + 1);
 }
 
-VOID
-_IMGB_MICROSOFT_LOGO_HEADER::Write(
-    VOID
-    )
+VOID _IMGB_MICROSOFT_LOGO_HEADER::Write(
+    VOID)
 {
     ImgbWriteOutputFile(ImgbMicrosoftLogo, sizeof(ImgbMicrosoftLogo));
 }
 
-VOID
-_IMGB_PEHEADER_HEADER::Write(
-    VOID
-    )
+VOID _IMGB_PEHEADER_HEADER::Write(
+    VOID)
 {
     PVOID OriginalNtHeader;
 
@@ -2258,18 +2321,16 @@ _IMGB_PEHEADER_HEADER::Write(
     OriginalNtHeader = ImgbAllocateMemory(ImgbXbeImageHeader->PEHeaderHeader.VirtualSize);
 
     ImgbReadInputFile(OriginalNtHeader,
-        ImgbXbeImageHeader->PEHeaderHeader.VirtualSize);
+                      ImgbXbeImageHeader->PEHeaderHeader.VirtualSize);
 
     ImgbWriteOutputFile(OriginalNtHeader,
-        ImgbXbeImageHeader->PEHeaderHeader.VirtualSize);
+                        ImgbXbeImageHeader->PEHeaderHeader.VirtualSize);
 
     ImgbFreeMemory(OriginalNtHeader);
 }
 
-VOID
-ImgbBuildOutputFile(
-    VOID
-    )
+VOID ImgbBuildOutputFile(
+    VOID)
 {
     PIMAGE_DOS_HEADER DosHeader;
 
@@ -2283,7 +2344,8 @@ ImgbBuildOutputFile(
 
     if ((ImgbInputFileSize < sizeof(IMAGE_DOS_HEADER)) ||
         (DosHeader->e_magic != IMAGE_DOS_SIGNATURE) ||
-        (ImgbInputFileSize < sizeof(IMAGE_NT_HEADERS) + (ULONG)DosHeader->e_lfanew)) {
+        (ImgbInputFileSize < sizeof(IMAGE_NT_HEADERS) + (ULONG)DosHeader->e_lfanew))
+    {
         ImgbResourcePrintErrorAndExit(IDS_INVALID_CORRUPT_INPUT_FILE, ImgbInputFilePath);
     }
 
@@ -2292,10 +2354,11 @@ ImgbBuildOutputFile(
     //
 
     ImgbNtHeader = (PIMAGE_NT_HEADERS)((LPBYTE)ImgbInputFileMappingView +
-        (ULONG)DosHeader->e_lfanew);
+                                       (ULONG)DosHeader->e_lfanew);
 
     if ((ImgbNtHeader->Signature != IMAGE_NT_SIGNATURE) ||
-        (ImgbNtHeader->OptionalHeader.Magic != IMAGE_NT_OPTIONAL_HDR_MAGIC)) {
+        (ImgbNtHeader->OptionalHeader.Magic != IMAGE_NT_OPTIONAL_HDR_MAGIC))
+    {
         ImgbResourcePrintErrorAndExit(IDS_INVALID_CORRUPT_INPUT_FILE, ImgbInputFilePath);
     }
 
@@ -2303,7 +2366,8 @@ ImgbBuildOutputFile(
     // Verify that the image was linked with /MACHINE:X86.
     //
 
-    if (ImgbNtHeader->FileHeader.Machine != IMAGE_FILE_MACHINE_I386) {
+    if (ImgbNtHeader->FileHeader.Machine != IMAGE_FILE_MACHINE_I386)
+    {
         ImgbResourcePrintErrorAndExit(IDS_NOT_MACHINE_X86);
     }
 
@@ -2312,10 +2376,14 @@ ImgbBuildOutputFile(
     // /SUBSYSTEM:CONSOLE). Copy-on-write mapping: input .exe on disk is unchanged.
     //
 
-    if (ImgbNtHeader->OptionalHeader.Subsystem != IMAGE_SUBSYSTEM_XBOX) {
-        if (ImgbNtHeader->OptionalHeader.Subsystem == IMAGE_SUBSYSTEM_WINDOWS_CUI) {
+    if (ImgbNtHeader->OptionalHeader.Subsystem != IMAGE_SUBSYSTEM_XBOX)
+    {
+        if (ImgbNtHeader->OptionalHeader.Subsystem == IMAGE_SUBSYSTEM_WINDOWS_CUI)
+        {
             ImgbNtHeader->OptionalHeader.Subsystem = IMAGE_SUBSYSTEM_XBOX;
-        } else {
+        }
+        else
+        {
             ImgbResourcePrintErrorAndExit(IDS_NOT_SUBSYSTEM_XBOX);
         }
     }
@@ -2334,8 +2402,7 @@ ImgbBuildOutputFile(
     ImgbXbeImageHeader->ImageHeader.SizeOfImageHeader = sizeof(XBEIMAGE_HEADER);
     ImgbXbeImageHeader->ImageHeader.AddressOfEntryPoint =
         ImgbNtHeader->OptionalHeader.AddressOfEntryPoint;
-    ImgbXbeImageHeader->ImageHeader.SizeOfStackCommit = (ImgbSizeOfStack != 0) ? ImgbSizeOfStack :
-        ImgbNtHeader->OptionalHeader.SizeOfStackCommit;
+    ImgbXbeImageHeader->ImageHeader.SizeOfStackCommit = (ImgbSizeOfStack != 0) ? ImgbSizeOfStack : ImgbNtHeader->OptionalHeader.SizeOfStackCommit;
     ImgbXbeImageHeader->ImageHeader.SizeOfHeapReserve = ImgbNtHeader->OptionalHeader.SizeOfHeapReserve;
     ImgbXbeImageHeader->ImageHeader.SizeOfHeapCommit = ImgbNtHeader->OptionalHeader.SizeOfHeapCommit;
     ImgbXbeImageHeader->ImageHeader.NtSizeOfImage = ImgbNtHeader->OptionalHeader.SizeOfImage;
@@ -2350,7 +2417,7 @@ ImgbBuildOutputFile(
     ImgbXbeImageHeader->CertificateHeader.VirtualSize = sizeof(XBEIMAGE_CERTIFICATE);
 
     InsertTailList(&ImgbXbeImageHeader->HeadersListHead,
-        &ImgbXbeImageHeader->CertificateHeader.HeadersListEntry);
+                   &ImgbXbeImageHeader->CertificateHeader.HeadersListEntry);
 
     //
     // Process the section headers for the image.
@@ -2389,7 +2456,7 @@ ImgbBuildOutputFile(
     ImgbXbeImageHeader->MicrosoftLogoHeader.VirtualSize = sizeof(ImgbMicrosoftLogo);
 
     InsertTailList(&ImgbXbeImageHeader->HeadersListHead,
-        &ImgbXbeImageHeader->MicrosoftLogoHeader.HeadersListEntry);
+                   &ImgbXbeImageHeader->MicrosoftLogoHeader.HeadersListEntry);
 
     //
     // Process the list of insert files for the image.
@@ -2430,7 +2497,7 @@ ImgbBuildOutputFile(
     //
     // Confound basic data in the base header
     //
-    
+
     ImgbConfoundHeaderData();
 
     //
@@ -2440,12 +2507,10 @@ ImgbBuildOutputFile(
     ImgbEmitOutputFile();
 }
 
-void
-__cdecl
+void __cdecl
 main(
     int argc,
-    char *argv[]
-    )
+    char *argv[])
 {
     //
     // Process the command line arguments.

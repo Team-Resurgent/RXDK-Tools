@@ -10,15 +10,15 @@ Abstract:
 
     Implementation of the various dialog boxes that are required.
     These are no more than souped up message boxes for the most
-    part, but unfortunately no one 
+    part, but unfortunately no one
 
 Environment:
 
-    Windows 2000 and Later 
+    Windows 2000 and Later
     User Mode
 
 Revision History:
-    
+
     03-13-2001 : created (mitchd)
 
 --*/
@@ -37,7 +37,9 @@ Revision History:
 class CXboxDialog
 {
   public:
-    CXboxDialog():m_hWndDlg(NULL){}
+    CXboxDialog() : m_hWndDlg(NULL)
+    {
+    }
     INT_PTR Execute(LPCSTR lpTemplateName, HWND hWndParent);
 
     virtual INT_PTR OnInitDialog(HWND hwndDefaultControl);
@@ -45,7 +47,6 @@ class CXboxDialog
     virtual INT_PTR OnMessage(UINT uMsg, WPARAM wParam, LPARAM lParam);
 
   protected:
-
     virtual BOOL End(INT_PTR nResult);
     HWND m_hWndDlg;
 
@@ -65,7 +66,7 @@ INT_PTR CALLBACK CXboxDialog::DialogProc(HWND hWndDlg, UINT uMsg, WPARAM wParam,
     //
     //  WM_INITDIALOG is special.
     //
-    if(WM_INITDIALOG==uMsg)
+    if (WM_INITDIALOG == uMsg)
     {
         pThis = (CXboxDialog *)lParam;
         XdkSetDlgUser(hWndDlg, (LONG_PTR)pThis);
@@ -74,16 +75,15 @@ INT_PTR CALLBACK CXboxDialog::DialogProc(HWND hWndDlg, UINT uMsg, WPARAM wParam,
     }
 
     pThis = (CXboxDialog *)(LONG_PTR)XdkGetDlgUser(hWndDlg);
-    if(pThis)
+    if (pThis)
     {
-        if(WM_COMMAND == uMsg)
+        if (WM_COMMAND == uMsg)
             return pThis->OnCommand(wParam, lParam);
-        
+
         return pThis->OnMessage(uMsg, wParam, lParam);
     }
     return 0;
 }
-
 
 INT_PTR CXboxDialog::OnInitDialog(HWND)
 {
@@ -97,7 +97,7 @@ INT_PTR CXboxDialog::OnCommand(WPARAM wParam, LPARAM lParam)
     //  One special case that applies to all the dialogs:
     //  VK_SHIFT+IDC_XB_NO=>IDC_XB_NOTOALL
     //
-    if( (IDC_XB_NO == idc) && (GetKeyState(VK_SHIFT) < 0))
+    if ((IDC_XB_NO == idc) && (GetKeyState(VK_SHIFT) < 0))
     {
         idc = IDC_XB_NOTOALL;
     }
@@ -116,7 +116,7 @@ BOOL CXboxDialog::End(INT_PTR nResult)
 
 /*
 **  Implement CConfirmDialog  - this is the simplest
-**  useful class.  
+**  useful class.
 **
 **  It is more flexible than a message box in that
 **  you can provide a template rather than the MB_
@@ -124,46 +124,47 @@ BOOL CXboxDialog::End(INT_PTR nResult)
 **
 **  This is just what we need for many of the shell
 **  extension prompts.
-*/  
+*/
 
 class CConfirmDialog : public CXboxDialog
 {
   public:
-    CConfirmDialog(){}
-    
+    CConfirmDialog()
+    {
+    }
+
     INT_PTR Confirm(HWND hWndParent, LPCSTR pszText, LPCSTR pszCaption, LPCSTR lpTemplateName)
     {
         m_pszText = pszText;
         m_pszCaption = pszCaption;
-        return Execute(lpTemplateName, hWndParent);       
+        return Execute(lpTemplateName, hWndParent);
     }
 
   protected:
     virtual INT_PTR OnInitDialog(HWND hwndDefaultControl);
-    LPCSTR  m_pszText;
-    LPCSTR  m_pszCaption;
+    LPCSTR m_pszText;
+    LPCSTR m_pszCaption;
 };
 
 INT_PTR
 CConfirmDialog::OnInitDialog(
-    HWND
-    )
+    HWND)
 /*++
   Routine Description:
     We need to update the only modifiable filed IDX_XB_TEXT
 --*/
 {
     //  Fill in the caption.
-    if(m_pszCaption)
+    if (m_pszCaption)
     {
         SetWindowTextA(m_hWndDlg, m_pszCaption);
     }
 
     //  Fill in the text
-    if(m_pszText)
+    if (m_pszText)
     {
         HWND hWndCtrl = GetDlgItem(m_hWndDlg, IDC_XB_TEXT);
-        if(hWndCtrl)
+        if (hWndCtrl)
         {
             SetWindowTextA(hWndCtrl, m_pszText);
         }
@@ -172,7 +173,7 @@ CConfirmDialog::OnInitDialog(
 }
 
 /*
-**  CConfirmReplaceDialog - 
+**  CConfirmReplaceDialog -
 **      a more specialized dialog specifically for confirming
 **      file replace.  It works with specific template that
 **      cannot be specified.
@@ -181,18 +182,18 @@ CConfirmDialog::OnInitDialog(
 class CConfirmReplaceDialog : public CXboxDialog
 {
   public:
-    CConfirmReplaceDialog() {}
-    
-    UINT 
+    CConfirmReplaceDialog()
+    {
+    }
+
+    UINT
     Confirm(
         HWND hWndParent,
         LPCSTR pszFileName,
         WIN32_FILE_ATTRIBUTE_DATA *pFileAttributes,
-        WIN32_FILE_ATTRIBUTE_DATA *pFileAttributes2
-        );
-    
+        WIN32_FILE_ATTRIBUTE_DATA *pFileAttributes2);
+
   protected:
-    
     virtual INT_PTR OnInitDialog(HWND hwndDefaultControl);
 
   private:
@@ -201,13 +202,11 @@ class CConfirmReplaceDialog : public CXboxDialog
     WIN32_FILE_ATTRIBUTE_DATA m_FileAttributes2;
 };
 
-UINT 
-CConfirmReplaceDialog::Confirm(
+UINT CConfirmReplaceDialog::Confirm(
     HWND hWndParent,
     LPCSTR pszFileName,
     WIN32_FILE_ATTRIBUTE_DATA *pFileAttributes,
-    WIN32_FILE_ATTRIBUTE_DATA *pFileAttributes2
-    )
+    WIN32_FILE_ATTRIBUTE_DATA *pFileAttributes2)
 {
     //
     //  Copy the filename
@@ -230,12 +229,9 @@ CConfirmReplaceDialog::Confirm(
     return Execute(MAKEINTRESOURCEA(IDD_CONFIRM_REPLACE), hWndParent);
 }
 
-
- 
 INT_PTR
 CConfirmReplaceDialog ::OnInitDialog(
-    HWND
-    )
+    HWND)
 /*++
   Routine Description:
     This routine is called when WM_INITDIALOG is sent to the dialog.
@@ -251,18 +247,19 @@ CConfirmReplaceDialog ::OnInitDialog(
 {
     HWND hWndCtrl;
     char szFormatBuffer[1024];
-    
+
     //
     //  Update the file name
     //
     hWndCtrl = GetDlgItem(m_hWndDlg, IDC_XB_FILENAME);
-    if(hWndCtrl) WindowUtils::SubstituteWindowText(hWndCtrl, m_szFileName);
+    if (hWndCtrl)
+        WindowUtils::SubstituteWindowText(hWndCtrl, m_szFileName);
 
     //
     //  Update the first file size
     //
     hWndCtrl = GetDlgItem(m_hWndDlg, IDC_XB_FILESIZE);
-    if(hWndCtrl)
+    if (hWndCtrl)
     {
         ULARGE_INTEGER uliFileSize;
         uliFileSize.HighPart = m_FileAttributes.nFileSizeHigh;
@@ -275,7 +272,7 @@ CConfirmReplaceDialog ::OnInitDialog(
     //  Update the first file time
     //
     hWndCtrl = GetDlgItem(m_hWndDlg, IDC_XB_FILETIME);
-    if(hWndCtrl)
+    if (hWndCtrl)
     {
         FormatUtils::FileTime(&m_FileAttributes.ftLastWriteTime, szFormatBuffer, DATE_LONGDATE);
         WindowUtils::SubstituteWindowText(hWndCtrl, szFormatBuffer);
@@ -285,36 +282,33 @@ CConfirmReplaceDialog ::OnInitDialog(
     //  Update the Icon of the first file
     //
     hWndCtrl = GetDlgItem(m_hWndDlg, IDC_XB_FILEICON);
-    if(hWndCtrl)
+    if (hWndCtrl)
     {
         SHFILEINFOA ShellFileInfo;
-        if(
-          SHGetFileInfoA(
-            m_szFileName,
-            m_FileAttributes.dwFileAttributes,
-            &ShellFileInfo,
-            sizeof(ShellFileInfo),
-            SHGFI_ICON | 
-            SHGFI_SHELLICONSIZE | 
-            SHGFI_USEFILEATTRIBUTES
-            )
-        )
+        if (
+            SHGetFileInfoA(
+                m_szFileName,
+                m_FileAttributes.dwFileAttributes,
+                &ShellFileInfo,
+                sizeof(ShellFileInfo),
+                SHGFI_ICON |
+                    SHGFI_SHELLICONSIZE |
+                    SHGFI_USEFILEATTRIBUTES))
         {
             WindowUtils::ReplaceWindowIcon(hWndCtrl, ShellFileInfo.hIcon);
         }
     }
 
-    
     //
     //  Update the second file size
     //
     hWndCtrl = GetDlgItem(m_hWndDlg, IDC_XB_FILESIZE2);
-    if(hWndCtrl)
+    if (hWndCtrl)
     {
         ULARGE_INTEGER uliFileSize;
         uliFileSize.HighPart = m_FileAttributes2.nFileSizeHigh;
         uliFileSize.LowPart = m_FileAttributes2.nFileSizeLow;
-        FormatUtils::FileSize(uliFileSize.QuadPart,szFormatBuffer );
+        FormatUtils::FileSize(uliFileSize.QuadPart, szFormatBuffer);
         SetWindowTextA(hWndCtrl, szFormatBuffer);
     }
 
@@ -322,7 +316,7 @@ CConfirmReplaceDialog ::OnInitDialog(
     //  Update the second file time
     //
     hWndCtrl = GetDlgItem(m_hWndDlg, IDC_XB_FILETIME2);
-    if(hWndCtrl)
+    if (hWndCtrl)
     {
         FormatUtils::FileTime(&m_FileAttributes2.ftLastWriteTime, szFormatBuffer, DATE_LONGDATE);
         WindowUtils::SubstituteWindowText(hWndCtrl, szFormatBuffer);
@@ -332,20 +326,18 @@ CConfirmReplaceDialog ::OnInitDialog(
     //  Update the Icon of the second file
     //
     hWndCtrl = GetDlgItem(m_hWndDlg, IDC_XB_FILEICON2);
-    if(hWndCtrl)
+    if (hWndCtrl)
     {
         SHFILEINFOA ShellFileInfo;
-        if(
-          SHGetFileInfoA(
-            m_szFileName,
-            m_FileAttributes2.dwFileAttributes,
-            &ShellFileInfo,
-            sizeof(ShellFileInfo),
-            SHGFI_ICON | 
-            SHGFI_SHELLICONSIZE | 
-            SHGFI_USEFILEATTRIBUTES
-            )
-        )
+        if (
+            SHGetFileInfoA(
+                m_szFileName,
+                m_FileAttributes2.dwFileAttributes,
+                &ShellFileInfo,
+                sizeof(ShellFileInfo),
+                SHGFI_ICON |
+                    SHGFI_SHELLICONSIZE |
+                    SHGFI_USEFILEATTRIBUTES))
         {
             WindowUtils::ReplaceWindowIcon(hWndCtrl, ShellFileInfo.hIcon);
         }
@@ -355,7 +347,7 @@ CConfirmReplaceDialog ::OnInitDialog(
 }
 
 /*
-**  CConfirmAttributesDialog - 
+**  CConfirmAttributesDialog -
 **      a more specialized dialog specifically for confirming
 **      changing of attributes.  It for folders it queries
 **      whether or not attributes should be applied recursively.
@@ -364,48 +356,49 @@ CConfirmReplaceDialog ::OnInitDialog(
 class CConfirmAttributesDialog : public CXboxDialog
 {
   public:
-  
-    CConfirmAttributesDialog(){}
+    CConfirmAttributesDialog()
+    {
+    }
     UINT Confirm(HWND hWndParent, DWORD dwSetAttributes, DWORD dwClearAttributes, BOOL fMultiItem);
 
   protected:
-  
     virtual INT_PTR OnInitDialog(HWND hwndDefaultControl);
     virtual INT_PTR OnCommand(WPARAM wParam, LPARAM lParam);
 
   private:
     DWORD m_dwSetAttributes;
     DWORD m_dwClearAttributes;
-    BOOL  m_fMultiItem;
-    BOOL  m_fRecursive;
-
+    BOOL m_fMultiItem;
+    BOOL m_fRecursive;
 };
 
 INT_PTR CConfirmAttributesDialog::OnInitDialog(HWND hwndDefaultControl)
 {
     HWND hWndCtrl;
-    char  szFormatBuffer[MAX_PATH] = {0};
+    char szFormatBuffer[MAX_PATH] = {0};
     hWndCtrl = GetDlgItem(m_hWndDlg, IDC_ATTRIBSTOAPPLY);
-    if(hWndCtrl)
+    if (hWndCtrl)
     {
         LPSTR pszParse = szFormatBuffer;
-        
-        if(m_dwSetAttributes&FILE_ATTRIBUTE_READONLY)
+
+        if (m_dwSetAttributes & FILE_ATTRIBUTE_READONLY)
         {
             pszParse += LoadStringA(_Module.GetModuleInstance(), IDS_READONLY, pszParse, MAX_PATH);
-        } else if(m_dwClearAttributes&FILE_ATTRIBUTE_READONLY)
+        }
+        else if (m_dwClearAttributes & FILE_ATTRIBUTE_READONLY)
         {
             pszParse += LoadStringA(_Module.GetModuleInstance(), IDS_NOTREADONLY, pszParse, MAX_PATH);
         }
 
-        if(m_dwSetAttributes&FILE_ATTRIBUTE_HIDDEN)
+        if (m_dwSetAttributes & FILE_ATTRIBUTE_HIDDEN)
         {
             pszParse += LoadStringA(_Module.GetModuleInstance(), IDS_HIDE, pszParse, MAX_PATH);
-        } else if(m_dwClearAttributes&FILE_ATTRIBUTE_HIDDEN)
+        }
+        else if (m_dwClearAttributes & FILE_ATTRIBUTE_HIDDEN)
         {
             pszParse += LoadStringA(_Module.GetModuleInstance(), IDS_UNHIDE, pszParse, MAX_PATH);
         }
-        
+
         //
         //  Remove the file ",".
         //
@@ -413,31 +406,32 @@ INT_PTR CConfirmAttributesDialog::OnInitDialog(HWND hwndDefaultControl)
         *pszParse = '\0';
 
         SetWindowTextA(hWndCtrl, szFormatBuffer);
-    }    
-
-    if(m_fMultiItem)
-    {
-      LoadStringA(_Module.GetModuleInstance(), IDS_THESELECTEDITEMS, szFormatBuffer, MAX_PATH);
-    } else
-    {
-      LoadStringA(_Module.GetModuleInstance(), IDS_THISFOLDER, szFormatBuffer, MAX_PATH);
     }
-    
+
+    if (m_fMultiItem)
+    {
+        LoadStringA(_Module.GetModuleInstance(), IDS_THESELECTEDITEMS, szFormatBuffer, MAX_PATH);
+    }
+    else
+    {
+        LoadStringA(_Module.GetModuleInstance(), IDS_THISFOLDER, szFormatBuffer, MAX_PATH);
+    }
+
     hWndCtrl = GetDlgItem(m_hWndDlg, IDC_RECURSIVE_TXT);
-    if(hWndCtrl)
+    if (hWndCtrl)
     {
         WindowUtils::SubstituteWindowText(hWndCtrl, szFormatBuffer);
     }
 
     hWndCtrl = GetDlgItem(m_hWndDlg, IDC_NOTRECURSIVE);
-    if(hWndCtrl)
+    if (hWndCtrl)
     {
         WindowUtils::SubstituteWindowText(hWndCtrl, szFormatBuffer);
         SendMessage(hWndCtrl, BM_SETCHECK, BST_CHECKED, 0);
     }
 
     hWndCtrl = GetDlgItem(m_hWndDlg, IDC_RECURSIVE);
-    if(hWndCtrl)
+    if (hWndCtrl)
     {
         WindowUtils::SubstituteWindowText(hWndCtrl, szFormatBuffer);
     }
@@ -457,24 +451,24 @@ INT_PTR CConfirmAttributesDialog::OnCommand(WPARAM wParam, LPARAM lParam)
 {
     UINT uControlId = LOWORD(wParam);
     UINT uCommand = HIWORD(wParam);
-    
+
     //
     //  If Flip the m_fRecursive as buttons are pressed.
-    //  
     //
-    if( uCommand == BN_CLICKED) 
-    { 
-        if(uControlId==IDC_RECURSIVE)
+    //
+    if (uCommand == BN_CLICKED)
+    {
+        if (uControlId == IDC_RECURSIVE)
         {
             m_fRecursive = TRUE;
             return TRUE;
         }
-        if(uControlId==IDC_NOTRECURSIVE)
+        if (uControlId == IDC_NOTRECURSIVE)
         {
-           m_fRecursive = FALSE;
-           return TRUE;
+            m_fRecursive = FALSE;
+            return TRUE;
         }
-        if((IDOK==uControlId)&&m_fRecursive)
+        if ((IDOK == uControlId) && m_fRecursive)
         {
             return End(IDC_XB_YESTOALL);
         }
@@ -483,26 +477,25 @@ INT_PTR CConfirmAttributesDialog::OnCommand(WPARAM wParam, LPARAM lParam)
     return FALSE;
 }
 
-
 /*
 **  CPromptUserNameDialog
 */
 class CPromptUserNameDialog : public CXboxDialog
 {
   public:
-  
-    CPromptUserNameDialog(){}
+    CPromptUserNameDialog()
+    {
+    }
     UINT Prompt(HWND hWndParent, LPSTR pszUserName, int iMaxCount);
 
   protected:
     virtual INT_PTR OnInitDialog(HWND hwndDefaultControl);
     virtual INT_PTR OnCommand(WPARAM wParam, LPARAM lParam);
-    
+
   private:
     LPSTR m_pszUserName;
-    int   m_iMaxCount;
+    int m_iMaxCount;
 };
-
 
 UINT CPromptUserNameDialog::Prompt(HWND hWndParent, LPSTR pszUserName, int iMaxCount)
 {
@@ -525,25 +518,27 @@ INT_PTR CPromptUserNameDialog::OnCommand(WPARAM wParam, LPARAM lParam)
     UINT uControlId = LOWORD(wParam);
     UINT uCommand = HIWORD(wParam);
 
-    if( uCommand == BN_CLICKED) 
-    { 
-        if((uControlId==IDOK) || (uControlId==IDCANCEL))
+    if (uCommand == BN_CLICKED)
+    {
+        if ((uControlId == IDOK) || (uControlId == IDCANCEL))
         {
             End(uControlId);
             return TRUE;
         }
-    } else if(uCommand == EN_CHANGE)
+    }
+    else if (uCommand == EN_CHANGE)
     {
         // Keep m_pszUserName in sync with the control.
         // Also, enable\disable OK, based on whether
         // the user name is blank.
-        if(uControlId==IDC_XB_TEXT)
+        if (uControlId == IDC_XB_TEXT)
         {
-            if(GetDlgItemTextA(m_hWndDlg, IDC_XB_TEXT, m_pszUserName, m_iMaxCount))
+            if (GetDlgItemTextA(m_hWndDlg, IDC_XB_TEXT, m_pszUserName, m_iMaxCount))
             {
                 EnableWindow(GetDlgItem(m_hWndDlg, IDOK), TRUE);
                 SendMessage(m_hWndDlg, DM_SETDEFID, IDOK, 0);
-            } else
+            }
+            else
             {
                 EnableWindow(GetDlgItem(m_hWndDlg, IDOK), FALSE);
                 SendMessage(m_hWndDlg, DM_SETDEFID, IDCANCEL, 0);
@@ -560,20 +555,21 @@ INT_PTR CPromptUserNameDialog::OnCommand(WPARAM wParam, LPARAM lParam)
 class CPromptNewPasswordDialog : public CXboxDialog
 {
   public:
-  
-    CPromptNewPasswordDialog(){m_szConfirmPassword[0]='\0';}
+    CPromptNewPasswordDialog()
+    {
+        m_szConfirmPassword[0] = '\0';
+    }
     UINT Prompt(HWND hWndParent, LPSTR pszPassword, int iMaxCount);
 
   protected:
     virtual INT_PTR OnInitDialog(HWND hwndDefaultControl);
     virtual INT_PTR OnCommand(WPARAM wParam, LPARAM lParam);
-    
+
   private:
     LPSTR m_pszPassword;
-    char  m_szConfirmPassword[MAX_PATH];
-    int   m_iMaxCount;
+    char m_szConfirmPassword[MAX_PATH];
+    int m_iMaxCount;
 };
-
 
 UINT CPromptNewPasswordDialog::Prompt(HWND hWndParent, LPSTR pszPassword, int iMaxCount)
 {
@@ -598,44 +594,48 @@ INT_PTR CPromptNewPasswordDialog::OnCommand(WPARAM wParam, LPARAM lParam)
     UINT uControlId = LOWORD(wParam);
     UINT uCommand = HIWORD(wParam);
     BOOL fRet = FALSE;
-    if( uCommand == BN_CLICKED) 
-    { 
-        if((uControlId==IDOK))
+    if (uCommand == BN_CLICKED)
+    {
+        if ((uControlId == IDOK))
         {
-            //Make sure that the password and confirm password fields are identical.
-            if(strcmp(m_pszPassword, m_szConfirmPassword))
+            // Make sure that the password and confirm password fields are identical.
+            if (strcmp(m_pszPassword, m_szConfirmPassword))
             {
                 ShowWindow(GetDlgItem(m_hWndDlg, IDC_SECURITY_PASSWORD_MISMATCH), SW_SHOW);
                 MessageBeep(MB_ICONASTERISK);
-            } else
+            }
+            else
             {
                 End(uControlId);
             }
             fRet = TRUE;
-        } else if(uControlId==IDCANCEL)
+        }
+        else if (uControlId == IDCANCEL)
         {
             End(uControlId);
             fRet = TRUE;
         }
-    } else if(uCommand == EN_CHANGE)
+    }
+    else if (uCommand == EN_CHANGE)
     {
-        if(uControlId==IDC_SECURITY_PASSWORD_EDIT)
+        if (uControlId == IDC_SECURITY_PASSWORD_EDIT)
         {
             GetDlgItemTextA(m_hWndDlg, IDC_SECURITY_PASSWORD_EDIT, m_pszPassword, m_iMaxCount);
             fRet = TRUE;
         }
-        else if(uControlId==IDC_SECURITY_CONFIRM_PASSWORD)
+        else if (uControlId == IDC_SECURITY_CONFIRM_PASSWORD)
         {
             GetDlgItemTextA(m_hWndDlg, IDC_SECURITY_CONFIRM_PASSWORD, m_szConfirmPassword, m_iMaxCount);
             fRet = TRUE;
         }
-        if(fRet)
+        if (fRet)
         {
-            if(*m_pszPassword && *m_szConfirmPassword)
+            if (*m_pszPassword && *m_szConfirmPassword)
             {
                 EnableWindow(GetDlgItem(m_hWndDlg, IDOK), TRUE);
                 SendMessage(m_hWndDlg, DM_SETDEFID, IDOK, 0);
-            }else
+            }
+            else
             {
                 EnableWindow(GetDlgItem(m_hWndDlg, IDOK), FALSE);
                 SendMessage(m_hWndDlg, DM_SETDEFID, IDCANCEL, 0);
@@ -647,12 +647,11 @@ INT_PTR CPromptNewPasswordDialog::OnCommand(WPARAM wParam, LPARAM lParam)
 
 /*
 **  Implementation of Wrapper Utility Functions
-**  to put up the various dialogs used by 
+**  to put up the various dialogs used by
 **  the shell extension.
 */
 
-UINT
-Dialog::ConfirmReadOnlyMove(HWND hWndParent, LPCSTR pszFileName, bool fFolder)
+UINT Dialog::ConfirmReadOnlyMove(HWND hWndParent, LPCSTR pszFileName, bool fFolder)
 {
     UINT uRet = IDC_XB_CANCEL;
     UINT uCaptionResource;
@@ -664,11 +663,12 @@ Dialog::ConfirmReadOnlyMove(HWND hWndParent, LPCSTR pszFileName, bool fFolder)
     //  Choose the text and caption resources based on file or folder.
     //
 
-    if(fFolder)
+    if (fFolder)
     {
         uCaptionResource = IDS_CONFIRM_RO_FOLDER_MOVE_CAPTION;
         uTextResource = IDS_CONFIRM_RO_FOLDER_MOVE;
-    } else
+    }
+    else
     {
         uCaptionResource = IDS_CONFIRM_RO_FILE_MOVE_CAPTION;
         uTextResource = IDS_CONFIRM_RO_FILE_MOVE;
@@ -682,7 +682,7 @@ Dialog::ConfirmReadOnlyMove(HWND hWndParent, LPCSTR pszFileName, bool fFolder)
     WindowUtils::rsprintf(szText, uTextResource, pszFileName);
 
     CConfirmDialog *pConfirm = new CConfirmDialog;
-    if(pConfirm)
+    if (pConfirm)
     {
         uRet = pConfirm->Confirm(hWndParent, szText, szCaption, MAKEINTRESOURCEA(IDD_CONFIRM_MOVE));
         delete pConfirm;
@@ -690,11 +690,9 @@ Dialog::ConfirmReadOnlyMove(HWND hWndParent, LPCSTR pszFileName, bool fFolder)
     return uRet;
 }
 
-UINT
-Dialog::ConfirmFolderReplace(
+UINT Dialog::ConfirmFolderReplace(
     HWND hWndParent,
-    LPCSTR pszFileName
-    )
+    LPCSTR pszFileName)
 {
     UINT uRet = IDC_XB_CANCEL;
     char szCaption[80];
@@ -708,7 +706,7 @@ Dialog::ConfirmFolderReplace(
     WindowUtils::rsprintf(szText, IDS_CONFIRM_FOLDER_REPLACE, pszFileName);
 
     CConfirmDialog *pConfirm = new CConfirmDialog;
-    if(pConfirm)
+    if (pConfirm)
     {
         uRet = pConfirm->Confirm(hWndParent, szText, szCaption, MAKEINTRESOURCEA(IDD_CONFIRM_FOLDER_REPLACE));
         delete pConfirm;
@@ -716,17 +714,15 @@ Dialog::ConfirmFolderReplace(
     return uRet;
 }
 
-UINT
-Dialog::ConfirmFileReplace(
+UINT Dialog::ConfirmFileReplace(
     HWND hWndParent,
     LPCSTR pszFileName,
     WIN32_FILE_ATTRIBUTE_DATA *pTargetFileAttributes,
-    WIN32_FILE_ATTRIBUTE_DATA *pSourceFileAttributes
-    )
+    WIN32_FILE_ATTRIBUTE_DATA *pSourceFileAttributes)
 {
     UINT uRet = IDC_XB_CANCEL;
     CConfirmReplaceDialog *pConfirm = new CConfirmReplaceDialog;
-    if(pConfirm)
+    if (pConfirm)
     {
         uRet = pConfirm->Confirm(hWndParent, pszFileName, pTargetFileAttributes, pSourceFileAttributes);
         delete pConfirm;
@@ -734,30 +730,33 @@ Dialog::ConfirmFileReplace(
     return uRet;
 }
 
-UINT
-Dialog::ConfirmDelete(
+UINT Dialog::ConfirmDelete(
     HWND hWndParent,
     LPCSTR pszFileName,
     bool fFolder,
-    bool fReadOnly
-    )
+    bool fReadOnly)
 {
     UINT uRet = IDC_XB_CANCEL;
     UINT uCaptionResource;
     UINT uTextResource;
     char szCaption[80];
     char szText[128];
-    
-    if(fFolder)
+
+    if (fFolder)
     {
-       uCaptionResource = IDS_CONFIRM_DELETE_FOLDER_CAPTION;
-       if(fReadOnly) uTextResource = IDS_CONFIRM_DELETE_RO_FOLDER;
-       else          uTextResource = IDS_CONFIRM_DELETE_FOLDER;
-    }else
+        uCaptionResource = IDS_CONFIRM_DELETE_FOLDER_CAPTION;
+        if (fReadOnly)
+            uTextResource = IDS_CONFIRM_DELETE_RO_FOLDER;
+        else
+            uTextResource = IDS_CONFIRM_DELETE_FOLDER;
+    }
+    else
     {
-       uCaptionResource = IDS_CONFIRM_DELETE_CAPTION;
-       if(fReadOnly) uTextResource = IDS_CONFIRM_DELETE_RO;
-       else          uTextResource = IDS_CONFIRM_DELETE;
+        uCaptionResource = IDS_CONFIRM_DELETE_CAPTION;
+        if (fReadOnly)
+            uTextResource = IDS_CONFIRM_DELETE_RO;
+        else
+            uTextResource = IDS_CONFIRM_DELETE;
     }
 
     //
@@ -765,12 +764,12 @@ Dialog::ConfirmDelete(
     //
     WindowUtils::rsprintf(szText, uTextResource, pszFileName);
     LoadStringA(_Module.GetModuleInstance(), uCaptionResource, szCaption, sizeof(szCaption));
-    
+
     //
     //  Display the dialog
     //
     CConfirmDialog *pConfirm = new CConfirmDialog;
-    if(pConfirm)
+    if (pConfirm)
     {
         uRet = pConfirm->Confirm(hWndParent, szText, szCaption, MAKEINTRESOURCEA(IDD_CONFIRM_DELETE));
         delete pConfirm;
@@ -778,24 +777,22 @@ Dialog::ConfirmDelete(
     return uRet;
 }
 
-UINT
-Dialog::ConfirmDeleteMultiple(
+UINT Dialog::ConfirmDeleteMultiple(
     HWND hWndParent,
-    UINT uCount
-    )
+    UINT uCount)
 {
     UINT uRet = IDC_XB_CANCEL;
     char szCaption[80];
     char szText[128];
-    
+
     //
     //  Load and format the text and caption.
     //
     WindowUtils::rsprintf(szText, IDS_CONFIRM_DELETE_MULTIPLE, uCount);
     LoadStringA(_Module.GetModuleInstance(), IDS_CONFIRM_DELETE_MULTIPLE_CAPTION, szCaption, sizeof(szCaption));
-    
+
     CConfirmDialog *pConfirm = new CConfirmDialog;
-    if(pConfirm)
+    if (pConfirm)
     {
         uRet = pConfirm->Confirm(hWndParent, szText, szCaption, MAKEINTRESOURCEA(IDD_CONFIRM_DELETE));
         delete pConfirm;
@@ -809,13 +806,12 @@ UINT Dialog::ConfirmSetAttributes(HWND hWndParent, DWORD dwSetAttributes, DWORD 
     return confirmDialog.Confirm(hWndParent, dwSetAttributes, dwClearAttributes, fMultiItem);
 }
 
-UINT
-Dialog::PromptUserName(HWND hWndParent, LPSTR pszUserName, int iMaxCount)
+UINT Dialog::PromptUserName(HWND hWndParent, LPSTR pszUserName, int iMaxCount)
 {
     UINT uRet = IDCANCEL;
     CPromptUserNameDialog *pPromptUserName;
     pPromptUserName = new CPromptUserNameDialog;
-    if(pPromptUserName)
+    if (pPromptUserName)
     {
         uRet = pPromptUserName->Prompt(hWndParent, pszUserName, iMaxCount);
         delete pPromptUserName;
@@ -823,13 +819,12 @@ Dialog::PromptUserName(HWND hWndParent, LPSTR pszUserName, int iMaxCount)
     return uRet;
 }
 
-UINT
-Dialog::PromptNewPassword(HWND hWndParent, LPSTR pszPassword, int iMaxCount)
+UINT Dialog::PromptNewPassword(HWND hWndParent, LPSTR pszPassword, int iMaxCount)
 {
     UINT uRet = IDCANCEL;
     CPromptNewPasswordDialog *pPromptNewPassword;
     pPromptNewPassword = new CPromptNewPasswordDialog;
-    if(pPromptNewPassword)
+    if (pPromptNewPassword)
     {
         uRet = pPromptNewPassword->Prompt(hWndParent, pszPassword, iMaxCount);
         delete pPromptNewPassword;

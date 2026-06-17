@@ -15,7 +15,8 @@
 #define MAXIMUM_SUPPORTED_EXTENSION 512
 #endif
 
-typedef struct _XBOX86_FLOATING_SAVE_AREA {
+typedef struct _XBOX86_FLOATING_SAVE_AREA
+{
     DWORD ControlWord;
     DWORD StatusWord;
     DWORD TagWord;
@@ -23,11 +24,12 @@ typedef struct _XBOX86_FLOATING_SAVE_AREA {
     DWORD ErrorSelector;
     DWORD DataOffset;
     DWORD DataSelector;
-    BYTE  RegisterArea[SIZE_OF_80387_REGISTERS];
+    BYTE RegisterArea[SIZE_OF_80387_REGISTERS];
     DWORD Cr0NpxState;
 } XBOX86_FLOATING_SAVE_AREA, *PXBOX86_FLOATING_SAVE_AREA;
 
-typedef struct _XBOX86_CONTEXT {
+typedef struct _XBOX86_CONTEXT
+{
     DWORD ContextFlags;
     DWORD Dr0;
     DWORD Dr1;
@@ -52,7 +54,7 @@ typedef struct _XBOX86_CONTEXT {
     DWORD EFlags;
     DWORD Esp;
     DWORD SegSs;
-    BYTE  ExtendedRegisters[MAXIMUM_SUPPORTED_EXTENSION];
+    BYTE ExtendedRegisters[MAXIMUM_SUPPORTED_EXTENSION];
 } XBOX86_CONTEXT, *PXBOX86_CONTEXT;
 
 #define CONTEXT_i386 0x00010000L

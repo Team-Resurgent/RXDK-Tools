@@ -7,7 +7,6 @@
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++ INCLUDE FILES +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -15,7 +14,6 @@
 // "stdafx.h"       -- Precompiled header file
 #include "stdafx.h"
 #include <xboxverp.h>
-
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++ GLOBAL VARIABLES ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -36,7 +34,6 @@ char g_szTargetXbox[MAX_PATH];
 // g_fLimitText     -- if 'true', then buffer length in text control is limited to 25000 lines.
 bool g_fLimitText = false;
 
-
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++ FUNCTIONS +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -55,19 +52,19 @@ LRESULT CALLBACK AboutDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPa
 {
     char szBuf[1024];
 
-	switch (message)
-	{
-	case WM_INITDIALOG:
+    switch (message)
+    {
+    case WM_INITDIALOG:
         // Get the build number from the resource file
         sprintf(szBuf, "Microsoft (R) xbWatson\nBuild %d\nCopyright (C) Microsoft Corp.",
                 VER_PRODUCTBUILD);
         SetDlgItemText(hDlg, IDC_ABOUTTEXT, szBuf);
-		return true;
+        return true;
 
-	case WM_COMMAND:
-		EndDialog(hDlg, 0);
-		return false;
-	}
+    case WM_COMMAND:
+        EndDialog(hDlg, 0);
+        return false;
+    }
     return false;
 }
 
@@ -85,7 +82,7 @@ WNDPROC g_editproc;
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 LRESULT CALLBACK EditProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-    switch(message)
+    switch (message)
     {
     case WM_CHAR:
         // Override the character so that it doesn't get displayed
@@ -95,7 +92,7 @@ LRESULT CALLBACK EditProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
         // Return zero to indicate that we handled the message
         return 0;
-        
+
     default:
         // Pass all other messages to the base window procedure.
         return CallWindowProc(g_editproc, hWnd, message, wParam, lParam);
@@ -117,118 +114,123 @@ LRESULT CALLBACK EditProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-	int wmId, wmEvent;
-	PAINTSTRUCT ps;
-	HDC hdc;
+    int wmId, wmEvent;
+    PAINTSTRUCT ps;
+    HDC hdc;
     LOGFONT lf;
     HFONT hfont;
     HMENU hmenu;
 
-	switch (message) 
-	{
-        case WM_CREATE:
-            g_hwndEdit = CreateWindow(TEXT("edit"), NULL, WS_CHILD | WS_VISIBLE | WS_HSCROLL |//;// ES_READONLY |
-                                      WS_VSCROLL | WS_BORDER | ES_LEFT | ES_MULTILINE |
-                                      ES_AUTOHSCROLL | ES_AUTOVSCROLL,
-                                      0, 0, 0, 0, hWnd, (HMENU)IDC_XBWATSON, ((LPCREATESTRUCT)lParam)->hInstance, NULL);
-            g_editproc = (WNDPROC)SetWindowLongPtr(g_hwndEdit, GWLP_WNDPROC, (LONG_PTR)EditProc);
+    switch (message)
+    {
+    case WM_CREATE:
+        g_hwndEdit = CreateWindow(TEXT("edit"), NULL, WS_CHILD | WS_VISIBLE | WS_HSCROLL | //;// ES_READONLY |
+                                                          WS_VSCROLL | WS_BORDER | ES_LEFT | ES_MULTILINE | ES_AUTOHSCROLL | ES_AUTOVSCROLL,
+                                  0, 0, 0, 0, hWnd, (HMENU)IDC_XBWATSON, ((LPCREATESTRUCT)lParam)->hInstance, NULL);
+        g_editproc = (WNDPROC)SetWindowLongPtr(g_hwndEdit, GWLP_WNDPROC, (LONG_PTR)EditProc);
 
-            // Set the edit control to accept the maximum number of character
-            SendMessage(g_hwndEdit, EM_LIMITTEXT, 0, 0);
+        // Set the edit control to accept the maximum number of character
+        SendMessage(g_hwndEdit, EM_LIMITTEXT, 0, 0);
 
-            // Create the GDI font object
-            lf.lfHeight         = -14;
-            lf.lfWidth          = 0;        lf.lfEscapement     = 0;
-            lf.lfOrientation    = 0;        lf.lfWeight         = 0;
-            lf.lfItalic         = 0;        lf.lfUnderline      = 0;
-            lf.lfStrikeOut      = 0;        lf.lfCharSet        = 0;
-            lf.lfOutPrecision   = 0;        lf.lfClipPrecision  = 0;
-            lf.lfQuality        = 0;        lf.lfPitchAndFamily = 0;
-            strcpy(lf.lfFaceName, "Courier New");
-            hfont = CreateFontIndirect(&lf);
-            SendMessage(g_hwndEdit, WM_SETFONT, (WPARAM)hfont, 0);
+        // Create the GDI font object
+        lf.lfHeight = -14;
+        lf.lfWidth = 0;
+        lf.lfEscapement = 0;
+        lf.lfOrientation = 0;
+        lf.lfWeight = 0;
+        lf.lfItalic = 0;
+        lf.lfUnderline = 0;
+        lf.lfStrikeOut = 0;
+        lf.lfCharSet = 0;
+        lf.lfOutPrecision = 0;
+        lf.lfClipPrecision = 0;
+        lf.lfQuality = 0;
+        lf.lfPitchAndFamily = 0;
+        strcpy(lf.lfFaceName, "Courier New");
+        hfont = CreateFontIndirect(&lf);
+        SendMessage(g_hwndEdit, WM_SETFONT, (WPARAM)hfont, 0);
 
-            // Initialize Xbox communication.
-            if (FAILED(HrInitDM()))
-                return FALSE;
+        // Initialize Xbox communication.
+        if (FAILED(HrInitDM()))
+            return FALSE;
 
+        break;
+
+    case WM_SIZE:
+        MoveWindow(g_hwndEdit, 0, 0, LOWORD(lParam), HIWORD(lParam), TRUE);
+        break;
+
+    case WM_COMMAND:
+        wmId = LOWORD(wParam);
+        wmEvent = HIWORD(wParam);
+        // Parse the menu selections:
+        switch (wmId)
+        {
+        case IDM_ABOUT:
+            DialogBox(g_hInstance, (LPCTSTR)IDD_ABOUTBOX, hWnd, (DLGPROC)AboutDlgProc);
             break;
-
-        case WM_SIZE:
-            MoveWindow(g_hwndEdit, 0, 0, LOWORD(lParam), HIWORD(lParam), TRUE);
+        case IDM_EXIT:
+            SendMessage(hWnd, WM_CLOSE, 0, 0);
             break;
-
-        case WM_COMMAND:
-			wmId    = LOWORD(wParam); 
-			wmEvent = HIWORD(wParam); 
-			// Parse the menu selections:
-			switch (wmId)
-			{
-            case IDM_ABOUT:
-                DialogBox(g_hInstance, (LPCTSTR)IDD_ABOUTBOX, hWnd, (DLGPROC)AboutDlgProc);
-                break;
-            case IDM_EXIT:
-                SendMessage(hWnd, WM_CLOSE, 0, 0);
-                break;
-            case IDM_SAVE:
-                SaveLogFile(hWnd, g_hwndEdit);
-                break;
+        case IDM_SAVE:
+            SaveLogFile(hWnd, g_hwndEdit);
+            break;
 
             // ==== Edit selections: ====
 
-            case ID_EDIT_SELECTALL:
-                SelectAllOutput();
-                break;
+        case ID_EDIT_SELECTALL:
+            SelectAllOutput();
+            break;
 
-            case ID_EDIT_COPY:
-                CopyOutput();
-                break;
+        case ID_EDIT_COPY:
+            CopyOutput();
+            break;
 
-            case ID_EDIT_CLEAR:
-                ClearOutput();
-                break;
+        case ID_EDIT_CLEAR:
+            ClearOutput();
+            break;
 
-            case ID_LIMITBUFLEN:
-                g_fLimitText = !g_fLimitText;
-                hmenu = GetMenu(g_hwnd);
-                CheckMenuItem(hmenu, ID_LIMITBUFLEN, g_fLimitText ? MFS_CHECKED : MFS_UNCHECKED);
-                break;
+        case ID_LIMITBUFLEN:
+            g_fLimitText = !g_fLimitText;
+            hmenu = GetMenu(g_hwnd);
+            CheckMenuItem(hmenu, ID_LIMITBUFLEN, g_fLimitText ? MFS_CHECKED : MFS_UNCHECKED);
+            break;
 
 #ifdef EDITABLE
-            case ID_EDIT_CUT:
-                CutOutput();
-                break;
+        case ID_EDIT_CUT:
+            CutOutput();
+            break;
 
-            case ID_EDIT_PASTE:
-                PasteOutput();
-                break;
+        case ID_EDIT_PASTE:
+            PasteOutput();
+            break;
 
-            case ID_EDIT_DELETE:
-                DeleteOutput();
-                break;
+        case ID_EDIT_DELETE:
+            DeleteOutput();
+            break;
 
 #endif
-            default:
-                return DefWindowProc(hWnd, message, wParam, lParam);
-			}
-			break;
+        default:
+            return DefWindowProc(hWnd, message, wParam, lParam);
+        }
+        break;
 
-		case WM_PAINT:
-			hdc = BeginPaint(hWnd, &ps);
-			// TODO: Add any drawing code here...
-			RECT rt;
-			GetClientRect(hWnd, &rt);
-			EndPaint(hWnd, &ps);
-			break;
+    case WM_PAINT:
+        hdc = BeginPaint(hWnd, &ps);
+        // TODO: Add any drawing code here...
+        RECT rt;
+        GetClientRect(hWnd, &rt);
+        EndPaint(hWnd, &ps);
+        break;
 
-		case WM_DESTROY:
-			PostQuitMessage(0);
-			return 0;
+    case WM_DESTROY:
+        PostQuitMessage(0);
+        return 0;
 
-		default:
-			return DefWindowProc(hWnd, message, wParam, lParam);
-   }
-   return 0;
+    default:
+        return DefWindowProc(hWnd, message, wParam, lParam);
+    }
+    return 0;
 }
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -242,22 +244,22 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 static bool InitInstance(int nCmdShow)
 {
-	WNDCLASSEX wcex;
+    WNDCLASSEX wcex;
 
     // Register the class for the main xbWatson window.
-	wcex.cbSize = sizeof(WNDCLASSEX); 
-	wcex.style			= CS_HREDRAW | CS_VREDRAW;
-	wcex.lpfnWndProc	= (WNDPROC)WndProc;
-	wcex.cbClsExtra		= 0;
-	wcex.cbWndExtra		= 0;
-	wcex.hInstance		= g_hInstance;
-	wcex.hIcon			= LoadIcon(g_hInstance, (LPCTSTR)IDI_XBWATSON);
-	wcex.hCursor		= LoadCursor(NULL, IDC_ARROW);
-	wcex.hbrBackground	= (HBRUSH)(COLOR_WINDOW+1);
-	wcex.lpszMenuName	= (LPCSTR)IDC_XBWATSON;
-	wcex.lpszClassName	= "xbWatson";
-	wcex.hIconSm		= LoadIcon(wcex.hInstance, (LPCTSTR)IDI_SMALL);
-	RegisterClassEx(&wcex);
+    wcex.cbSize = sizeof(WNDCLASSEX);
+    wcex.style = CS_HREDRAW | CS_VREDRAW;
+    wcex.lpfnWndProc = (WNDPROC)WndProc;
+    wcex.cbClsExtra = 0;
+    wcex.cbWndExtra = 0;
+    wcex.hInstance = g_hInstance;
+    wcex.hIcon = LoadIcon(g_hInstance, (LPCTSTR)IDI_XBWATSON);
+    wcex.hCursor = LoadCursor(NULL, IDC_ARROW);
+    wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+    wcex.lpszMenuName = (LPCSTR)IDC_XBWATSON;
+    wcex.lpszClassName = "xbWatson";
+    wcex.hIconSm = LoadIcon(wcex.hInstance, (LPCTSTR)IDI_SMALL);
+    RegisterClassEx(&wcex);
 
     // Create the main xbWatson window.
     // UNDONE-FEATURE: Store and restore last position ran from (?)
@@ -286,14 +288,14 @@ bool HandleCmdLine(char *szCmd)
         // Get name
         char *pszName = strrchr(&szCmd[2], ' ');
         if (pszName)
-            if(SUCCEEDED(DmSetXboxName(pszName+1)))
+            if (SUCCEEDED(DmSetXboxName(pszName + 1)))
                 return true;
     }
 
     // If here, then bad cmd line
     char szMsg[1000];
-    sprintf(szMsg, "xbWatson.exe.\n\r\nusage: xbWatson [/x xboxname]\r\n"\
-            "        /x    Specify Xbox to explore.");
+    sprintf(szMsg, "xbWatson.exe.\n\r\nusage: xbWatson [/x xboxname]\r\n"
+                   "        /x    Specify Xbox to explore.");
 
     MessageBox(NULL, szMsg, "Invalid Command Line Option Specified", MB_ICONINFORMATION | MB_OK);
     return false;
@@ -314,8 +316,8 @@ bool HandleCmdLine(char *szCmd)
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
-	MSG msg;
-	HACCEL hAccelTable;
+    MSG msg;
+    HACCEL hAccelTable;
 
     // Keep track of this application's Instance handle.
     g_hInstance = hInstance;
@@ -324,26 +326,26 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
         return -1;
 
     // Perform Win32-specific application initialization.
-    if (!InitInstance (nCmdShow)) 
+    if (!InitInstance(nCmdShow))
         return FALSE;
 
     // Initialize keyboard accelerators
-	hAccelTable = LoadAccelerators(hInstance, (LPCTSTR)IDC_XBWATSON);
-    
+    hAccelTable = LoadAccelerators(hInstance, (LPCTSTR)IDC_XBWATSON);
+
     // Main message loop:
-	while (GetMessage(&msg, NULL, 0, 0)) 
+    while (GetMessage(&msg, NULL, 0, 0))
     {
-		if (!TranslateAccelerator(g_hwnd, hAccelTable, &msg)) 
-		{
-			TranslateMessage(&msg);
-			DispatchMessage(&msg);
-		}
-//        for (int i = 0; i < 100; i++)
-  //          OutputMsg("1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\n");
+        if (!TranslateAccelerator(g_hwnd, hAccelTable, &msg))
+        {
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
+        //        for (int i = 0; i < 100; i++)
+        //          OutputMsg("1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\n");
     }
 
     // Uninitialize XBDM.
     UninitDM();
 
-	return msg.wParam;
+    return msg.wParam;
 }

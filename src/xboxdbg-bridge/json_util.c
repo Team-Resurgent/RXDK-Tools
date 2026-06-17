@@ -36,7 +36,8 @@ BOOL JsonGetString(const char *szJson, const char *szKey, char *szOut, int cchOu
     memcpy(szOut, p, cch);
     szOut[cch] = 0;
     /* unescape backslashes minimally */
-    for (end = szOut; *end; ++end) {
+    for (end = szOut; *end; ++end)
+    {
         if (end[0] == '\\' && end[1])
             memmove(end, end + 1, strlen(end));
     }
@@ -72,7 +73,8 @@ BOOL JsonGetBool(const char *szJson, const char *szKey, BOOL *pfOut)
 BOOL JsonGetPtr(const char *szJson, const char *szKey, PVOID *ppvOut)
 {
     char szNum[32];
-    if (!JsonGetString(szJson, szKey, szNum, sizeof szNum)) {
+    if (!JsonGetString(szJson, szKey, szNum, sizeof szNum))
+    {
         DWORD dw;
         if (!JsonGetDword(szJson, szKey, &dw))
             return FALSE;
@@ -94,9 +96,11 @@ void JsonAppendEscaped(char *szOut, int cchOut, int *pPos, LPCSTR szIn)
     if (pos >= cchOut - 2)
         return;
     szOut[pos++] = '"';
-    for (; *szIn && pos < cchOut - 2; ++szIn) {
+    for (; *szIn && pos < cchOut - 2; ++szIn)
+    {
         c = *szIn;
-        if (c == '\\' || c == '"' || c == '\n' || c == '\r' || c == '\t') {
+        if (c == '\\' || c == '"' || c == '\n' || c == '\r' || c == '\t')
+        {
             if (pos >= cchOut - 3)
                 break;
             szOut[pos++] = '\\';
@@ -108,7 +112,9 @@ void JsonAppendEscaped(char *szOut, int cchOut, int *pPos, LPCSTR szIn)
                 szOut[pos++] = 't';
             else
                 szOut[pos++] = c;
-        } else {
+        }
+        else
+        {
             szOut[pos++] = c;
         }
     }

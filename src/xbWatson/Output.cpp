@@ -7,7 +7,6 @@
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++ INCLUDE FILES +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -132,7 +131,7 @@ void OutputMsg(char *szMsg, ...)
         {
             // Oop, too much text.  Delete the first chunk to make room
             SetFocus(g_hwndEdit);
-        
+
             // Delete the first 2000 lines
             int nCharsToDelete = SendMessage(g_hwndEdit, EM_LINEINDEX, LINESTOCUT, 0);
             SendMessage(g_hwndEdit, EM_SETSEL, 0, nCharsToDelete);
@@ -142,13 +141,12 @@ void OutputMsg(char *szMsg, ...)
 
     // Move the cursor in the edit control to the very end to append the specified text.
     SendMessage(g_hwndEdit, EM_SETSEL, (WPARAM)-2, (LPARAM)-1);
-    
+
     // Create the final formatted string.
-    va_start (valist, szMsg);
-    vsprintf (szMsgOut, szMsg, valist);
-    va_end (valist);
+    va_start(valist, szMsg);
+    vsprintf(szMsgOut, szMsg, valist);
+    va_end(valist);
 
     // Tell the edit control to add the specified string to the end of the text.
     SendMessage(g_hwndEdit, EM_REPLACESEL, FALSE, (LPARAM)szMsgOut);
 }
-

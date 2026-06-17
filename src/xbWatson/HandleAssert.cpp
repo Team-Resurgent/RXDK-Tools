@@ -7,14 +7,12 @@
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++ INCLUDE FILES +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 // "stdafx.h"       -- Precompiled header file
 #include "stdafx.h"
-
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++ LOCAL GLOBAL VARIABLES ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -30,25 +28,24 @@ static char *gs_szFile = "File: ";
 static char *gs_szLine = "Line: ";
 
 // gs_szExp         -- String prefixing the exception of the assertion in the assertion string
-static char *gs_szExp  = "Expression: ";
+static char *gs_szExp = "Expression: ";
 
 // rgszAssert       -- Contains the text output to the assert dialog box.  We allocate a large
 //                     enough per-line buffer to hold the text below and a filename.
-static char rgszAssert[8][MAX_PATH + 60] = 
-{
-    "Assertion failed!",
-    "",
-    "Program: ",
-    "File: ",
-    "Line: ",
-    "",
-    "Expression: ",
-    "",
+static char rgszAssert[8][MAX_PATH + 60] =
+    {
+        "Assertion failed!",
+        "",
+        "Program: ",
+        "File: ",
+        "Line: ",
+        "",
+        "Expression: ",
+        "",
 };
 
 // gs_dwThreadId     -- Id of the thread in which the assert occurred.
 static DWORD gs_dwThreadId;
-
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++ FUNCTIONS +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -74,13 +71,13 @@ LRESULT CALLBACK AssertDlgProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lP
     char szBuf[MAX_PATH], szTitle[MAX_PATH];
 
     // ps                   -- Standard windows practice.  Used in WM_PAINT.
-	PAINTSTRUCT ps;
+    PAINTSTRUCT ps;
     HDC hdc;
 
     // szFile, szLine, szExp -- Point at the file in which the assertion occurred.
     char *szFile, szFile2[MAX_PATH];
     char *szLine, szLine2[256];
-    char *szExp,  szExp2[256];
+    char *szExp, szExp2[256];
 
     // dmxbe, cr            -- Used to communicate with the Xbox
     DM_XBE dmxbe;
@@ -90,12 +87,12 @@ LRESULT CALLBACK AssertDlgProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lP
     static char rgszAssertThis[8][MAX_PATH + 60];
 
     // Handle the specified message
-	switch (message)
-	{
+    switch (message)
+    {
     case WM_INITDIALOG:
         MessageBeep(MB_ICONEXCLAMATION);
         SetWindowPos(hwnd, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
-        
+
         // set titlebar contents
         DmGetXbeInfo(NULL, &dmxbe);
         strcpy(szTitle, strrchr(dmxbe.LaunchPath, '\\') + 1);
@@ -107,7 +104,7 @@ LRESULT CALLBACK AssertDlgProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lP
 
     case WM_PAINT:
         // Standard windows WM_PAINT handling.
-		hdc = BeginPaint(hwnd, &ps);
+        hdc = BeginPaint(hwnd, &ps);
 
         // Don't draw any background in the ExtTextOut calls below.
         SetBkMode(hdc, TRANSPARENT);
@@ -133,13 +130,13 @@ LRESULT CALLBACK AssertDlgProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lP
         {
             szFile = strstr(gs_szAssert, gs_szFile) + strlen(gs_szFile);
             szLine = strstr(gs_szAssert, gs_szLine) + strlen(gs_szLine);
-            szExp  = strstr(gs_szAssert, gs_szExp) + strlen(gs_szExp);
+            szExp = strstr(gs_szAssert, gs_szExp) + strlen(gs_szExp);
             strncpy(szFile2, szFile, strchr(szFile, '\n') - szFile);
             strncpy(szLine2, szLine, strchr(szLine, '\n') - szLine);
-            strncpy(szExp2,  szExp,  strchr(szExp,  '\n')  - szExp);
+            strncpy(szExp2, szExp, strchr(szExp, '\n') - szExp);
             szFile2[strchr(szFile, '\n') - szFile] = '\0';
             szLine2[strchr(szLine, '\n') - szLine] = '\0';
-            szExp2[strchr(szExp, '\n')   - szExp]  = '\0';
+            szExp2[strchr(szExp, '\n') - szExp] = '\0';
 
             // Concatenate the assertion-specific information onto the assertion text.
             strcat(rgszAssertThis[2], dmxbe.LaunchPath);
@@ -179,10 +176,10 @@ LRESULT CALLBACK AssertDlgProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lP
         // the desired action in the context's eax register.
 
         // Get the existing thread context (so that we don't write bogus ebx, ecx, etc, values.
-		cr.ContextFlags = CONTEXT_INTEGER;
-		DmGetThreadContext(gs_dwThreadId, &cr);
+        cr.ContextFlags = CONTEXT_INTEGER;
+        DmGetThreadContext(gs_dwThreadId, &cr);
 
-        switch(LOWORD(wParam))
+        switch (LOWORD(wParam))
         {
         case ID_REBOOT:
             // halt the offending thread
@@ -194,11 +191,11 @@ LRESULT CALLBACK AssertDlgProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lP
             return TRUE;
 
         case ID_BREAK:
-    		cr.Eax = 'b';
+            cr.Eax = 'b';
             break;
 
         case ID_CONTINUE:
-    		cr.Eax = 'i';
+            cr.Eax = 'i';
             break;
         }
 
@@ -208,8 +205,8 @@ LRESULT CALLBACK AssertDlgProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lP
         if (LOWORD(wParam) == ID_CONTINUE)
         {
             // Tell the Xbox to start running again
-		    DmContinueThread(gs_dwThreadId, FALSE);
-		    DmGo();
+            DmContinueThread(gs_dwThreadId, FALSE);
+            DmGo();
         }
 
         // We're done, so exit the dialog.
@@ -236,9 +233,9 @@ void HandleAssert(char *szAssert, DWORD dwThreadId)
 {
     // Track the assert string and thread that the assert occurred in.  Note: Can't avoid global
     // variables with a dialog box...
-    gs_szAssert   = szAssert;
+    gs_szAssert = szAssert;
     gs_dwThreadId = dwThreadId;
 
     // Open the assert dialog box - this will handle abort, retry, and fail for us.
-    DialogBox(g_hInstance, (LPCTSTR)IDD_ASSERT, g_hwnd, (DLGPROC)AssertDlgProc);    
+    DialogBox(g_hInstance, (LPCTSTR)IDD_ASSERT, g_hwnd, (DLGPROC)AssertDlgProc);
 }

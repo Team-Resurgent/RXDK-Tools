@@ -10,14 +10,12 @@
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++ INCLUDE FILES +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 // "stdafx.h"       -- Precompiled header file
 #include "stdafx.h"
-
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++ FUNCTIONS +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -48,20 +46,19 @@ CXboxStream::~CXboxStream()
     //
     // Close the file if we managed to open it.
     //
-    if(m_hFile)
+    if (m_hFile)
     {
         CloseHandle(m_hFile);
     }
-    
+
     //
     //  Delete the file, if we were asked to.
     //
-    if(m_fDeleteOnFinalRelease)
+    if (m_fDeleteOnFinalRelease)
     {
         DeleteFileA(m_szFilename);
     }
 }
-
 
 HRESULT CXboxStream::Initialize(LPCSTR pszFilename, bool fDeleteOnFinalRelease)
 {
@@ -70,15 +67,15 @@ HRESULT CXboxStream::Initialize(LPCSTR pszFilename, bool fDeleteOnFinalRelease)
     strcpy(m_szFilename, pszFilename);
 
     m_hFile = CreateFileA(
-                m_szFilename,
-                FILE_GENERIC_READ,
-                0,
-                NULL,
-                OPEN_EXISTING,
-                FILE_ATTRIBUTE_NORMAL,
-                0);
+        m_szFilename,
+        FILE_GENERIC_READ,
+        0,
+        NULL,
+        OPEN_EXISTING,
+        FILE_ATTRIBUTE_NORMAL,
+        0);
 
-    if(INVALID_HANDLE_VALUE==m_hFile)
+    if (INVALID_HANDLE_VALUE == m_hFile)
     {
         hr = HRESULT_FROM_WIN32(GetLastError());
     }
@@ -98,13 +95,13 @@ HRESULT CXboxStream::Initialize(LPCSTR pszFilename, bool fDeleteOnFinalRelease)
 // Return:    S_OK if interface obtained; E_NOINTERFACE otherwise.
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 STDMETHODIMP CXboxStream::QueryInterface(REFIID riid, void **ppvObject)
-{ 
+{
     *ppvObject = NULL;
 
-    if (riid == IID_IUnknown) 
+    if (riid == IID_IUnknown)
         *ppvObject = this;
-    else if (riid == IID_IStream) 
-        *ppvObject = static_cast<IStream*>(this);
+    else if (riid == IID_IStream)
+        *ppvObject = static_cast<IStream *>(this);
     else
         return E_NOINTERFACE;
 
@@ -115,7 +112,7 @@ STDMETHODIMP CXboxStream::QueryInterface(REFIID riid, void **ppvObject)
     }
 
     return E_NOINTERFACE;
-}   
+}
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // Function:  CXboxStream::AddRef
@@ -123,7 +120,8 @@ STDMETHODIMP CXboxStream::QueryInterface(REFIID riid, void **ppvObject)
 // Arguments: None
 // Return:    New reference count
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-STDMETHODIMP_(ULONG) CXboxStream::AddRef()
+STDMETHODIMP_(ULONG)
+CXboxStream::AddRef()
 {
     // Verify that we initialized properly
     return (ULONG)InterlockedIncrement(&m_cRef);
@@ -136,7 +134,8 @@ STDMETHODIMP_(ULONG) CXboxStream::AddRef()
 // Arguments: None
 // Return:    New reference count.
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-STDMETHODIMP_(ULONG) CXboxStream::Release()
+STDMETHODIMP_(ULONG)
+CXboxStream::Release()
 {
     // Verify that we initialized properly
     if (0 == InterlockedDecrement(&m_cRef))
@@ -147,7 +146,6 @@ STDMETHODIMP_(ULONG) CXboxStream::Release()
 
     return (ULONG)m_cRef;
 }
-
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++ IMPLEMENTED ISTREAM METHODS +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -206,14 +204,13 @@ STDMETHODIMP CXboxStream::Seek(LARGE_INTEGER dbMove, DWORD dwOrigin, ULARGE_INTE
         DWORD dwErr = GetLastError();
         if (dwErr != NO_ERROR)
             return dwErr;
-    } 
-    
+    }
+
     if (pbNewPosition)
         (*pbNewPosition).QuadPart = li.QuadPart;
 
     return S_OK;
 }
-
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++ UNIMPLEMENTED ISTREAM METHODS +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

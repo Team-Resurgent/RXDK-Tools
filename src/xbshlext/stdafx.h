@@ -7,7 +7,7 @@ Module Name:
     stdafx.h
 
 Abstract:
-    
+
     Precompiled Header for Xbox Namespace Shell Extension
 
 --*/
@@ -53,7 +53,7 @@ Abstract:
 //  Standard ATL Stuff
 //-----------------------------------------------------------
 #define _ATL_APARTMENT_THREADED
-//#define _ATL_DEBUG_INTERFACES
+// #define _ATL_DEBUG_INTERFACES
 #include <atlbase.h>
 extern CComModule _Module;
 #include <atlcom.h>
@@ -87,13 +87,13 @@ extern CLIPFORMAT CF_XBOXFILEDESCRIPTOR;
 //  of type safety.
 //-------------------------------------------------------------
 #ifndef IID_PPV_ARG
-#define IID_PPV_ARG(IType, ppType) IID_##IType, reinterpret_cast<void **>(static_cast<IType**>(ppType))
+#define IID_PPV_ARG(IType, ppType) IID_##IType, reinterpret_cast<void **>(static_cast<IType **>(ppType))
 #endif
 
 //-----------------------------------------------------------
 //  Other misc. macros
 //-----------------------------------------------------------
-#define I2BIT(_index_) (1<<(_index_))  //Converts an index to a bit
+#define I2BIT(_index_) (1 << (_index_)) // Converts an index to a bit
 
 //-----------------------------------------------------------
 //  XDK Headers

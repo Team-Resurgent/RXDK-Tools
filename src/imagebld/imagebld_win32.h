@@ -4,7 +4,8 @@
 #ifndef _IMAGEBLD_WIN32_H_
 #define _IMAGEBLD_WIN32_H_
 
-typedef struct _IMAGEBLD_LIST_ENTRY {
+typedef struct _IMAGEBLD_LIST_ENTRY
+{
     struct _IMAGEBLD_LIST_ENTRY *Flink;
     struct _IMAGEBLD_LIST_ENTRY *Blink;
 } IMAGEBLD_LIST_ENTRY, *PIMAGEBLD_LIST_ENTRY;
@@ -20,28 +21,28 @@ typedef struct _IMAGEBLD_LIST_ENTRY {
 #endif
 
 #ifndef InsertHeadList
-#define InsertHeadList(ListHead, Entry) \
-    { \
-        PLIST_ENTRY _EXF_Flink; \
-        PLIST_ENTRY _EXF_ListHead; \
-        _EXF_ListHead = (ListHead); \
+#define InsertHeadList(ListHead, Entry)    \
+    {                                      \
+        PLIST_ENTRY _EXF_Flink;            \
+        PLIST_ENTRY _EXF_ListHead;         \
+        _EXF_ListHead = (ListHead);        \
         _EXF_Flink = _EXF_ListHead->Flink; \
-        (Entry)->Flink = _EXF_Flink; \
-        (Entry)->Blink = _EXF_ListHead; \
-        _EXF_Flink->Blink = (Entry); \
-        _EXF_ListHead->Flink = (Entry); \
+        (Entry)->Flink = _EXF_Flink;       \
+        (Entry)->Blink = _EXF_ListHead;    \
+        _EXF_Flink->Blink = (Entry);       \
+        _EXF_ListHead->Flink = (Entry);    \
     }
 #endif
 
 #ifndef InsertTailList
-#define InsertTailList(ListHead, Entry) \
-    { \
-        PLIST_ENTRY _EXF_Link = (ListHead); \
+#define InsertTailList(ListHead, Entry)            \
+    {                                              \
+        PLIST_ENTRY _EXF_Link = (ListHead);        \
         PLIST_ENTRY _EXF_Blink = _EXF_Link->Blink; \
-        (Entry)->Flink = _EXF_Link; \
-        (Entry)->Blink = _EXF_Blink; \
-        _EXF_Blink->Flink = (Entry); \
-        _EXF_Link->Blink = (Entry); \
+        (Entry)->Flink = _EXF_Link;                \
+        (Entry)->Blink = _EXF_Blink;               \
+        _EXF_Blink->Flink = (Entry);               \
+        _EXF_Link->Blink = (Entry);                \
     }
 #endif
 

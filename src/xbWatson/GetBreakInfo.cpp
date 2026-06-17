@@ -7,14 +7,12 @@
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++ INCLUDE FILES +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 // "stdafx.h"       -- Precompiled header file
 #include "stdafx.h"
-
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++ FUNCTIONS +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -40,7 +38,7 @@ static bool GetStackBaseAndSize(DWORD *pdwStackBase, DWORD *pdwStackSize, DWORD 
     //      +-------+   <-- TlsBase
     //      |       |
     //      |       |   <-- Stack
-    //      |       |   
+    //      |       |
     //      +-------+   <-- ESP
     //      |///////|
     //      |///////|   <-- Not yet used memory
@@ -68,7 +66,7 @@ static bool GetStackBaseAndSize(DWORD *pdwStackBase, DWORD *pdwStackSize, DWORD 
     //       case it's okay to completely ignore the thread.
     if (dmti.TlsBase == 0)
         return false;
-    
+
     // Get the current stack pointer (ESP).  UNDONE-WARN: Don't need all of these flags (elsewhere too)
     cr.ContextFlags = CONTEXT_INTEGER | CONTEXT_CONTROL | CONTEXT_FULL | CONTEXT_FLOATING_POINT |
                       CONTEXT_EXTENDED_REGISTERS;
@@ -107,7 +105,6 @@ static bool GetPerThreadBreakInfo(DWORD dwThreadId, sThreadInfo *pthreadinfo)
     // cr               -- Will contain the context information for the specified thread.
     XBDM_CONTEXT cr;
 
-
     // Get the current stack pointer
     cr.ContextFlags = CONTEXT_INTEGER | CONTEXT_CONTROL | CONTEXT_FULL | CONTEXT_FLOATING_POINT |
                       CONTEXT_EXTENDED_REGISTERS;
@@ -134,7 +131,7 @@ static bool GetPerThreadBreakInfo(DWORD dwThreadId, sThreadInfo *pthreadinfo)
     }
 
     // Get the entire stack from the Xbox
-    if (DmGetMemory((BYTE*)(ULONG_PTR)cr.Esp, pthreadinfo->dwStackSize, pthreadinfo->rgbyStack, &cBytesRead) != XBDM_NOERR)
+    if (DmGetMemory((BYTE *)(ULONG_PTR)cr.Esp, pthreadinfo->dwStackSize, pthreadinfo->rgbyStack, &cBytesRead) != XBDM_NOERR)
     {
         // Failed to read for some reason.  Jump ship.
         return false;
@@ -161,14 +158,14 @@ bool GetBreakInfo(DWORD dwThreadId, DWORD dwEventType, sBreakInfo *pbreakinfo)
     DWORD rgdwThreads[MAX_XBOX_THREADS];
 
     PDM_WALK_MODULES pdmwm;
-    DMN_MODLOAD      dmnml;
+    DMN_MODLOAD dmnml;
 
     // Note: Even though the connected Xbox has crashed, we're able to talk to it because of the
     //       'kd disable' trick we pulled earlier - it's sitting in a loop waiting for someone to
     //       talk to it.  We use this to query for the necessary exception-related information.
-    
+
     // Store information about the type of break which occurred
-    pbreakinfo->dwEventType      = dwEventType;
+    pbreakinfo->dwEventType = dwEventType;
     pbreakinfo->dwBrokenThreadId = dwThreadId;
     if (dwEventType == IDD_RIP)
     {
@@ -179,10 +176,10 @@ bool GetBreakInfo(DWORD dwThreadId, DWORD dwEventType, sBreakInfo *pbreakinfo)
     {
         // The event was an exception.  Store information about the exception.
         pbreakinfo->fWriteException = g_fWriteException;
-        pbreakinfo->dwAVAddress     = (DWORD)(ULONG_PTR)g_pvAVAddress;
-        pbreakinfo->dwEventCode     = g_dwExceptionCode;
+        pbreakinfo->dwAVAddress = (DWORD)(ULONG_PTR)g_pvAVAddress;
+        pbreakinfo->dwEventCode = g_dwExceptionCode;
     }
-    
+
     // Get information about the application that AV'ed.
     DM_XBE dmxbe;
     if (DmGetXbeInfo(NULL, &dmxbe) != XBDM_NOERR)
@@ -210,7 +207,7 @@ bool GetBreakInfo(DWORD dwThreadId, DWORD dwEventType, sBreakInfo *pbreakinfo)
 
     // Allocate space for the modules
     pbreakinfo->prgdmnml = new DMN_MODLOAD[pbreakinfo->cModules];
-    
+
     // Do the module walk again now that we've allocated sufficient space for it
     pdmwm = NULL;
     for (DWORD i = 0; i < pbreakinfo->cModules; i++)

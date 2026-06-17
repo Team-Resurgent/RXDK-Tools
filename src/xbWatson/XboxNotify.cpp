@@ -7,14 +7,12 @@
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++ INCLUDE FILES +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 // "stdafx.h"       -- Precompiled header file
 #include "stdafx.h"
-
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++ GLOBAL VARIABLES ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -27,7 +25,6 @@ bool g_fWriteException;
 // g_pvAVAddress        -- If an access violation occurred, this contains the address that was
 //                         incorrectly read or written.
 void *g_pvAVAddress;
-
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++ FUNCTIONS +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -43,30 +40,32 @@ void *g_pvAVAddress;
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 DWORD WINAPI NotifyProc(DWORD dwNotification, DWORD_PTR dwParameter)
 {
-    char           szBuf[4192] = {0}, szBuf2[4192] = {0};
-    PDMN_DEBUGSTR  pdmnds;
-    PDMN_BREAK     pdmnb;
+    char szBuf[4192] = {0}, szBuf2[4192] = {0};
+    PDMN_DEBUGSTR pdmnds;
+    PDMN_BREAK pdmnb;
     PDMN_DATABREAK pdmndb;
     PDMN_EXCEPTION pdmne;
-    char           *pch;
+    char *pch;
     static BOOL fConnected = FALSE;
 
     // UNDONE-WARN: Remove flags
     dwNotification &= 0x0FFFFFFF;
 
-    switch(dwNotification)
+    switch (dwNotification)
     {
     case DM_EXEC:
         // Output information about the Exec event.
         // The first time we get exec, we need to print that we successfully
         // connected
-        if(!fConnected) {
+        if (!fConnected)
+        {
             fConnected = TRUE;
             OutputMsg("xbwatson: Connection to Xbox successful.\r\n");
-        } else if(dwParameter == DMN_EXEC_REBOOT)
+        }
+        else if (dwParameter == DMN_EXEC_REBOOT)
             OutputMsg("xbwatson: Xbox is restarting.\r\n");
         break;
-        
+
     case DM_DEBUGSTR:
     case DM_ASSERT:
     case DM_RIP:
@@ -75,7 +74,7 @@ DWORD WINAPI NotifyProc(DWORD dwNotification, DWORD_PTR dwParameter)
         {
             strncpy(szBuf2, pdmnds->String, min(pdmnds->Length, 1024));
             strncpy(szBuf, pdmnds->String, min(pdmnds->Length, 1024));
-            switch(dwNotification)
+            switch (dwNotification)
             {
             case DM_DEBUGSTR:
                 // Replace the '\n' newline that XboxDbg appends since the edit control hates it
@@ -92,8 +91,9 @@ DWORD WINAPI NotifyProc(DWORD dwNotification, DWORD_PTR dwParameter)
             case DM_ASSERT:
                 // Shrink the assert text for clarity of output
                 for (pch = szBuf; *pch; pch++)
-                    if (*pch == '\n') *pch = '\0';
-                
+                    if (*pch == '\n')
+                        *pch = '\0';
+
                 // Output the assert information to the log window
                 strcat(szBuf, "\r\n");
                 OutputMsg("Assert: %s", szBuf);
@@ -109,7 +109,7 @@ DWORD WINAPI NotifyProc(DWORD dwNotification, DWORD_PTR dwParameter)
                 // Pop up the RIP dialog and let the user choose to reboot the machine, etc.
                 HandleRIP(pdmnds->ThreadId, szBuf2);
                 break;
-            }            
+            }
         }
         break;
 
@@ -126,7 +126,7 @@ DWORD WINAPI NotifyProc(DWORD dwNotification, DWORD_PTR dwParameter)
     case DM_DATABREAK:
         pdmndb = (PDMN_DATABREAK)dwParameter;
         OutputMsg("Databreak: 0x%08X 0x%08X 0x%08X 0x%08X\r\n", pdmndb->Address,
-                pdmndb->ThreadId, pdmndb->BreakType, pdmndb->DataAddress);
+                  pdmndb->ThreadId, pdmndb->BreakType, pdmndb->DataAddress);
 
         // Pop up the exception dialog and let the user choose to dump the state, reboot the machine, etc
         HandleException(pdmndb->ThreadId, 0x80000003, pdmndb->Address);
@@ -138,11 +138,11 @@ DWORD WINAPI NotifyProc(DWORD dwNotification, DWORD_PTR dwParameter)
         {
             // output the exception information to the log window
             OutputMsg("Exception: 0x%08X 0x%08X 0x%08X 0x%08X 0x%08X 0x%08X\r\n", pdmne->ThreadId,
-                    pdmne->Code, pdmne->Address, pdmne->Flags, pdmne->Information[0], pdmne->Information[1]);
+                      pdmne->Code, pdmne->Address, pdmne->Flags, pdmne->Information[0], pdmne->Information[1]);
 
             // Store information about the access violation for the exception dialog
             g_fWriteException = pdmne->Information[0] ? true : false;
-            g_pvAVAddress     = (void*)(ULONG_PTR)pdmne->Information[1];
+            g_pvAVAddress = (void *)(ULONG_PTR)pdmne->Information[1];
 
             // Pop up the exception dialog and let the user choose to dump the state, reboot the machine, etc
             HandleException(pdmne->ThreadId, pdmne->Code, pdmne->Address);

@@ -29,15 +29,13 @@ LPSTR ImgbOutputFilePath;
 // Header node for the list of NOPRELOAD sections.
 //
 LIST_ENTRY ImgbNoPreloadList = {
-    &ImgbNoPreloadList, &ImgbNoPreloadList
-};
+    &ImgbNoPreloadList, &ImgbNoPreloadList};
 
 //
 // Header node for the list of INSERTFILE sections.
 //
 LIST_ENTRY ImgbInsertFileList = {
-    &ImgbInsertFileList, &ImgbInsertFileList
-};
+    &ImgbInsertFileList, &ImgbInsertFileList};
 
 //
 // Stores whether or not a copy of the original PE header should be emitted to
@@ -101,13 +99,13 @@ ULONG ImgbVersion;
 // Stores the test game region to store in the image certificate.
 //
 ULONG ImgbTestGameRegion = XBEIMAGE_GAME_REGION_NA | XBEIMAGE_GAME_REGION_JAPAN |
-    XBEIMAGE_GAME_REGION_RESTOFWORLD | XBEIMAGE_GAME_REGION_MANUFACTURING;
+                           XBEIMAGE_GAME_REGION_RESTOFWORLD | XBEIMAGE_GAME_REGION_MANUFACTURING;
 
 //
 // Stores the test allowed media types bitmask to store in the image certificate.
 //
 ULONG ImgbTestAllowedMediaTypes = XBEIMAGE_MEDIA_TYPE_HARD_DISK |
-    XBEIMAGE_MEDIA_TYPE_DVD_CD | XBEIMAGE_MEDIA_TYPE_MEDIA_BOARD;
+                                  XBEIMAGE_MEDIA_TYPE_DVD_CD | XBEIMAGE_MEDIA_TYPE_MEDIA_BOARD;
 
 //
 // Stores the test game ratings to store in the image certificate.
@@ -143,20 +141,44 @@ WCHAR ImgbTestTitleName[XBEIMAGE_TITLE_NAME_LENGTH];
 // Stores the test LAN key to store in the image certificate.
 //
 UCHAR ImgbTestLANKey[XBEIMAGE_CERTIFICATE_KEY_LENGTH] = {
-    (UCHAR)'T', (UCHAR)'E', (UCHAR)'S', (UCHAR)'T',
-    (UCHAR)'T', (UCHAR)'E', (UCHAR)'S', (UCHAR)'T',
-    (UCHAR)'T', (UCHAR)'E', (UCHAR)'S', (UCHAR)'T',
-    (UCHAR)'T', (UCHAR)'E', (UCHAR)'S', (UCHAR)'T',
+    (UCHAR)'T',
+    (UCHAR)'E',
+    (UCHAR)'S',
+    (UCHAR)'T',
+    (UCHAR)'T',
+    (UCHAR)'E',
+    (UCHAR)'S',
+    (UCHAR)'T',
+    (UCHAR)'T',
+    (UCHAR)'E',
+    (UCHAR)'S',
+    (UCHAR)'T',
+    (UCHAR)'T',
+    (UCHAR)'E',
+    (UCHAR)'S',
+    (UCHAR)'T',
 };
 
 //
 // Stores the test signature key to store in the image certificate.
 //
 UCHAR ImgbTestSignatureKey[XBEIMAGE_CERTIFICATE_KEY_LENGTH] = {
-    (UCHAR)'T', (UCHAR)'E', (UCHAR)'S', (UCHAR)'T',
-    (UCHAR)'T', (UCHAR)'E', (UCHAR)'S', (UCHAR)'T',
-    (UCHAR)'T', (UCHAR)'E', (UCHAR)'S', (UCHAR)'T',
-    (UCHAR)'T', (UCHAR)'E', (UCHAR)'S', (UCHAR)'T',
+    (UCHAR)'T',
+    (UCHAR)'E',
+    (UCHAR)'S',
+    (UCHAR)'T',
+    (UCHAR)'T',
+    (UCHAR)'E',
+    (UCHAR)'S',
+    (UCHAR)'T',
+    (UCHAR)'T',
+    (UCHAR)'E',
+    (UCHAR)'S',
+    (UCHAR)'T',
+    (UCHAR)'T',
+    (UCHAR)'E',
+    (UCHAR)'S',
+    (UCHAR)'T',
 };
 
 //
@@ -176,8 +198,7 @@ LPSTR ImgbDefaultSaveImage;
 
 LPSTR
 ImgbDuplicateString(
-    LPCSTR pszString
-    )
+    LPCSTR pszString)
 {
     LPSTR pszDuplicatedString;
 
@@ -192,8 +213,7 @@ BOOLEAN
 ImgbMatchCommandOptionStringValue(
     LPCSTR pszCommandOption,
     LPCSTR pszMatchString,
-    LPSTR *ppszStringValue
-    )
+    LPSTR *ppszStringValue)
 {
     UINT MatchStringLength;
 
@@ -203,7 +223,8 @@ ImgbMatchCommandOptionStringValue(
     // Check if the string is prefixed with the match string.
     //
 
-    if (_strnicmp(pszCommandOption, pszMatchString, MatchStringLength) != 0) {
+    if (_strnicmp(pszCommandOption, pszMatchString, MatchStringLength) != 0)
+    {
         return FALSE;
     }
 
@@ -214,16 +235,19 @@ ImgbMatchCommandOptionStringValue(
     // an empty string, then the switch's argument is missing, so error out.
     //
 
-    if (pszCommandOption[MatchStringLength] != ':') {
+    if (pszCommandOption[MatchStringLength] != ':')
+    {
 
-        if (pszCommandOption[MatchStringLength] == '\0') {
+        if (pszCommandOption[MatchStringLength] == '\0')
+        {
             ImgbResourcePrintErrorAndExit(IDS_MISSING_OPTION_ARGUMENT,
-                pszMatchString);
+                                          pszMatchString);
         }
 
         return FALSE;
-
-    } else if (pszCommandOption[MatchStringLength + 1] == '\0') {
+    }
+    else if (pszCommandOption[MatchStringLength + 1] == '\0')
+    {
         ImgbResourcePrintErrorAndExit(IDS_MISSING_OPTION_ARGUMENT, pszMatchString);
     }
 
@@ -231,7 +255,8 @@ ImgbMatchCommandOptionStringValue(
     // If we've already seen the switch, then override it with the new value.
     //
 
-    if (*ppszStringValue != NULL) {
+    if (*ppszStringValue != NULL)
+    {
         ImgbFreeMemory(*ppszStringValue);
     }
 
@@ -244,12 +269,10 @@ ImgbMatchCommandOptionStringValue(
     return TRUE;
 }
 
-VOID
-ImgbParseInteger(
+VOID ImgbParseInteger(
     LPCSTR pszMatchString,
     LPCSTR pszInteger,
-    ULONG *pulIntegerValue
-    )
+    ULONG *pulIntegerValue)
 {
     LPSTR pszEndParse;
 
@@ -268,7 +291,8 @@ ImgbParseInteger(
     // Also verify that no underflow or overflow error has occurred.
     //
 
-    if (pszEndParse != pszInteger + strlen(pszInteger) || (errno == ERANGE)) {
+    if (pszEndParse != pszInteger + strlen(pszInteger) || (errno == ERANGE))
+    {
         ImgbResourcePrintErrorAndExit(IDS_INVALID_NUMBER_OPTION, pszMatchString);
     }
 }
@@ -277,8 +301,7 @@ BOOLEAN
 ImgbMatchCommandOptionIntegerValue(
     LPCSTR pszCommandOption,
     LPCSTR pszMatchString,
-    ULONG *pulIntegerValue
-    )
+    ULONG *pulIntegerValue)
 {
     LPSTR pszStringValue;
 
@@ -289,7 +312,8 @@ ImgbMatchCommandOptionIntegerValue(
     //
 
     if (!ImgbMatchCommandOptionStringValue(pszCommandOption, pszMatchString,
-        &pszStringValue)) {
+                                           &pszStringValue))
+    {
         return FALSE;
     }
 
@@ -306,22 +330,22 @@ ImgbMatchCommandOptionIntegerValue(
 
 ULONG
 ImgbHexCharacterToInteger(
-    CHAR Character
-    )
+    CHAR Character)
 {
-    if (isdigit(Character)) {
+    if (isdigit(Character))
+    {
         return Character - '0';
-    } else {
+    }
+    else
+    {
         return toupper(Character) - 'A' + 10;
     }
 }
 
-VOID
-ImgbParseCertificateKey(
+VOID ImgbParseCertificateKey(
     LPCSTR pszMatchString,
     LPCSTR pszCertificateKey,
-    PUCHAR CertificateKey
-    )
+    PUCHAR CertificateKey)
 {
     ULONG BytesRemaining;
     LPCSTR pszParse;
@@ -330,7 +354,8 @@ ImgbParseCertificateKey(
     // Verify that the key parameter is the correct length.
     //
 
-    if (strlen(pszCertificateKey) != XBEIMAGE_CERTIFICATE_KEY_LENGTH * 2) {
+    if (strlen(pszCertificateKey) != XBEIMAGE_CERTIFICATE_KEY_LENGTH * 2)
+    {
         ImgbResourcePrintErrorAndExit(IDS_INVALID_CERTKEY_OPTION, pszMatchString);
     }
 
@@ -341,14 +366,16 @@ ImgbParseCertificateKey(
     BytesRemaining = XBEIMAGE_CERTIFICATE_KEY_LENGTH;
     pszParse = pszCertificateKey;
 
-    while (BytesRemaining > 0) {
+    while (BytesRemaining > 0)
+    {
 
-        if (!isxdigit(*pszParse) || !isxdigit(*(pszParse + 1))) {
+        if (!isxdigit(*pszParse) || !isxdigit(*(pszParse + 1)))
+        {
             ImgbResourcePrintErrorAndExit(IDS_INVALID_CERTKEY_OPTION, pszMatchString);
         }
 
         *CertificateKey++ = (UCHAR)((ImgbHexCharacterToInteger(*pszParse) << 4) +
-            ImgbHexCharacterToInteger(*(pszParse + 1)));
+                                    ImgbHexCharacterToInteger(*(pszParse + 1)));
 
         BytesRemaining--;
         pszParse += 2;
@@ -359,8 +386,7 @@ BOOLEAN
 ImgbMatchCommandOptionCertificateKey(
     LPCSTR pszCommandOption,
     LPCSTR pszMatchString,
-    PUCHAR CertificateKey
-    )
+    PUCHAR CertificateKey)
 {
     LPSTR pszStringValue;
 
@@ -371,7 +397,8 @@ ImgbMatchCommandOptionCertificateKey(
     //
 
     if (!ImgbMatchCommandOptionStringValue(pszCommandOption, pszMatchString,
-        &pszStringValue)) {
+                                           &pszStringValue))
+    {
         return FALSE;
     }
 
@@ -386,10 +413,8 @@ ImgbMatchCommandOptionCertificateKey(
     return TRUE;
 }
 
-VOID
-ImgbProcessCommandOption(
-    LPCSTR pszCommandOption
-    )
+VOID ImgbProcessCommandOption(
+    LPCSTR pszCommandOption)
 {
     LPSTR pszStringValue;
     PIMGB_NOPRELOAD NoPreloadLink;
@@ -403,9 +428,11 @@ ImgbProcessCommandOption(
     // If this isn't a switch option, then this must be the input file path.
     //
 
-    if (*pszCommandOption != '-' && *pszCommandOption != '/') {
+    if (*pszCommandOption != '-' && *pszCommandOption != '/')
+    {
 
-        if (ImgbInputFilePath != NULL) {
+        if (ImgbInputFilePath != NULL)
+        {
             ImgbFreeMemory(ImgbInputFilePath);
         }
 
@@ -424,7 +451,8 @@ ImgbProcessCommandOption(
     // Attempt to match the /IN:xxxx switch.
     //
 
-    if (ImgbMatchCommandOptionStringValue(pszCommandOption, "IN", &ImgbInputFilePath)) {
+    if (ImgbMatchCommandOptionStringValue(pszCommandOption, "IN", &ImgbInputFilePath))
+    {
         return;
     }
 
@@ -432,7 +460,8 @@ ImgbProcessCommandOption(
     // Attempt to match the /OUT:xxxx switch.
     //
 
-    if (ImgbMatchCommandOptionStringValue(pszCommandOption, "OUT", &ImgbOutputFilePath)) {
+    if (ImgbMatchCommandOptionStringValue(pszCommandOption, "OUT", &ImgbOutputFilePath))
+    {
         return;
     }
 
@@ -441,7 +470,8 @@ ImgbProcessCommandOption(
     // name to the NOPRELOAD list.
     //
 
-    if (ImgbMatchCommandOptionStringValue(pszCommandOption, "NOPRELOAD", &pszStringValue)) {
+    if (ImgbMatchCommandOptionStringValue(pszCommandOption, "NOPRELOAD", &pszStringValue))
+    {
 
         NoPreloadLink = (PIMGB_NOPRELOAD)ImgbAllocateMemory(sizeof(IMGB_NOPRELOAD));
 
@@ -456,7 +486,8 @@ ImgbProcessCommandOption(
     // Attempt to match the /STACK:xxxx switch.
     //
 
-    if (ImgbMatchCommandOptionIntegerValue(pszCommandOption, "STACK", &ImgbSizeOfStack)) {
+    if (ImgbMatchCommandOptionIntegerValue(pszCommandOption, "STACK", &ImgbSizeOfStack))
+    {
         return;
     }
 
@@ -464,7 +495,8 @@ ImgbProcessCommandOption(
     // Attempt to match the /INITFLAGS:xxxx switch.
     //
 
-    if (ImgbMatchCommandOptionIntegerValue(pszCommandOption, "INITFLAGS", &ImgbInitFlags)) {
+    if (ImgbMatchCommandOptionIntegerValue(pszCommandOption, "INITFLAGS", &ImgbInitFlags))
+    {
         return;
     }
 
@@ -472,7 +504,8 @@ ImgbProcessCommandOption(
     // Attempt to match the /VERSION:xxxx switch.
     //
 
-    if (ImgbMatchCommandOptionIntegerValue(pszCommandOption, "VERSION", &ImgbVersion)) {
+    if (ImgbMatchCommandOptionIntegerValue(pszCommandOption, "VERSION", &ImgbVersion))
+    {
         return;
     }
 
@@ -480,7 +513,8 @@ ImgbProcessCommandOption(
     // Attempt to match the /TESTVERSION:xxxx switch.
     //
 
-    if (ImgbMatchCommandOptionIntegerValue(pszCommandOption, "TESTVERSION", &ImgbVersion)) {
+    if (ImgbMatchCommandOptionIntegerValue(pszCommandOption, "TESTVERSION", &ImgbVersion))
+    {
         return;
     }
 
@@ -488,7 +522,8 @@ ImgbProcessCommandOption(
     // Attempt to match the /TESTREGION:xxxx switch.
     //
 
-    if (ImgbMatchCommandOptionIntegerValue(pszCommandOption, "TESTREGION", &ImgbTestGameRegion)) {
+    if (ImgbMatchCommandOptionIntegerValue(pszCommandOption, "TESTREGION", &ImgbTestGameRegion))
+    {
         return;
     }
 
@@ -496,7 +531,8 @@ ImgbProcessCommandOption(
     // Attempt to match the /TESTMEDIATYPES:xxxx switch.
     //
 
-    if (ImgbMatchCommandOptionIntegerValue(pszCommandOption, "TESTMEDIATYPES", &ImgbTestAllowedMediaTypes)) {
+    if (ImgbMatchCommandOptionIntegerValue(pszCommandOption, "TESTMEDIATYPES", &ImgbTestAllowedMediaTypes))
+    {
         return;
     }
 
@@ -504,7 +540,8 @@ ImgbProcessCommandOption(
     // Attempt to match the /TESTRATINGS:xxxx switch.
     //
 
-    if (ImgbMatchCommandOptionIntegerValue(pszCommandOption, "TESTRATINGS", &ImgbTestGameRatings)) {
+    if (ImgbMatchCommandOptionIntegerValue(pszCommandOption, "TESTRATINGS", &ImgbTestGameRatings))
+    {
         return;
     }
 
@@ -512,7 +549,8 @@ ImgbProcessCommandOption(
     // Attempt to match the /TESTID:xxxx switch.
     //
 
-    if (ImgbMatchCommandOptionIntegerValue(pszCommandOption, "TESTID", &ImgbTestTitleID)) {
+    if (ImgbMatchCommandOptionIntegerValue(pszCommandOption, "TESTID", &ImgbTestTitleID))
+    {
         return;
     }
 
@@ -520,23 +558,27 @@ ImgbProcessCommandOption(
     // Attempt to match the /TESTALTID:xxxx switch
     //
 
-    if (ImgbMatchCommandOptionStringValue(pszCommandOption, "TESTALTID", &pszStringValue)) {
+    if (ImgbMatchCommandOptionStringValue(pszCommandOption, "TESTALTID", &pszStringValue))
+    {
 
-        if (ImgbNumberOfTestAlternateTitleIDs >= XBEIMAGE_ALTERNATE_TITLE_ID_COUNT) {
+        if (ImgbNumberOfTestAlternateTitleIDs >= XBEIMAGE_ALTERNATE_TITLE_ID_COUNT)
+        {
             ImgbResourcePrintErrorAndExit(IDS_TOO_MANY_TESTALTIDS);
         }
 
         ImgbParseInteger("TESTALTID", strtok(pszStringValue, ","),
-            &ImgbTestAlternateTitleIDs[ImgbNumberOfTestAlternateTitleIDs]);
+                         &ImgbTestAlternateTitleIDs[ImgbNumberOfTestAlternateTitleIDs]);
 
         pszAlternateSignatureKey = strtok(NULL, ",");
 
-        if (pszAlternateSignatureKey != NULL) {
+        if (pszAlternateSignatureKey != NULL)
+        {
 
             ImgbParseCertificateKey("TESTALTID", pszAlternateSignatureKey,
-                ImgbTestAlternateSignatureKeys[ImgbNumberOfTestAlternateTitleIDs]);
+                                    ImgbTestAlternateSignatureKeys[ImgbNumberOfTestAlternateTitleIDs]);
 
-            if (strtok(NULL, ",") != NULL) {
+            if (strtok(NULL, ",") != NULL)
+            {
                 ImgbResourcePrintErrorAndExit(IDS_INSERTFILE_TOO_MANY_OPTIONS);
             }
         }
@@ -552,12 +594,15 @@ ImgbProcessCommandOption(
     // Attempt to match the /TESTNAME:xxxx switch.
     //
 
-    if (ImgbMatchCommandOptionStringValue(pszCommandOption, "TESTNAME", &pszStringValue)) {
+    if (ImgbMatchCommandOptionStringValue(pszCommandOption, "TESTNAME", &pszStringValue))
+    {
 
         if (MultiByteToWideChar(CP_ACP, 0, pszStringValue, -1, ImgbTestTitleName,
-            XBEIMAGE_TITLE_NAME_LENGTH) == 0) {
+                                XBEIMAGE_TITLE_NAME_LENGTH) == 0)
+        {
 
-            if (GetLastError() != ERROR_INSUFFICIENT_BUFFER) {
+            if (GetLastError() != ERROR_INSUFFICIENT_BUFFER)
+            {
                 ImgbResourcePrintErrorAndExit(IDS_INVALID_STRING_OPTION, "TESTNAME");
             }
         }
@@ -572,7 +617,8 @@ ImgbProcessCommandOption(
     //
 
     if (ImgbMatchCommandOptionCertificateKey(pszCommandOption, "TESTLANKEY",
-        ImgbTestLANKey)) {
+                                             ImgbTestLANKey))
+    {
         return;
     }
 
@@ -581,7 +627,8 @@ ImgbProcessCommandOption(
     //
 
     if (ImgbMatchCommandOptionCertificateKey(pszCommandOption, "TESTSIGNKEY",
-        ImgbTestSignatureKey)) {
+                                             ImgbTestSignatureKey))
+    {
         return;
     }
 
@@ -589,7 +636,8 @@ ImgbProcessCommandOption(
     // Attempt to match the /TITLEIMAGE:xxxx switch.
     //
 
-    if (ImgbMatchCommandOptionStringValue(pszCommandOption, "TITLEIMAGE", &ImgbTitleImage)) {
+    if (ImgbMatchCommandOptionStringValue(pszCommandOption, "TITLEIMAGE", &ImgbTitleImage))
+    {
         return;
     }
 
@@ -597,7 +645,8 @@ ImgbProcessCommandOption(
     // Attempt to match the /TITLEINFO:xxxx switch.
     //
 
-    if (ImgbMatchCommandOptionStringValue(pszCommandOption, "TITLEINFO", &ImgbTitleInfo)) {
+    if (ImgbMatchCommandOptionStringValue(pszCommandOption, "TITLEINFO", &ImgbTitleInfo))
+    {
         return;
     }
 
@@ -605,7 +654,8 @@ ImgbProcessCommandOption(
     // Attempt to match the /DEFAULTSAVEIMAGE:xxxx switch.
     //
 
-    if (ImgbMatchCommandOptionStringValue(pszCommandOption, "DEFAULTSAVEIMAGE", &ImgbDefaultSaveImage)) {
+    if (ImgbMatchCommandOptionStringValue(pszCommandOption, "DEFAULTSAVEIMAGE", &ImgbDefaultSaveImage))
+    {
         return;
     }
 
@@ -613,42 +663,48 @@ ImgbProcessCommandOption(
     // Attempt to match the /INSERTFILE:xxxx switch.
     //
 
-    if (ImgbMatchCommandOptionStringValue(pszCommandOption, "INSERTFILE", &pszStringValue)) {
+    if (ImgbMatchCommandOptionStringValue(pszCommandOption, "INSERTFILE", &pszStringValue))
+    {
 
         InsertFileLink = (PIMGB_INSERTFILE)ImgbAllocateMemory(sizeof(IMGB_INSERTFILE));
 
         InsertFileLink->FilePath = strtok(pszStringValue, ",");
         InsertFileLink->SectionName = strtok(NULL, ",");
 
-        if (InsertFileLink->SectionName == NULL) {
+        if (InsertFileLink->SectionName == NULL)
+        {
             ImgbResourcePrintErrorAndExit(IDS_INSERTFILE_MISSING_SECTION);
         }
 
         pszInsertFileAttributes = strtok(NULL, ",");
 
-        if (pszInsertFileAttributes != NULL) {
+        if (pszInsertFileAttributes != NULL)
+        {
 
-            while (*pszInsertFileAttributes != '\0') {
+            while (*pszInsertFileAttributes != '\0')
+            {
 
-                switch (toupper(*pszInsertFileAttributes)) {
+                switch (toupper(*pszInsertFileAttributes))
+                {
 
-                    case 'R':
-                        InsertFileLink->ReadOnly = TRUE;
-                        break;
+                case 'R':
+                    InsertFileLink->ReadOnly = TRUE;
+                    break;
 
-                    case 'N':
-                        InsertFileLink->NoPreload = TRUE;
-                        break;
+                case 'N':
+                    InsertFileLink->NoPreload = TRUE;
+                    break;
 
-                    default:
-                        ImgbResourcePrintErrorAndExit(IDS_INVALID_GENERIC_OPTION,
-                            "INSERTFILE");
+                default:
+                    ImgbResourcePrintErrorAndExit(IDS_INVALID_GENERIC_OPTION,
+                                                  "INSERTFILE");
                 }
 
                 pszInsertFileAttributes++;
             }
 
-            if (strtok(NULL, ",") != NULL) {
+            if (strtok(NULL, ",") != NULL)
+            {
                 ImgbResourcePrintErrorAndExit(IDS_INSERTFILE_TOO_MANY_OPTIONS);
             }
         }
@@ -662,7 +718,8 @@ ImgbProcessCommandOption(
     // Attempt to match the /NOLIBWARN switch.
     //
 
-    if (_stricmp(pszCommandOption, "NOLIBWARN") == 0) {
+    if (_stricmp(pszCommandOption, "NOLIBWARN") == 0)
+    {
         ImgbNoWarnLibraryApproval = TRUE;
         return;
     }
@@ -671,7 +728,8 @@ ImgbProcessCommandOption(
     // Attempt to match the /PEHEADER switch.
     //
 
-    if (_strnicmp(pszCommandOption, "PEHEADER", 8) == 0) {
+    if (_strnicmp(pszCommandOption, "PEHEADER", 8) == 0)
+    {
         ImgbEmitPEHeader = TRUE;
         return;
     }
@@ -680,7 +738,8 @@ ImgbProcessCommandOption(
     // Attempt to match the /LIMITMEM switch.
     //
 
-    if (_stricmp(pszCommandOption, "LIMITMEM") == 0) {
+    if (_stricmp(pszCommandOption, "LIMITMEM") == 0)
+    {
         ImgbLimitMemory = TRUE;
         return;
     }
@@ -689,7 +748,8 @@ ImgbProcessCommandOption(
     // Attempt to match the /NOSETUPHD switch.
     //
 
-    if (_stricmp(pszCommandOption, "NOSETUPHD") == 0) {
+    if (_stricmp(pszCommandOption, "NOSETUPHD") == 0)
+    {
         ImgbNoSetupHardDisk = TRUE;
         return;
     }
@@ -698,7 +758,8 @@ ImgbProcessCommandOption(
     // Attempt to match the /DONTMODIFYHD switch.
     //
 
-    if (_stricmp(pszCommandOption, "DONTMODIFYHD") == 0) {
+    if (_stricmp(pszCommandOption, "DONTMODIFYHD") == 0)
+    {
         ImgbDontModifyHardDisk = TRUE;
         return;
     }
@@ -707,10 +768,12 @@ ImgbProcessCommandOption(
     // Attempt to match the /DONTMOUNTUD switch.
     //
 
-    if (_stricmp(pszCommandOption, "DONTMOUNTUD") == 0) {
+    if (_stricmp(pszCommandOption, "DONTMOUNTUD") == 0)
+    {
         ImgbDontMountUtilityDrive = TRUE;
 
-        if (ImgbFormatUtilityDrive) {
+        if (ImgbFormatUtilityDrive)
+        {
             ImgbResourcePrintErrorAndExit(IDS_FORMATUD_NOT_POSSIBLE);
         }
 
@@ -721,10 +784,12 @@ ImgbProcessCommandOption(
     // Attempt to match the /FORMATUD switch.
     //
 
-    if (_stricmp(pszCommandOption, "FORMATUD") == 0) {
+    if (_stricmp(pszCommandOption, "FORMATUD") == 0)
+    {
         ImgbFormatUtilityDrive = TRUE;
 
-        if (ImgbDontMountUtilityDrive) {
+        if (ImgbDontMountUtilityDrive)
+        {
             ImgbResourcePrintErrorAndExit(IDS_FORMATUD_NOT_POSSIBLE);
         }
 
@@ -737,28 +802,30 @@ ImgbProcessCommandOption(
     //
 
     if (ImgbMatchCommandOptionIntegerValue(pszCommandOption, "UDCLUSTER",
-        &ImgbUtilityDriveClusterSize)) {
+                                           &ImgbUtilityDriveClusterSize))
+    {
 
-        switch (ImgbUtilityDriveClusterSize) {
+        switch (ImgbUtilityDriveClusterSize)
+        {
 
-            case 16:
-            case 16384:
-                ImgbUtilityDriveClusterSize = 16384;
-                break;
+        case 16:
+        case 16384:
+            ImgbUtilityDriveClusterSize = 16384;
+            break;
 
-            case 32:
-            case 32768:
-                ImgbUtilityDriveClusterSize = 32768;
-                break;
+        case 32:
+        case 32768:
+            ImgbUtilityDriveClusterSize = 32768;
+            break;
 
-            case 64:
-            case 65536:
-                ImgbUtilityDriveClusterSize = 65536;
-                break;
+        case 64:
+        case 65536:
+            ImgbUtilityDriveClusterSize = 65536;
+            break;
 
-            default:
-                ImgbResourcePrintErrorAndExit(IDS_INVALID_UDCLUSTER_SIZE);
-                break;
+        default:
+            ImgbResourcePrintErrorAndExit(IDS_INVALID_UDCLUSTER_SIZE);
+            break;
         }
 
         return;
@@ -770,7 +837,8 @@ ImgbProcessCommandOption(
     // exists for compatibility with the old version of IMAGEBLD.
     //
 
-    if (_stricmp(pszCommandOption, "NOLOGO") == 0) {
+    if (_stricmp(pszCommandOption, "NOLOGO") == 0)
+    {
         return;
     }
 
@@ -778,7 +846,8 @@ ImgbProcessCommandOption(
     // Attempt to match the /DEBUG switch.  This is equivalent to /PEHEADER.
     //
 
-    if (_stricmp(pszCommandOption, "DEBUG") == 0) {
+    if (_stricmp(pszCommandOption, "DEBUG") == 0)
+    {
         ImgbEmitPEHeader = TRUE;
         return;
     }
@@ -789,7 +858,8 @@ ImgbProcessCommandOption(
     //
 
     if ((_stricmp(pszCommandOption, "?") == 0) ||
-        (_stricmp(pszCommandOption, "HELP") == 0)) {
+        (_stricmp(pszCommandOption, "HELP") == 0))
+    {
         ImgbResourcePrintLogoBanner();
         ImgbResourcePrintRange(stderr, IDS_IMAGEBLD_USAGE);
         ImgbExitProcess(0);
@@ -802,10 +872,8 @@ ImgbProcessCommandOption(
     ImgbResourcePrintErrorAndExit(IDS_UNRECOGNIZED_OPTION, pszCommandOption);
 }
 
-VOID
-ImgbProcessCommandFile(
-    LPSTR pszCommandFile
-    )
+VOID ImgbProcessCommandFile(
+    LPSTR pszCommandFile)
 {
     FILE *CommandFile;
     CHAR szLine[1024];
@@ -819,7 +887,8 @@ ImgbProcessCommandFile(
 
     CommandFile = fopen(pszCommandFile, "r");
 
-    if (CommandFile == NULL) {
+    if (CommandFile == NULL)
+    {
         ImgbResourcePrintErrorAndExit(IDS_CANNOT_OPEN_INPUT_FILE, pszCommandFile);
     }
 
@@ -827,43 +896,52 @@ ImgbProcessCommandFile(
     // Process each line from the command file.
     //
 
-    while (fgets(szLine, sizeof(szLine), CommandFile) != NULL) {
+    while (fgets(szLine, sizeof(szLine), CommandFile) != NULL)
+    {
 
         pszCurrent = szLine;
 
-        for (;;) {
+        for (;;)
+        {
 
             //
             // Advance past any whitespace and break out if we've reached the
             // end of the line.
             //
 
-            while (isspace(*pszCurrent)) {
+            while (isspace(*pszCurrent))
+            {
                 pszCurrent++;
             }
 
-            if (*pszCurrent == '\0') {
+            if (*pszCurrent == '\0')
+            {
                 break;
             }
 
             pszCommandOption = pszCurrent;
             pszCommandOptionEnd = pszCommandOption;
 
-            while (*pszCurrent != '\0' && !isspace(*pszCurrent)) {
+            while (*pszCurrent != '\0' && !isspace(*pszCurrent))
+            {
 
-                if (*pszCurrent == '\"') {
+                if (*pszCurrent == '\"')
+                {
 
                     pszCurrent++;
 
-                    while (*pszCurrent != '\0' && *pszCurrent != '\"' && *pszCurrent != '\n') {
+                    while (*pszCurrent != '\0' && *pszCurrent != '\"' && *pszCurrent != '\n')
+                    {
                         *pszCommandOptionEnd++ = *pszCurrent++;
                     }
 
-                    if (*pszCurrent == '\"') {
+                    if (*pszCurrent == '\"')
+                    {
                         pszCurrent++;
                     }
-
-                } else {
+                }
+                else
+                {
                     *pszCommandOptionEnd++ = *pszCurrent++;
                 }
             }
@@ -875,7 +953,8 @@ ImgbProcessCommandFile(
             // the line above.
             //
 
-            if (*pszCurrent != '\0') {
+            if (*pszCurrent != '\0')
+            {
                 pszCurrent++;
             }
 
@@ -898,7 +977,8 @@ ImgbProcessCommandFile(
     // the end of the file, then exit with an error.
     //
 
-    if (ferror(CommandFile)) {
+    if (ferror(CommandFile))
+    {
         ImgbResourcePrintErrorAndExit(IDS_CANNOT_READ_INPUT_FILE, pszCommandFile);
     }
 
@@ -909,11 +989,9 @@ ImgbProcessCommandFile(
     fclose(CommandFile);
 }
 
-VOID
-ImgbProcessCommandLineOptions(
+VOID ImgbProcessCommandLineOptions(
     int argc,
-    char *argv[]
-    )
+    char *argv[])
 {
     PIMGB_INSERTFILE InsertFileLink;
 
@@ -928,7 +1006,8 @@ ImgbProcessCommandLineOptions(
     // If no arguments were specified, then print out the tool's usage.
     //
 
-    if (argc == 0) {
+    if (argc == 0)
+    {
         ImgbResourcePrintLogoBanner();
         ImgbResourcePrintRange(stderr, IDS_IMAGEBLD_USAGE);
         ImgbExitProcess(0);
@@ -939,13 +1018,15 @@ ImgbProcessCommandLineOptions(
     // built-in tools.
     //
 
-    if (argv[0][0] == '-' || argv[0][0] == '/') {
+    if (argv[0][0] == '-' || argv[0][0] == '/')
+    {
 
         //
         // Check if we should dump out the contents of an XBE file.
         //
 
-        if (_stricmp(&argv[0][1], "DUMP") == 0) {
+        if (_stricmp(&argv[0][1], "DUMP") == 0)
+        {
             ImgbDumpExecutable(argc, argv);
         }
     }
@@ -954,11 +1035,15 @@ ImgbProcessCommandLineOptions(
     // Process the command line options.
     //
 
-    do {
+    do
+    {
 
-        if (argv[0][0] != '@') {
+        if (argv[0][0] != '@')
+        {
             ImgbProcessCommandOption(argv[0]);
-        } else {
+        }
+        else
+        {
             ImgbProcessCommandFile(&argv[0][1]);
         }
 
@@ -972,7 +1057,8 @@ ImgbProcessCommandLineOptions(
     // initialization flags.
     //
 
-    if (ImgbLimitMemory) {
+    if (ImgbLimitMemory)
+    {
         ImgbInitFlags |= XINIT_LIMIT_DEVKIT_MEMORY;
     }
 
@@ -981,7 +1067,8 @@ ImgbProcessCommandLineOptions(
     // initialization flags.
     //
 
-    if (ImgbNoSetupHardDisk) {
+    if (ImgbNoSetupHardDisk)
+    {
         ImgbInitFlags |= XINIT_NO_SETUP_HARD_DISK;
     }
 
@@ -990,7 +1077,8 @@ ImgbProcessCommandLineOptions(
     // initialization flags.
     //
 
-    if (ImgbDontModifyHardDisk) {
+    if (ImgbDontModifyHardDisk)
+    {
         ImgbInitFlags |= XINIT_DONT_MODIFY_HARD_DISK;
     }
 
@@ -999,7 +1087,8 @@ ImgbProcessCommandLineOptions(
     // initialization flags.
     //
 
-    if (ImgbFormatUtilityDrive) {
+    if (ImgbFormatUtilityDrive)
+    {
         ImgbInitFlags |= XINIT_FORMAT_UTILITY_DRIVE;
     }
 
@@ -1008,7 +1097,8 @@ ImgbProcessCommandLineOptions(
     // initialization flags.
     //
 
-    if (ImgbDontMountUtilityDrive) {
+    if (ImgbDontMountUtilityDrive)
+    {
         ImgbInitFlags &= ~XINIT_MOUNT_UTILITY_DRIVE;
     }
 
@@ -1019,22 +1109,23 @@ ImgbProcessCommandLineOptions(
     // /INITFLAGS switch.
     //
 
-    switch (ImgbUtilityDriveClusterSize) {
+    switch (ImgbUtilityDriveClusterSize)
+    {
 
-        case 16384:
-            ImgbInitFlags &= ~XINIT_UTILITY_DRIVE_CLUSTER_SIZE_MASK;
-            ImgbInitFlags |= XINIT_UTILITY_DRIVE_16K_CLUSTER_SIZE;
-            break;
+    case 16384:
+        ImgbInitFlags &= ~XINIT_UTILITY_DRIVE_CLUSTER_SIZE_MASK;
+        ImgbInitFlags |= XINIT_UTILITY_DRIVE_16K_CLUSTER_SIZE;
+        break;
 
-        case 32768:
-            ImgbInitFlags &= ~XINIT_UTILITY_DRIVE_CLUSTER_SIZE_MASK;
-            ImgbInitFlags |= XINIT_UTILITY_DRIVE_32K_CLUSTER_SIZE;
-            break;
+    case 32768:
+        ImgbInitFlags &= ~XINIT_UTILITY_DRIVE_CLUSTER_SIZE_MASK;
+        ImgbInitFlags |= XINIT_UTILITY_DRIVE_32K_CLUSTER_SIZE;
+        break;
 
-        case 65536:
-            ImgbInitFlags &= ~XINIT_UTILITY_DRIVE_CLUSTER_SIZE_MASK;
-            ImgbInitFlags |= XINIT_UTILITY_DRIVE_64K_CLUSTER_SIZE;
-            break;
+    case 65536:
+        ImgbInitFlags &= ~XINIT_UTILITY_DRIVE_CLUSTER_SIZE_MASK;
+        ImgbInitFlags |= XINIT_UTILITY_DRIVE_64K_CLUSTER_SIZE;
+        break;
     }
 
     //
@@ -1042,7 +1133,8 @@ ImgbProcessCommandLineOptions(
     // node for the file.
     //
 
-    if (ImgbDefaultSaveImage != NULL) {
+    if (ImgbDefaultSaveImage != NULL)
+    {
 
         InsertFileLink = (PIMGB_INSERTFILE)ImgbAllocateMemory(sizeof(IMGB_INSERTFILE));
 
@@ -1059,7 +1151,8 @@ ImgbProcessCommandLineOptions(
     // the file.
     //
 
-    if (ImgbTitleImage != NULL) {
+    if (ImgbTitleImage != NULL)
+    {
 
         InsertFileLink = (PIMGB_INSERTFILE)ImgbAllocateMemory(sizeof(IMGB_INSERTFILE));
 
@@ -1076,7 +1169,8 @@ ImgbProcessCommandLineOptions(
     // the file.
     //
 
-    if (ImgbTitleInfo != NULL) {
+    if (ImgbTitleInfo != NULL)
+    {
 
         InsertFileLink = (PIMGB_INSERTFILE)ImgbAllocateMemory(sizeof(IMGB_INSERTFILE));
 
@@ -1091,20 +1185,21 @@ ImgbProcessCommandLineOptions(
 
 BOOLEAN
 ImgbSearchNoPreloadList(
-    LPCSTR pszSectionName
-    )
+    LPCSTR pszSectionName)
 {
     PLIST_ENTRY NextListEntry;
     PIMGB_NOPRELOAD NoPreloadLink;
 
     NextListEntry = ImgbNoPreloadList.Flink;
 
-    while (NextListEntry != &ImgbNoPreloadList) {
+    while (NextListEntry != &ImgbNoPreloadList)
+    {
 
         NoPreloadLink = CONTAINING_RECORD(NextListEntry, IMGB_NOPRELOAD,
-            ListEntry);
+                                          ListEntry);
 
-        if (_stricmp(NoPreloadLink->SectionName, pszSectionName) == 0) {
+        if (_stricmp(NoPreloadLink->SectionName, pszSectionName) == 0)
+        {
             return TRUE;
         }
 

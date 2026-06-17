@@ -19,7 +19,10 @@ static DWORD g_dwMapLinkBase;
 
 static BOOL CALLBACK SymCb(HANDLE hProcess, ULONG ActionCode, ULONG64 CallbackData, ULONG64 UserContext)
 {
-    (void)hProcess; (void)ActionCode; (void)CallbackData; (void)UserContext;
+    (void)hProcess;
+    (void)ActionCode;
+    (void)CallbackData;
+    (void)UserContext;
     return FALSE;
 }
 
@@ -54,9 +57,11 @@ static BOOL SymbolsReadMapLinkBase(LPCSTR szMapPath, DWORD *pdwBase)
     fp = fopen(szMapPath, "r");
     if (!fp)
         return FALSE;
-    while (fgets(line, sizeof line, fp)) {
+    while (fgets(line, sizeof line, fp))
+    {
         if (sscanf(line, " Preferred load address is %x", &base) == 1 ||
-            sscanf(line, " Preferred load address is %X", &base) == 1) {
+            sscanf(line, " Preferred load address is %X", &base) == 1)
+        {
             fclose(fp);
             *pdwBase = base;
             return TRUE;
@@ -80,7 +85,8 @@ HRESULT SymbolsLoad(LPCSTR szExePath, LPCSTR szPdbPath, LPCSTR szMapPath)
 
     SymbolsUnload();
 
-    if (!g_fSymInit) {
+    if (!g_fSymInit)
+    {
         SymSetOptions(SYMOPT_UNDNAME | SYMOPT_LOAD_LINES);
         if (!SymInitialize(hProc, NULL, FALSE))
             return HRESULT_FROM_WIN32(GetLastError());
@@ -97,11 +103,13 @@ HRESULT SymbolsLoad(LPCSTR szExePath, LPCSTR szPdbPath, LPCSTR szMapPath)
     SymSetSearchPath(hProc, szSearch);
 
     hFile = CreateFileA(szExePath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
-    if (hFile != INVALID_HANDLE_VALUE) {
+    if (hFile != INVALID_HANDLE_VALUE)
+    {
         IMAGE_DOS_HEADER dos;
         IMAGE_NT_HEADERS32 nth;
         SetFilePointer(hFile, 0, NULL, FILE_BEGIN);
-        if (ReadFile(hFile, &dos, sizeof dos, &cbRead, NULL) && dos.e_magic == IMAGE_DOS_SIGNATURE) {
+        if (ReadFile(hFile, &dos, sizeof dos, &cbRead, NULL) && dos.e_magic == IMAGE_DOS_SIGNATURE)
+        {
             SetFilePointer(hFile, dos.e_lfanew, NULL, FILE_BEGIN);
             if (ReadFile(hFile, &nth, sizeof nth, &cbRead, NULL) && nth.Signature == IMAGE_NT_SIGNATURE)
                 dwSize = nth.OptionalHeader.SizeOfImage;
@@ -134,7 +142,8 @@ HRESULT SymbolsLoad(LPCSTR szExePath, LPCSTR szPdbPath, LPCSTR szMapPath)
     else
         SymbolsDefaultMapPath(szExePath, szMap, sizeof szMap);
     szMap[sizeof szMap - 1] = 0;
-    if (GetFileAttributesA(szMap) != INVALID_FILE_ATTRIBUTES) {
+    if (GetFileAttributesA(szMap) != INVALID_FILE_ATTRIBUTES)
+    {
         strncpy(g_szMapPath, szMap, sizeof g_szMapPath - 1);
         g_szMapPath[sizeof g_szMapPath - 1] = 0;
         if (!SymbolsReadMapLinkBase(g_szMapPath, &g_dwMapLinkBase))
@@ -146,7 +155,8 @@ HRESULT SymbolsLoad(LPCSTR szExePath, LPCSTR szPdbPath, LPCSTR szMapPath)
 
 void SymbolsUnload(void)
 {
-    if (g_fSymInit) {
+    if (g_fSymInit)
+    {
         SymCleanup(SymbolsProcess());
         g_fSymInit = FALSE;
     }
@@ -183,7 +193,8 @@ static void SymbolsNormalizePath(LPCSTR szIn, char *szOut, int cchOut)
         szIn += 8;
     else if (strncmp(szIn, "file://", 7) == 0)
         szIn += 7;
-    for (i = 0; szIn[i] && j < cchOut - 1; ++i) {
+    for (i = 0; szIn[i] && j < cchOut - 1; ++i)
+    {
         char c = szIn[i];
         if (c == '/')
             c = '\\';
@@ -236,7 +247,8 @@ static BOOL LookupLineExact(HANDLE hProc, LPCSTR szFile, DWORD dwLine, DWORD64 *
     strncpy(szPath, szTry, sizeof szPath - 1);
     szPath[sizeof szPath - 1] = 0;
 
-    for (imod = 0; imod < 2; ++imod) {
+    for (imod = 0; imod < 2; ++imod)
+    {
         szMod = (imod == 0 && g_szLoadedModule[0]) ? g_szLoadedModule : NULL;
         if (imod == 0 && !szMod)
             continue;
@@ -278,9 +290,12 @@ static BOOL LookupLineFromFunction(HANDLE hProc, LPCSTR szFunc, LPCSTR szFile, D
         return FALSE;
     if (!SymGetLineFromAddr64(hProc, pSym->Address, &dwDisp32, &line))
         return FALSE;
-    do {
-        if (line.LineNumber == dwLine && FileBaseMatches(szFile, line.FileName) && line.Address) {
-            if (line.Address >= bestAddr) {
+    do
+    {
+        if (line.LineNumber == dwLine && FileBaseMatches(szFile, line.FileName) && line.Address)
+        {
+            if (line.Address >= bestAddr)
+            {
                 bestAddr = line.Address;
                 fFound = TRUE;
             }
@@ -288,17 +303,22 @@ static BOOL LookupLineFromFunction(HANDLE hProc, LPCSTR szFunc, LPCSTR szFile, D
     } while (SymGetLineNext64(hProc, &line));
     ZeroMemory(&line, sizeof line);
     line.SizeOfStruct = sizeof line;
-    if (SymGetLineFromAddr64(hProc, pSym->Address, &dwDisp32, &line)) {
-        do {
-            if (line.LineNumber == dwLine && FileBaseMatches(szFile, line.FileName) && line.Address) {
-                if (line.Address >= bestAddr) {
+    if (SymGetLineFromAddr64(hProc, pSym->Address, &dwDisp32, &line))
+    {
+        do
+        {
+            if (line.LineNumber == dwLine && FileBaseMatches(szFile, line.FileName) && line.Address)
+            {
+                if (line.Address >= bestAddr)
+                {
                     bestAddr = line.Address;
                     fFound = TRUE;
                 }
             }
         } while (SymGetLinePrev64(hProc, &line));
     }
-    if (fFound) {
+    if (fFound)
+    {
         *pAddr = bestAddr;
         return TRUE;
     }
@@ -318,21 +338,24 @@ static BOOL LookupLineNearest(HANDLE hProc, LPCSTR szFile, DWORD dwLine, DWORD64
     DWORD bestLine = 0;
     static const char *rgszFuncs[] = {
         "_main", "main", "wmain", "InitD3D", "InitVB", "InitTime",
-        "UpdateTime", "Update", "Render", NULL
-    };
+        "UpdateTime", "Update", "Render", NULL};
 
-    for (delta = 1; delta <= 12; ++delta) {
+    for (delta = 1; delta <= 12; ++delta)
+    {
         DWORD tryNum;
 
         tryNum = dwLine + delta;
-        if (LookupLineExact(hProc, szFile, tryNum, pAddr)) {
+        if (LookupLineExact(hProc, szFile, tryNum, pAddr))
+        {
             if (pdwFoundLine)
                 *pdwFoundLine = tryNum;
             return TRUE;
         }
-        if (dwLine > delta) {
+        if (dwLine > delta)
+        {
             tryNum = dwLine - delta;
-            if (LookupLineExact(hProc, szFile, tryNum, pAddr)) {
+            if (LookupLineExact(hProc, szFile, tryNum, pAddr))
+            {
                 if (pdwFoundLine)
                     *pdwFoundLine = tryNum;
                 return TRUE;
@@ -340,8 +363,10 @@ static BOOL LookupLineNearest(HANDLE hProc, LPCSTR szFile, DWORD dwLine, DWORD64
         }
     }
 
-    for (i = 0; rgszFuncs[i]; ++i) {
-        if (LookupLineFromFunction(hProc, rgszFuncs[i], szFile, dwLine, pAddr)) {
+    for (i = 0; rgszFuncs[i]; ++i)
+    {
+        if (LookupLineFromFunction(hProc, rgszFuncs[i], szFile, dwLine, pAddr))
+        {
             if (pdwFoundLine)
                 *pdwFoundLine = dwLine;
             return TRUE;
@@ -355,7 +380,8 @@ static BOOL LookupLineNearest(HANDLE hProc, LPCSTR szFile, DWORD dwLine, DWORD64
         szBase[sizeof szBase - 1] = 0;
     }
 
-    for (i = 0; rgszFuncs[i]; ++i) {
+    for (i = 0; rgszFuncs[i]; ++i)
+    {
         UCHAR symBuf[sizeof(SYMBOL_INFO) + MAX_SYM_NAME];
         PSYMBOL_INFO pSym = (PSYMBOL_INFO)symBuf;
 
@@ -365,10 +391,13 @@ static BOOL LookupLineNearest(HANDLE hProc, LPCSTR szFile, DWORD dwLine, DWORD64
             continue;
         if (!SymGetLineFromAddr64(hProc, pSym->Address, &dwDisp32, &line))
             continue;
-        do {
-            if (FileBaseMatches(szFile, line.FileName) && line.Address) {
+        do
+        {
+            if (FileBaseMatches(szFile, line.FileName) && line.Address)
+            {
                 delta = (line.LineNumber > dwLine) ? (line.LineNumber - dwLine) : (dwLine - line.LineNumber);
-                if (delta < bestDelta) {
+                if (delta < bestDelta)
+                {
                     bestDelta = delta;
                     bestAddr = line.Address;
                     bestLine = line.LineNumber;
@@ -377,7 +406,8 @@ static BOOL LookupLineNearest(HANDLE hProc, LPCSTR szFile, DWORD dwLine, DWORD64
         } while (SymGetLineNext64(hProc, &line));
     }
 
-    if (bestDelta <= 12 && bestAddr) {
+    if (bestDelta <= 12 && bestAddr)
+    {
         *pAddr = bestAddr;
         if (pdwFoundLine)
             *pdwFoundLine = bestLine;
@@ -461,7 +491,8 @@ HRESULT SymbolsDiag(char *szOut, int cchOut)
     pSym->SizeOfStruct = sizeof(SYMBOL_INFO);
     pSym->MaxNameLen = MAX_SYM_NAME;
     pos += sprintf(szOut + pos, "pdbBase=0x%I64x symType=%lu", g_dw64PdbBase, (unsigned long)mod.SymType);
-    if (SymFromName(hProc, "_main", pSym)) {
+    if (SymFromName(hProc, "_main", pSym))
+    {
         pos += sprintf(szOut + pos, " _main=0x%I64x", pSym->Address);
         ZeroMemory(&line, sizeof line);
         line.SizeOfStruct = sizeof line;
@@ -494,7 +525,8 @@ HRESULT SymbolsAddressToLine(PVOID pvAddr, char *szFile, int cchFile, DWORD *pdw
     else
         pdbAddr = addr;
 
-    if (szFunc && cchFunc > 0) {
+    if (szFunc && cchFunc > 0)
+    {
         pSym->SizeOfStruct = sizeof(SYMBOL_INFO);
         pSym->MaxNameLen = MAX_SYM_NAME;
         if (SymFromAddr(hProc, pdbAddr, &disp, pSym))
@@ -506,7 +538,8 @@ HRESULT SymbolsAddressToLine(PVOID pvAddr, char *szFile, int cchFile, DWORD *pdw
 
     ZeroMemory(&line, sizeof line);
     line.SizeOfStruct = sizeof line;
-    if (SymGetLineFromAddr64(hProc, pdbAddr, &dwDisp32, &line)) {
+    if (SymGetLineFromAddr64(hProc, pdbAddr, &dwDisp32, &line))
+    {
         strncpy(szFile, line.FileName, cchFile - 1);
         szFile[cchFile - 1] = 0;
         *pdwLine = line.LineNumber;
@@ -521,10 +554,10 @@ HRESULT SymbolsAddressToLine(PVOID pvAddr, char *szFile, int cchFile, DWORD *pdw
 
 #ifndef SYMFLAG_REGISTER
 #define SYMFLAG_REGISTER 0x0008
-#define SYMFLAG_REGREL   0x0010
+#define SYMFLAG_REGREL 0x0010
 #endif
 #ifndef SYMFLAG_GLOBAL
-#define SYMFLAG_GLOBAL   0x02000000
+#define SYMFLAG_GLOBAL 0x02000000
 #endif
 /* DbgHelp uses ModBase on map-only fallbacks; Address is already a runtime VA. */
 #define BRIDGE_MAP_RUNTIME_MODBASE 1
@@ -540,17 +573,20 @@ HRESULT SymbolsAddressToLine(PVOID pvAddr, char *szFile, int cchFile, DWORD *pdw
 #define MAX_VARS_JSON 32
 #define MAX_EMITTED_RANGES 96
 
-typedef struct {
+typedef struct
+{
     DWORD offset;
     DWORD length;
 } EMITTED_RANGE;
 
-typedef struct {
+typedef struct
+{
     EMITTED_RANGE ranges[MAX_EMITTED_RANGES];
     DWORD count;
 } EMITTED_COVERAGE;
 
-typedef struct {
+typedef struct
+{
     char *buf;
     int cchBuf;
     int pos;
@@ -565,28 +601,38 @@ typedef struct {
     int cEmitted;
 } VAR_JSON_CTX;
 
-#define MAP_NODE_OFF_LEFT    0
-#define MAP_NODE_OFF_PARENT  4
-#define MAP_NODE_OFF_RIGHT   8
-#define MAP_NODE_OFF_COLOR   12
-#define MAP_NODE_OFF_ISNIL   13
-#define MAP_NODE_OFF_MYVAL   16
-#define MAP_TREE_MAX_STEPS   64
+#define MAP_NODE_OFF_LEFT 0
+#define MAP_NODE_OFF_PARENT 4
+#define MAP_NODE_OFF_RIGHT 8
+#define MAP_NODE_OFF_COLOR 12
+#define MAP_NODE_OFF_ISNIL 13
+#define MAP_NODE_OFF_MYVAL 16
+#define MAP_TREE_MAX_STEPS 64
 
 static DWORD RegValueFromContext(PXBDM_CONTEXT ctx, DWORD reg)
 {
     if (!ctx)
         return 0;
-    switch (reg) {
-    case 0: return ctx->Eax;
-    case 1: return ctx->Ecx;
-    case 2: return ctx->Edx;
-    case 3: return ctx->Ebx;
-    case 4: return ctx->Esp;
-    case 5: return ctx->Ebp;
-    case 6: return ctx->Esi;
-    case 7: return ctx->Edi;
-    default: return 0;
+    switch (reg)
+    {
+    case 0:
+        return ctx->Eax;
+    case 1:
+        return ctx->Ecx;
+    case 2:
+        return ctx->Edx;
+    case 3:
+        return ctx->Ebx;
+    case 4:
+        return ctx->Esp;
+    case 5:
+        return ctx->Ebp;
+    case 6:
+        return ctx->Esi;
+    case 7:
+        return ctx->Edi;
+    default:
+        return 0;
     }
 }
 
@@ -628,7 +674,8 @@ static BOOL IsVarEmitted(const VAR_JSON_CTX *pj, LPCSTR szName)
 
     if (!pj || !szName || !szName[0])
         return FALSE;
-    for (i = 0; i < pj->cEmitted; ++i) {
+    for (i = 0; i < pj->cEmitted; ++i)
+    {
         if (_stricmp(pj->szEmitted[i], szName) == 0)
             return TRUE;
     }
@@ -675,7 +722,8 @@ static BOOL CoverageOverlaps(const EMITTED_COVERAGE *cov, DWORD offset, DWORD le
 
     if (!cov || !length)
         return FALSE;
-    for (i = 0; i < cov->count; ++i) {
+    for (i = 0; i < cov->count; ++i)
+    {
         DWORD rEnd = cov->ranges[i].offset + cov->ranges[i].length;
         if (offset < rEnd && end > cov->ranges[i].offset)
             return TRUE;
@@ -686,7 +734,7 @@ static BOOL CoverageOverlaps(const EMITTED_COVERAGE *cov, DWORD offset, DWORD le
 static BOOL IsLayoutChildTag(DWORD tag)
 {
     return tag == SYM_TAG_DATA || tag == SYM_TAG_BLOCK || tag == SYM_TAG_UDT ||
-        tag == SYM_TAG_BASECLASS || tag == SYM_TAG_ARRAYTYPE;
+           tag == SYM_TAG_BASECLASS || tag == SYM_TAG_ARRAYTYPE;
 }
 
 static BOOL IsSpuriousMemberName(LPCSTR szName)
@@ -718,11 +766,16 @@ static void FormatScalarValue(char *szOut, int cch, DWORD dw, LPCSTR szName)
 {
     if (!szOut || cch <= 0)
         return;
-    if (IsFloatMemberName(szName)) {
-        union { DWORD d; float f; } u;
+    if (IsFloatMemberName(szName))
+    {
+        union {
+            DWORD d;
+            float f;
+        } u;
         u.d = dw;
         sprintf(szOut, "%g (0x%08lX)", (double)u.f, (unsigned long)dw);
-    } else if (szName && ((szName[0] == 'g' && szName[1] == '_') || (szName[0] == 'p' && szName[1] != 0)))
+    }
+    else if (szName && ((szName[0] == 'g' && szName[1] == '_') || (szName[0] == 'p' && szName[1] != 0)))
         sprintf(szOut, "0x%08lX", (unsigned long)dw);
     else
         sprintf(szOut, "%ld (0x%08lX)", (long)dw, (unsigned long)dw);
@@ -732,11 +785,17 @@ static void FormatMemberValue(char *szOut, int cch, DWORD dw, LPCSTR szName, DWO
 {
     if (!szOut || cch <= 0)
         return;
-    if (IsFloatTypeId(fieldTypeId) || IsFloatMemberName(szName)) {
-        union { DWORD d; float f; } u;
+    if (IsFloatTypeId(fieldTypeId) || IsFloatMemberName(szName))
+    {
+        union {
+            DWORD d;
+            float f;
+        } u;
         u.d = dw;
         sprintf(szOut, "%g (0x%08lX)", (double)u.f, (unsigned long)dw);
-    } else {
+    }
+    else
+    {
         FormatScalarValue(szOut, cch, dw, szName);
     }
 }
@@ -788,7 +847,7 @@ static BOOL FormatGlobalQword(PSYMBOL_INFO pSym, ULONG_PTR addr, char *szOut, in
     if (!ReadXboxQword(addr, &lo, &hi))
         return FALSE;
     sprintf(szOut, "{Low=%lu (0x%08lX), High=%lu (0x%08lX)}",
-        (unsigned long)lo, (unsigned long)lo, (unsigned long)hi, (unsigned long)hi);
+            (unsigned long)lo, (unsigned long)lo, (unsigned long)hi, (unsigned long)hi);
     return TRUE;
 }
 
@@ -861,12 +920,14 @@ static BOOL ParseMapPublicLine(LPCSTR szLine, DWORD *pSect, DWORD *pLinkAddr, ch
     if (szLine[0] < '0' || szLine[0] > '9')
         return FALSE;
     n = 0;
-    while (szLine[n] && szLine[n] != ' ' && szLine[n] != '\t' && n < (int)sizeof sectOff - 1) {
+    while (szLine[n] && szLine[n] != ' ' && szLine[n] != '\t' && n < (int)sizeof sectOff - 1)
+    {
         sectOff[n] = szLine[n];
         ++n;
     }
     sectOff[n] = 0;
-    if (sscanf(sectOff, "%x:%x", pSect, &sectOffVal) < 1) {
+    if (sscanf(sectOff, "%x:%x", pSect, &sectOffVal) < 1)
+    {
         if (sscanf(sectOff, "%x", pSect) != 1)
             return FALSE;
         sectOffVal = 0;
@@ -875,7 +936,8 @@ static BOOL ParseMapPublicLine(LPCSTR szLine, DWORD *pSect, DWORD *pLinkAddr, ch
     while (*p == ' ' || *p == '\t')
         ++p;
     n = 0;
-    while (p[n] && p[n] != ' ' && p[n] != '\t' && n < cchMangled - 1) {
+    while (p[n] && p[n] != ' ' && p[n] != '\t' && n < cchMangled - 1)
+    {
         szMangled[n] = p[n];
         ++n;
     }
@@ -898,9 +960,9 @@ static BOOL IsMapSectionBoundary(LPCSTR szLine)
     if (!szLine || !szLine[0])
         return FALSE;
     return strstr(szLine, "Publics by RVA") != NULL ||
-        strstr(szLine, "Static symbols") != NULL ||
-        strstr(szLine, "Line numbers") != NULL ||
-        strstr(szLine, "entry point at") != NULL;
+           strstr(szLine, "Static symbols") != NULL ||
+           strstr(szLine, "Line numbers") != NULL ||
+           strstr(szLine, "entry point at") != NULL;
 }
 
 static BOOL EmitMapGlobalSymbol(VAR_JSON_CTX *pj, DWORD sect, DWORD linkAddr, LPCSTR mangled, LPCSTR obj)
@@ -942,7 +1004,8 @@ static BOOL EmitMapGlobalSymbol(VAR_JSON_CTX *pj, DWORD sect, DWORD linkAddr, LP
         strcpy(szVal, "-");
 
     fExpand = size > 4;
-    if (!AppendVariableJsonEx(pj, display, szVal, fExpand, display)) {
+    if (!AppendVariableJsonEx(pj, display, szVal, fExpand, display))
+    {
         pj->fStop = TRUE;
         return FALSE;
     }
@@ -955,7 +1018,8 @@ static void EmitMapSectionGlobals(VAR_JSON_CTX *pj, FILE *fp)
     char line[512];
     DWORD linesScanned = 0;
 
-    while (fgets(line, sizeof line, fp) && !pj->fStop && pj->cEmitted < pj->maxVars && linesScanned < 8000) {
+    while (fgets(line, sizeof line, fp) && !pj->fStop && pj->cEmitted < pj->maxVars && linesScanned < 8000)
+    {
         DWORD sect = 0, linkAddr = 0;
         char mangled[256], obj[128];
 
@@ -978,18 +1042,22 @@ static void EmitMapFileGlobals(VAR_JSON_CTX *pj)
         return;
 
     fp = fopen(g_szMapPath, "r");
-    if (!fp) {
+    if (!fp)
+    {
         BridgeLog("Globals: map not found (%s)", g_szMapPath);
         return;
     }
 
     /* Pass 0 = Publics by Value, pass 1 = Static symbols (file-scope statics). */
-    for (pass = 0; pass < 2 && !pj->fStop && pj->cEmitted < pj->maxVars; ++pass) {
+    for (pass = 0; pass < 2 && !pj->fStop && pj->cEmitted < pj->maxVars; ++pass)
+    {
         const char *marker = pass ? "Static symbols" : "Publics by Value";
 
         fseek(fp, 0, SEEK_SET);
-        while (fgets(line, sizeof line, fp) && !pj->fStop && pj->cEmitted < pj->maxVars) {
-            if (strstr(line, marker)) {
+        while (fgets(line, sizeof line, fp) && !pj->fStop && pj->cEmitted < pj->maxVars)
+        {
+            if (strstr(line, marker))
+            {
                 EmitMapSectionGlobals(pj, fp);
                 break;
             }
@@ -1012,7 +1080,8 @@ static BOOL AppendVariableJsonEx(VAR_JSON_CTX *pj, LPCSTR szName, LPCSTR szValue
     pj->buf[pj->pos++] = ',';
     pj->pos += sprintf(pj->buf + pj->pos, "\"value\":");
     JsonAppendEscaped(pj->buf, pj->cchBuf, &pj->pos, szValue);
-    if (fExpandable) {
+    if (fExpandable)
+    {
         pj->pos += sprintf(pj->buf + pj->pos, ",\"expandable\":true,\"base\":");
         JsonAppendEscaped(pj->buf, pj->cchBuf, &pj->pos, szBase ? szBase : szName);
     }
@@ -1030,10 +1099,10 @@ static BOOL AppendVariableJson(VAR_JSON_CTX *pj, LPCSTR szName, LPCSTR szValue)
 static DWORD ResolveNestedTypeId(DWORD childId, DWORD fieldType, DWORD childTag);
 
 static BOOL EmitScalarMember(ULONG_PTR fieldAddr, ULONG_PTR rootAddr, DWORD length, DWORD fieldTypeId,
-    LPCSTR szName, VAR_JSON_CTX *ctx, EMITTED_COVERAGE *cov);
+                             LPCSTR szName, VAR_JSON_CTX *ctx, EMITTED_COVERAGE *cov);
 
 static void EmitStructMembersRecursive(DWORD typeId, ULONG_PTR structAddr, ULONG_PTR rootAddr,
-    VAR_JSON_CTX *ctx, EMITTED_COVERAGE *cov, int depth);
+                                       VAR_JSON_CTX *ctx, EMITTED_COVERAGE *cov, int depth);
 
 static BOOL ResolveSymbolAddress(PSYMBOL_INFO pSym, PXBDM_CONTEXT ctx, ULONG_PTR *pAddr)
 {
@@ -1041,13 +1110,15 @@ static BOOL ResolveSymbolAddress(PSYMBOL_INFO pSym, PXBDM_CONTEXT ctx, ULONG_PTR
         return FALSE;
     if (pSym->Flags & SYMFLAG_REGISTER)
         return FALSE;
-    if (pSym->Flags & SYMFLAG_REGREL) {
+    if (pSym->Flags & SYMFLAG_REGREL)
+    {
         if (!ctx)
             return FALSE;
         *pAddr = (ULONG_PTR)ctx->Ebp + (ULONG_PTR)(LONG)pSym->Address;
         return TRUE;
     }
-    if (pSym->ModBase == BRIDGE_MAP_RUNTIME_MODBASE) {
+    if (pSym->ModBase == BRIDGE_MAP_RUNTIME_MODBASE)
+    {
         *pAddr = (ULONG_PTR)pSym->Address;
         return TRUE;
     }
@@ -1061,7 +1132,8 @@ static BOOL ResolveSymbolValue(PSYMBOL_INFO pSym, PXBDM_CONTEXT ctx, DWORD *pdwO
 
     if (!pSym || !pdwOut)
         return FALSE;
-    if (pSym->Flags & SYMFLAG_REGISTER) {
+    if (pSym->Flags & SYMFLAG_REGISTER)
+    {
         *pdwOut = RegValueFromContext(ctx, pSym->Register);
         return TRUE;
     }
@@ -1072,25 +1144,31 @@ static BOOL ResolveSymbolValue(PSYMBOL_INFO pSym, PXBDM_CONTEXT ctx, DWORD *pdwO
 
 static BOOL LookupD3dppMemberOffset(LPCSTR szMember, DWORD *pOffset)
 {
-    static const struct { LPCSTR name; DWORD off; } members[] = {
-        { "BackBufferWidth", 0 },
-        { "BackBufferHeight", 4 },
-        { "BackBufferFormat", 8 },
-        { "BackBufferCount", 12 },
-        { "MultiSampleType", 16 },
-        { "SwapEffect", 20 },
-        { "hDeviceWindow", 24 },
-        { "Windowed", 28 },
-        { "EnableAutoDepthStencil", 32 },
-        { "AutoDepthStencilFormat", 36 },
-        { "Flags", 40 },
-        { "FullScreen_RefreshRateInHz", 44 },
-        { "FullScreen_PresentationInterval", 48 },
+    static const struct
+    {
+        LPCSTR name;
+        DWORD off;
+    } members[] = {
+        {"BackBufferWidth", 0},
+        {"BackBufferHeight", 4},
+        {"BackBufferFormat", 8},
+        {"BackBufferCount", 12},
+        {"MultiSampleType", 16},
+        {"SwapEffect", 20},
+        {"hDeviceWindow", 24},
+        {"Windowed", 28},
+        {"EnableAutoDepthStencil", 32},
+        {"AutoDepthStencilFormat", 36},
+        {"Flags", 40},
+        {"FullScreen_RefreshRateInHz", 44},
+        {"FullScreen_PresentationInterval", 48},
     };
     int i;
 
-    for (i = 0; i < (int)(sizeof members / sizeof members[0]); ++i) {
-        if (_stricmp(szMember, members[i].name) == 0) {
+    for (i = 0; i < (int)(sizeof members / sizeof members[0]); ++i)
+    {
+        if (_stricmp(szMember, members[i].name) == 0)
+        {
             *pOffset = members[i].off;
             return TRUE;
         }
@@ -1170,7 +1248,7 @@ static DWORD ResolveNestedTypeId(DWORD childId, DWORD fieldType, DWORD childTag)
 }
 
 static BOOL EmitScalarMember(ULONG_PTR fieldAddr, ULONG_PTR rootAddr, DWORD length, DWORD fieldTypeId,
-    LPCSTR szName, VAR_JSON_CTX *ctx, EMITTED_COVERAGE *cov)
+                             LPCSTR szName, VAR_JSON_CTX *ctx, EMITTED_COVERAGE *cov)
 {
     DWORD dw = 0;
     DWORD rootOff;
@@ -1209,7 +1287,8 @@ static BOOL GetTypeSymName(DWORD typeId, char *szOut, int cchOut)
         return FALSE;
     if (!SymGetTypeInfo(hProc, g_dw64PdbBase, typeId, TI_GET_SYMNAME, &wsz) || !wsz)
         return FALSE;
-    if (wsz[0] && !wsz[1] && wsz[0] < 128) {
+    if (wsz[0] && !wsz[1] && wsz[0] < 128)
+    {
         szOut[0] = (char)wsz[0];
         szOut[1] = 0;
         return TRUE;
@@ -1242,14 +1321,16 @@ static BOOL FindMemberOffsetInType(DWORD typeIndex, LPCSTR szMember, DWORD baseO
     ZeroMemory(pParams, allocSize);
     pParams->Count = childCount;
     pParams->Start = 0;
-    if (!SymGetTypeInfo(hProc, g_dw64PdbBase, typeIndex, TI_FINDCHILDREN, pParams)) {
+    if (!SymGetTypeInfo(hProc, g_dw64PdbBase, typeIndex, TI_FINDCHILDREN, pParams))
+    {
         free(pParams);
         return FALSE;
     }
 
     {
         DWORD layoutOff = 0;
-        for (i = 0; i < childCount; ++i) {
+        for (i = 0; i < childCount; ++i)
+        {
             char szChildName[MAX_SYM_NAME];
             DWORD offset = 0;
             DWORD childTag = 0;
@@ -1268,18 +1349,23 @@ static BOOL FindMemberOffsetInType(DWORD typeIndex, LPCSTR szMember, DWORD baseO
                 szChildName[0] = 0;
             SymGetTypeInfo(hProc, g_dw64PdbBase, pParams->ChildId[i], TI_GET_TYPE, &fieldType);
 
-            if (childTag == SYM_TAG_DATA) {
+            if (childTag == SYM_TAG_DATA)
+            {
                 if (!SymGetTypeInfo(hProc, g_dw64PdbBase, pParams->ChildId[i], TI_GET_LENGTH, &length))
                     length = 4;
-                if (_stricmp(szChildName, szMember) == 0) {
+                if (_stricmp(szChildName, szMember) == 0)
+                {
                     *pOffset = baseOff + offset;
                     found = TRUE;
                     break;
                 }
                 layoutOff = offset + length;
-            } else {
+            }
+            else
+            {
                 DWORD nestedType = ResolveNestedTypeId(pParams->ChildId[i], fieldType, childTag);
-                if (FindMemberOffsetInType(nestedType, szMember, baseOff + offset, pOffset, depth + 1)) {
+                if (FindMemberOffsetInType(nestedType, szMember, baseOff + offset, pOffset, depth + 1))
+                {
                     found = TRUE;
                     break;
                 }
@@ -1408,7 +1494,8 @@ static BOOL VectorCountFromPointers(DWORD first, DWORD last, DWORD elemSize, DWO
 {
     if (!pCount || !elemSize)
         return FALSE;
-    if (first == 0 && last == 0) {
+    if (first == 0 && last == 0)
+    {
         *pCount = 0;
         return TRUE;
     }
@@ -1427,13 +1514,15 @@ static BOOL ResolveVectorPointerOffsets(DWORD typeId, DWORD objSize, DWORD *pOff
     if (FindMemberOffset(typeId, "_Myfirst", pOffFirst) &&
         FindMemberOffset(typeId, "_Mylast", pOffLast))
         return TRUE;
-    if (FindMemberOffset(typeId, "_Myval2", &offMyval2)) {
+    if (FindMemberOffset(typeId, "_Myval2", &offMyval2))
+    {
         *pOffFirst = offMyval2;
         *pOffLast = offMyval2 + 4;
         return TRUE;
     }
     /* 32-bit MSVC std::vector with empty-base allocator: _Vector_val {_Myfirst,_Mylast,_Myend}. */
-    if (objSize == 12) {
+    if (objSize == 12)
+    {
         *pOffFirst = 0;
         *pOffLast = 4;
         return TRUE;
@@ -1442,7 +1531,7 @@ static BOOL ResolveVectorPointerOffsets(DWORD typeId, DWORD objSize, DWORD *pOff
 }
 
 static BOOL TryReadVectorLayout(DWORD typeId, ULONG_PTR baseAddr, DWORD objSize, DWORD *pFirst, DWORD *pLast,
-    DWORD *pElemSize, DWORD *pCount)
+                                DWORD *pElemSize, DWORD *pCount)
 {
     DWORD offFirst = 0, offLast = 0;
     DWORD first = 0, last = 0;
@@ -1489,7 +1578,8 @@ static BOOL EmitStdVectorMembers(DWORD typeId, ULONG_PTR baseAddr, DWORD objSize
     sprintf(szVal, "%lu", (unsigned long)count);
     if (!AppendVariableJson(ctx, "size", szVal))
         return FALSE;
-    for (i = 0; i < count && ctx->count < ctx->maxVars; ++i) {
+    for (i = 0; i < count && ctx->count < ctx->maxVars; ++i)
+    {
         DWORD dw = 0;
         sprintf(szIdx, "[%lu]", (unsigned long)i);
         if (!ReadXboxDword((PVOID)(ULONG_PTR)(first + i * elemSize), &dw))
@@ -1520,7 +1610,8 @@ static BOOL ResolveMapPointerOffsets(DWORD typeId, DWORD objSize, BOOL fFastMap,
 {
     if (!pOffHead || !pOffSize)
         return FALSE;
-    if (fFastMap && objSize == 8) {
+    if (fFastMap && objSize == 8)
+    {
         *pOffHead = 0;
         *pOffSize = 4;
         return TRUE;
@@ -1528,7 +1619,8 @@ static BOOL ResolveMapPointerOffsets(DWORD typeId, DWORD objSize, BOOL fFastMap,
     if (FindMemberOffset(typeId, "_Myhead", pOffHead) &&
         FindMemberOffset(typeId, "_Mysize", pOffSize))
         return TRUE;
-    if (objSize == 8) {
+    if (objSize == 8)
+    {
         *pOffHead = 0;
         *pOffSize = 4;
         return TRUE;
@@ -1571,7 +1663,8 @@ static BOOL MapTreeMinimum(DWORD myhead, DWORD *pNode)
         return FALSE;
     if (!ReadXboxDword((PVOID)(ULONG_PTR)(myhead + MAP_NODE_OFF_LEFT), &left))
         return FALSE;
-    if (MapPtrIsSentinel(myhead, left)) {
+    if (MapPtrIsSentinel(myhead, left))
+    {
         *pNode = 0;
         return TRUE;
     }
@@ -1587,7 +1680,8 @@ static BOOL MapTreeMinChild(DWORD myhead, DWORD subtree, DWORD *pNode)
     if (!pNode || MapPtrIsSentinel(myhead, subtree))
         return FALSE;
     *pNode = subtree;
-    for (steps = 0; steps < MAP_TREE_MAX_STEPS; ++steps) {
+    for (steps = 0; steps < MAP_TREE_MAX_STEPS; ++steps)
+    {
         if (!ReadXboxDword((PVOID)(ULONG_PTR)(subtree + MAP_NODE_OFF_LEFT), &left))
             return FALSE;
         if (MapPtrIsSentinel(myhead, left))
@@ -1611,16 +1705,19 @@ static BOOL MapTreeSuccessor(DWORD myhead, DWORD node, DWORD *pNext)
     if (!MapPtrIsSentinel(myhead, right))
         return MapTreeMinChild(myhead, right, pNext);
 
-    for (steps = 0; steps < MAP_TREE_MAX_STEPS; ++steps) {
+    for (steps = 0; steps < MAP_TREE_MAX_STEPS; ++steps)
+    {
         if (!ReadXboxDword((PVOID)(ULONG_PTR)(node + MAP_NODE_OFF_PARENT), &parent))
             return FALSE;
-        if (MapPtrIsSentinel(myhead, parent)) {
+        if (MapPtrIsSentinel(myhead, parent))
+        {
             *pNext = 0;
             return TRUE;
         }
         if (!ReadXboxDword((PVOID)(ULONG_PTR)(parent + MAP_NODE_OFF_RIGHT), &parentRight))
             return FALSE;
-        if (node != parentRight) {
+        if (node != parentRight)
+        {
             *pNext = parent;
             return TRUE;
         }
@@ -1641,7 +1738,8 @@ static BOOL EmitRawDwordArray(ULONG_PTR baseAddr, DWORD byteSize, VAR_JSON_CTX *
     sprintf(szVal, "%lu", (unsigned long)count);
     if (!AppendVariableJson(ctx, "size", szVal))
         return FALSE;
-    for (i = 0; i < count && ctx->count < ctx->maxVars; ++i) {
+    for (i = 0; i < count && ctx->count < ctx->maxVars; ++i)
+    {
         if (!ReadXboxDword((PVOID)(baseAddr + i * 4), &dw))
             continue;
         sprintf(szIdx, "[%lu]", (unsigned long)i);
@@ -1667,7 +1765,8 @@ static BOOL EmitStdMapMembers(DWORD typeId, ULONG_PTR baseAddr, DWORD objSize, V
         return ctx->count > 0;
     if (!MapTreeMinimum(myhead, &node) || !node || node == myhead)
         return ctx->count > 0;
-    do {
+    do
+    {
         if (emitted >= size || emitted >= 256 || ctx->count >= ctx->maxVars)
             break;
         if (!ReadXboxDword((PVOID)(ULONG_PTR)(node + MAP_NODE_OFF_MYVAL), &key) ||
@@ -1692,23 +1791,28 @@ static BOOL FormatLocalAggregateSummary(DWORD typeId, ULONG_PTR addr, DWORD objS
 
     if (!szVal || cchVal <= 0)
         return FALSE;
-    if (TryReadArrayLayout(typeId, &elemCount, &elemSize)) {
+    if (TryReadArrayLayout(typeId, &elemCount, &elemSize))
+    {
         sprintf(szVal, "array[%lu]", (unsigned long)elemCount);
         return TRUE;
     }
-    if (TryReadMapLayout(typeId, addr, objSize, &mapHead, &mapSize)) {
+    if (TryReadMapLayout(typeId, addr, objSize, &mapHead, &mapSize))
+    {
         sprintf(szVal, "map size=%lu", (unsigned long)mapSize);
         return TRUE;
     }
-    if (TryReadVectorLayout(typeId, addr, objSize, &first, &last, &elemSize, &vecCount)) {
+    if (TryReadVectorLayout(typeId, addr, objSize, &first, &last, &elemSize, &vecCount))
+    {
         sprintf(szVal, "vector size=%lu", (unsigned long)vecCount);
         return TRUE;
     }
-    if (objSize >= 4 && (objSize % 4) == 0 && objSize <= 1024) {
+    if (objSize >= 4 && (objSize % 4) == 0 && objSize <= 1024)
+    {
         char szTypeName[MAX_SYM_NAME];
         szTypeName[0] = 0;
         GetTypeSymName(GetUdtTypeIndex(typeId), szTypeName, sizeof szTypeName);
-        if (!TypeNameLooksLikeMap(szTypeName) && !TypeNameLooksLikeVector(szTypeName)) {
+        if (!TypeNameLooksLikeMap(szTypeName) && !TypeNameLooksLikeVector(szTypeName))
+        {
             sprintf(szVal, "array[%lu]", (unsigned long)(objSize / 4));
             return TRUE;
         }
@@ -1735,7 +1839,7 @@ static BOOL TypeLooksLikeStdAggregate(DWORD typeId, DWORD objSize)
 }
 
 static BOOL FindFrameLocalByName(DWORD typeId, LPCSTR szName, DWORD *pTypeIndex, DWORD *pOffset, DWORD *pLength,
-    int depth)
+                                 int depth)
 {
     HANDLE hProc = SymbolsProcess();
     DWORD childCount = 0;
@@ -1747,14 +1851,17 @@ static BOOL FindFrameLocalByName(DWORD typeId, LPCSTR szName, DWORD *pTypeIndex,
     if (!szName || !szName[0] || !pTypeIndex || !pOffset || !pLength || depth > 6 || !g_dw64PdbBase)
         return FALSE;
 
-    if (SymGetTypeInfo(hProc, g_dw64PdbBase, typeId, TI_GET_SYMTAG, &tag)) {
-        if (tag == SYM_TAG_DATA || tag == SYM_TAG_ARRAYTYPE) {
+    if (SymGetTypeInfo(hProc, g_dw64PdbBase, typeId, TI_GET_SYMTAG, &tag))
+    {
+        if (tag == SYM_TAG_DATA || tag == SYM_TAG_ARRAYTYPE)
+        {
             char szChild[MAX_SYM_NAME];
             DWORD offset = 0;
             DWORD length = 0;
             DWORD fieldType = 0;
 
-            if (GetTypeSymName(typeId, szChild, sizeof szChild) && _stricmp(szChild, szName) == 0) {
+            if (GetTypeSymName(typeId, szChild, sizeof szChild) && _stricmp(szChild, szName) == 0)
+            {
                 if (!SymGetTypeInfo(hProc, g_dw64PdbBase, typeId, TI_GET_OFFSET, &offset))
                     offset = 0;
                 if (!SymGetTypeInfo(hProc, g_dw64PdbBase, typeId, TI_GET_LENGTH, &length))
@@ -1785,7 +1892,8 @@ static BOOL FindFrameLocalByName(DWORD typeId, LPCSTR szName, DWORD *pTypeIndex,
         if (!SymGetTypeInfo(hProc, g_dw64PdbBase, typeId, TI_FINDCHILDREN, pParams))
             goto done;
 
-        for (i = 0; i < childCount && !found; ++i) {
+        for (i = 0; i < childCount && !found; ++i)
+        {
             DWORD childTag = 0;
             if (!SymGetTypeInfo(hProc, g_dw64PdbBase, pParams->ChildId[i], TI_GET_SYMTAG, &childTag))
                 continue;
@@ -1824,11 +1932,14 @@ static BOOL ParseMemberExpr(LPCSTR szExpr, char *szBase, int cchBase, char *szMe
 
     if (!sep)
         return FALSE;
-    if (sep[0] == '-' && sep[1] == '>') {
+    if (sep[0] == '-' && sep[1] == '>')
+    {
         *pfDeref = TRUE;
         baseLen = (int)(sep - szExpr);
         sep += 2;
-    } else {
+    }
+    else
+    {
         baseLen = (int)(sep - szExpr);
         sep += 1;
     }
@@ -1862,12 +1973,14 @@ static BOOL LookupBaseSymbol(LPCSTR szBase, PXBDM_CONTEXT ctx, PSYMBOL_INFO pSym
     pSym->SizeOfStruct = sizeof(SYMBOL_INFO);
     pSym->MaxNameLen = MAX_SYM_NAME;
 
-    if (ctx && g_fSymInit && g_dw64PdbBase) {
+    if (ctx && g_fSymInit && g_dw64PdbBase)
+    {
         SetupSymbolContext(ctx);
         pFrame->SizeOfStruct = sizeof(SYMBOL_INFO);
         pFrame->MaxNameLen = MAX_SYM_NAME;
         if (SymFromAddr(hProc, PdbAddressFromRuntime(ctx->Eip), &disp, pFrame) &&
-            FindFrameLocalByName(pFrame->TypeIndex, szBase, &typeIndex, &offset, &length, 0)) {
+            FindFrameLocalByName(pFrame->TypeIndex, szBase, &typeIndex, &offset, &length, 0))
+        {
             strncpy(pSym->Name, szBase, MAX_SYM_NAME - 1);
             pSym->Name[MAX_SYM_NAME - 1] = 0;
             pSym->TypeIndex = typeIndex;
@@ -1915,12 +2028,14 @@ static BOOL ReadMemberValue(LPCSTR szBase, PXBDM_CONTEXT ctx, LPCSTR szMember, D
         return FALSE;
     if (!ResolveSymbolAddress(pSym, ctx, &baseAddr))
         return FALSE;
-    if (!FindMemberOffset(GetUdtTypeIndex(pSym->TypeIndex), szMember, &offset)) {
-        if (!FindMemberOffset(pSym->TypeIndex, szMember, &offset)) {
+    if (!FindMemberOffset(GetUdtTypeIndex(pSym->TypeIndex), szMember, &offset))
+    {
+        if (!FindMemberOffset(pSym->TypeIndex, szMember, &offset))
+        {
             if (TryIndexedFloatOffset(pSym->Size, szMember, &offset))
                 (void)0;
             else if ((_stricmp(szBase, "d3dpp") == 0 || pSym->Size >= 40) &&
-                LookupD3dppMemberOffset(szMember, &offset))
+                     LookupD3dppMemberOffset(szMember, &offset))
                 (void)0;
             else
                 return FALSE;
@@ -1941,7 +2056,8 @@ static BOOL CALLBACK EnumVarsCallback(PSYMBOL_INFO pSymInfo, ULONG SymbolSize, P
         return TRUE;
     if (pSymInfo->Name[0] == '_' && pSymInfo->Name[1] == '_')
         return TRUE;
-    if (pj->fGlobals) {
+    if (pj->fGlobals)
+    {
         BOOL canRead;
 
         if (IsSpuriousMemberName(pSymInfo->Name))
@@ -1958,28 +2074,37 @@ static BOOL CALLBACK EnumVarsCallback(PSYMBOL_INFO pSymInfo, ULONG SymbolSize, P
         if (!canRead)
             addr = 0;
     }
-    if (pj->fLocals) {
+    if (pj->fLocals)
+    {
         if (pSymInfo->Tag != SYM_TAG_DATA && pSymInfo->Tag != SYM_TAG_BLOCK)
             return TRUE;
-    } else if (!pj->fGlobals && pSymInfo->Tag != SYM_TAG_DATA) {
+    }
+    else if (!pj->fGlobals && pSymInfo->Tag != SYM_TAG_DATA)
+    {
         return TRUE;
     }
 
-    if (pj->fGlobals) {
+    if (pj->fGlobals)
+    {
         if (!addr)
             strncpy(szVal, "???", sizeof szVal);
-        else if (pSymInfo->Size == 8) {
+        else if (pSymInfo->Size == 8)
+        {
             if (!FormatGlobalQword(pSymInfo, addr, szVal, sizeof szVal))
                 strncpy(szVal, "???", sizeof szVal);
-        } else if (pSymInfo->Size > 4) {
+        }
+        else if (pSymInfo->Size > 4)
+        {
             sprintf(szVal, "{%lu bytes}", (unsigned long)pSymInfo->Size);
-        } else if (!FormatGlobalScalar(pSymInfo, addr, szVal, sizeof szVal)) {
+        }
+        else if (!FormatGlobalScalar(pSymInfo, addr, szVal, sizeof szVal))
+        {
             strncpy(szVal, "???", sizeof szVal);
         }
         szVal[sizeof szVal - 1] = 0;
         if (pSymInfo->Size > 4 || pSymInfo->Size == 8)
             fAppended = AppendVariableJsonEx(pj, pSymInfo->Name, szVal,
-                pSymInfo->TypeIndex != 0 || pSymInfo->Size > 4, pSymInfo->Name);
+                                             pSymInfo->TypeIndex != 0 || pSymInfo->Size > 4, pSymInfo->Name);
         else
             fAppended = AppendVariableJson(pj, pSymInfo->Name, szVal);
         if (fAppended)
@@ -1987,7 +2112,8 @@ static BOOL CALLBACK EnumVarsCallback(PSYMBOL_INFO pSymInfo, ULONG SymbolSize, P
         return pj->count < pj->maxVars;
     }
 
-    if (pSymInfo->Size > 4 && pj->fLocals) {
+    if (pSymInfo->Size > 4 && pj->fLocals)
+    {
         if (ResolveSymbolAddress(pSymInfo, pj->ctx, &addr))
             FormatLocalAggregateSummary(pSymInfo->TypeIndex, addr, pSymInfo->Size, szVal, sizeof szVal);
         else
@@ -2068,7 +2194,8 @@ static void EmitDataTypeLocal(DWORD typeId, PXBDM_CONTEXT pctx, VAR_JSON_CTX *pj
     SymGetTypeInfo(hProc, g_dw64PdbBase, typeId, TI_GET_TYPE, &fieldType);
 
     addr = (ULONG_PTR)pctx->Ebp + (ULONG_PTR)(LONG)offset;
-    if (length > 4) {
+    if (length > 4)
+    {
         FormatLocalAggregateSummary(fieldType ? fieldType : typeId, addr, length, szVal, sizeof szVal);
         AppendVariableJsonEx(pj, szName, szVal, TRUE, szName);
         return;
@@ -2090,7 +2217,8 @@ static void EmitTypeTreeLocals(DWORD typeId, PXBDM_CONTEXT pctx, VAR_JSON_CTX *p
     if (!pctx || !pj || !g_dw64PdbBase || depth > 4 || pj->count >= pj->maxVars)
         return;
 
-    if (SymGetTypeInfo(hProc, g_dw64PdbBase, typeId, TI_GET_SYMTAG, &tag) && tag == SYM_TAG_DATA) {
+    if (SymGetTypeInfo(hProc, g_dw64PdbBase, typeId, TI_GET_SYMTAG, &tag) && tag == SYM_TAG_DATA)
+    {
         EmitDataTypeLocal(typeId, pctx, pj);
         return;
     }
@@ -2109,7 +2237,8 @@ static void EmitTypeTreeLocals(DWORD typeId, PXBDM_CONTEXT pctx, VAR_JSON_CTX *p
         if (!SymGetTypeInfo(hProc, g_dw64PdbBase, typeId, TI_FINDCHILDREN, pParams))
             goto done;
 
-        for (i = 0; i < childCount && pj->count < pj->maxVars; ++i) {
+        for (i = 0; i < childCount && pj->count < pj->maxVars; ++i)
+        {
             DWORD childTag = 0;
             if (!SymGetTypeInfo(hProc, g_dw64PdbBase, pParams->ChildId[i], TI_GET_SYMTAG, &childTag))
                 continue;
@@ -2148,7 +2277,8 @@ static BOOL CALLBACK EnumSupplementalLocalsCallback(PSYMBOL_INFO pSymInfo, ULONG
     if (IsVarEmitted(pj, pSymInfo->Name))
         return TRUE;
 
-    if (pSymInfo->Size > 4) {
+    if (pSymInfo->Size > 4)
+    {
         if (ResolveSymbolAddress(pSymInfo, pj->ctx, &addr))
             FormatLocalAggregateSummary(pSymInfo->TypeIndex, addr, pSymInfo->Size, szVal, sizeof szVal);
         else
@@ -2206,10 +2336,13 @@ HRESULT SymbolsEmitVariablesJson(LPCSTR szScope, PXBDM_CONTEXT pctx, char *szBuf
     else
         return E_INVALIDARG;
 
-    if (fGlobals) {
+    if (fGlobals)
+    {
         if (!g_szMapPath[0])
             return E_FAIL;
-    } else if (!g_fSymInit || !g_dw64PdbBase) {
+    }
+    else if (!g_fSymInit || !g_dw64PdbBase)
+    {
         return E_FAIL;
     }
 
@@ -2224,9 +2357,12 @@ HRESULT SymbolsEmitVariablesJson(LPCSTR szScope, PXBDM_CONTEXT pctx, char *szBuf
     ctx.fGlobals = fGlobals;
 
     szBuf[0] = 0;
-    if (fGlobals) {
+    if (fGlobals)
+    {
         EmitMapFileGlobals(&ctx);
-    } else if (fLocals) {
+    }
+    else if (fLocals)
+    {
         SetupSymbolContext(pctx);
         EmitLocalsFromFrame(pctx, &ctx);
     }
@@ -2236,7 +2372,7 @@ HRESULT SymbolsEmitVariablesJson(LPCSTR szScope, PXBDM_CONTEXT pctx, char *szBuf
 }
 
 static void EmitArrayMembers(DWORD arrayTypeId, ULONG_PTR arrayAddr, ULONG_PTR rootAddr,
-    VAR_JSON_CTX *ctx, EMITTED_COVERAGE *cov, int depth)
+                             VAR_JSON_CTX *ctx, EMITTED_COVERAGE *cov, int depth)
 {
     HANDLE hProc = SymbolsProcess();
     DWORD elemCount = 0;
@@ -2256,21 +2392,25 @@ static void EmitArrayMembers(DWORD arrayTypeId, ULONG_PTR arrayAddr, ULONG_PTR r
     if (!SymGetTypeInfo(hProc, g_dw64PdbBase, elemType, TI_GET_SYMTAG, &elemTag))
         elemTag = 0;
 
-    for (i = 0; i < elemCount && ctx->count < ctx->maxVars; ++i) {
+    for (i = 0; i < elemCount && ctx->count < ctx->maxVars; ++i)
+    {
         char szName[32];
         ULONG_PTR elemAddr = arrayAddr + (ULONG_PTR)(i * elemLen);
         sprintf(szName, "[%lu]", (unsigned long)i);
-        if (elemTag == SYM_TAG_DATA && elemLen == 4) {
+        if (elemTag == SYM_TAG_DATA && elemLen == 4)
+        {
             EmitScalarMember(elemAddr, rootAddr, 4, elemType, szName, ctx, cov);
-        } else {
+        }
+        else
+        {
             EmitStructMembersRecursive(ResolveNestedTypeId(elemType, elemType, elemTag),
-                elemAddr, rootAddr, ctx, cov, depth + 1);
+                                       elemAddr, rootAddr, ctx, cov, depth + 1);
         }
     }
 }
 
 static void EmitStructMembersRecursive(DWORD typeId, ULONG_PTR structAddr, ULONG_PTR rootAddr,
-    VAR_JSON_CTX *ctx, EMITTED_COVERAGE *cov, int depth)
+                                       VAR_JSON_CTX *ctx, EMITTED_COVERAGE *cov, int depth)
 {
     HANDLE hProc = SymbolsProcess();
     DWORD childCount = 0;
@@ -2297,7 +2437,8 @@ static void EmitStructMembersRecursive(DWORD typeId, ULONG_PTR structAddr, ULONG
 
     {
         DWORD layoutOff = 0;
-        for (i = 0; i < childCount && ctx->count < ctx->maxVars; ++i) {
+        for (i = 0; i < childCount && ctx->count < ctx->maxVars; ++i)
+        {
             char szChildName[MAX_SYM_NAME];
             DWORD offset = 0;
             DWORD childTag = 0;
@@ -2315,7 +2456,8 @@ static void EmitStructMembersRecursive(DWORD typeId, ULONG_PTR structAddr, ULONG
                 offset = layoutOff;
             if (!GetTypeSymName(pParams->ChildId[i], szChildName, sizeof szChildName))
                 szChildName[0] = 0;
-            if (childTag == SYM_TAG_DATA) {
+            if (childTag == SYM_TAG_DATA)
+            {
                 if (!szChildName[0] || IsSpuriousMemberName(szChildName))
                     continue;
                 if (szChildName[0] == '_' && szChildName[1] == '_' && szChildName[2] != 0)
@@ -2323,32 +2465,39 @@ static void EmitStructMembersRecursive(DWORD typeId, ULONG_PTR structAddr, ULONG
             }
             SymGetTypeInfo(hProc, g_dw64PdbBase, pParams->ChildId[i], TI_GET_TYPE, &fieldType);
 
-            if (childTag == SYM_TAG_ARRAYTYPE) {
+            if (childTag == SYM_TAG_ARRAYTYPE)
+            {
                 EmitArrayMembers(pParams->ChildId[i], structAddr + offset, rootAddr, ctx, cov, depth + 1);
                 {
                     DWORD arraySize = GetTypeByteSize(pParams->ChildId[i]);
                     if (arraySize)
                         layoutOff = offset + arraySize;
                 }
-            } else if (childTag == SYM_TAG_DATA) {
+            }
+            else if (childTag == SYM_TAG_DATA)
+            {
                 if (!SymGetTypeInfo(hProc, g_dw64PdbBase, pParams->ChildId[i], TI_GET_LENGTH, &length))
                     length = 4;
                 EmitScalarMember(structAddr + offset, rootAddr, length, fieldType, szChildName, ctx, cov);
                 layoutOff = offset + length;
-            } else {
+            }
+            else
+            {
                 DWORD nestedType = ResolveNestedTypeId(pParams->ChildId[i], fieldType, childTag);
                 DWORD memberRootOff = (DWORD)(structAddr + offset - rootAddr);
                 DWORD nestedSize = GetTypeByteSize(nestedType);
 
                 /* Union alternate views (e.g. LARGE_INTEGER anonymous struct + u) share bytes. */
-                if (nestedSize && CoverageOverlaps(cov, memberRootOff, nestedSize)) {
+                if (nestedSize && CoverageOverlaps(cov, memberRootOff, nestedSize))
+                {
                     layoutOff = offset + nestedSize;
                     continue;
                 }
                 countBefore = ctx->count;
                 EmitStructMembersRecursive(nestedType, structAddr + offset, rootAddr, ctx, cov, depth + 1);
                 if (ctx->count == countBefore && szChildName[0] &&
-                    !(nestedSize && CoverageOverlaps(cov, memberRootOff, nestedSize))) {
+                    !(nestedSize && CoverageOverlaps(cov, memberRootOff, nestedSize)))
+                {
                     DWORD altType = LookupTypeIndexByName(szChildName);
                     if (!altType && szChildName[0] == '_')
                         altType = LookupTypeIndexByName(szChildName + 1);
@@ -2400,7 +2549,8 @@ HRESULT SymbolsEmitMembersJson(LPCSTR szBase, PXBDM_CONTEXT pctx, char *szBuf, i
         DWORD symSize = objSize ? objSize : pSym->Size;
         DWORD arrayTypeId = ResolveArrayTypeId(pSym->TypeIndex);
 
-        if (EmitStdVectorMembers(pSym->TypeIndex, baseAddr, objSize, &ctx)) {
+        if (EmitStdVectorMembers(pSym->TypeIndex, baseAddr, objSize, &ctx))
+        {
             if (pcVars)
                 *pcVars = ctx.count;
             return ctx.count > 0 ? S_OK : S_FALSE;
@@ -2409,7 +2559,8 @@ HRESULT SymbolsEmitMembersJson(LPCSTR szBase, PXBDM_CONTEXT pctx, char *szBuf, i
         ctx.count = 0;
         szBuf[0] = 0;
 
-        if (EmitStdMapMembers(pSym->TypeIndex, baseAddr, objSize, &ctx)) {
+        if (EmitStdMapMembers(pSym->TypeIndex, baseAddr, objSize, &ctx))
+        {
             if (pcVars)
                 *pcVars = ctx.count;
             return ctx.count > 0 ? S_OK : S_FALSE;
@@ -2418,11 +2569,13 @@ HRESULT SymbolsEmitMembersJson(LPCSTR szBase, PXBDM_CONTEXT pctx, char *szBuf, i
         ctx.count = 0;
         szBuf[0] = 0;
 
-        if (arrayTypeId) {
+        if (arrayTypeId)
+        {
             EMITTED_COVERAGE cov;
             ZeroMemory(&cov, sizeof cov);
             EmitArrayMembers(arrayTypeId, baseAddr, baseAddr, &ctx, &cov, 0);
-            if (ctx.count > 0) {
+            if (ctx.count > 0)
+            {
                 if (pcVars)
                     *pcVars = ctx.count;
                 return S_OK;
@@ -2432,7 +2585,8 @@ HRESULT SymbolsEmitMembersJson(LPCSTR szBase, PXBDM_CONTEXT pctx, char *szBuf, i
             szBuf[0] = 0;
         }
 
-        if (EmitRawDwordArray(baseAddr, symSize, &ctx)) {
+        if (EmitRawDwordArray(baseAddr, symSize, &ctx))
+        {
             if (pcVars)
                 *pcVars = ctx.count;
             return ctx.count > 0 ? S_OK : S_FALSE;
@@ -2441,7 +2595,8 @@ HRESULT SymbolsEmitMembersJson(LPCSTR szBase, PXBDM_CONTEXT pctx, char *szBuf, i
         ctx.count = 0;
         szBuf[0] = 0;
 
-        if (TypeLooksLikeStdAggregate(pSym->TypeIndex, symSize)) {
+        if (TypeLooksLikeStdAggregate(pSym->TypeIndex, symSize))
+        {
             if (pcVars)
                 *pcVars = 0;
             return S_FALSE;
@@ -2458,28 +2613,35 @@ HRESULT SymbolsEmitMembersJson(LPCSTR szBase, PXBDM_CONTEXT pctx, char *szBuf, i
         EmitStructMembersRecursive(typeId, baseAddr, baseAddr, &ctx, &cov, 0);
         if (!ctx.count && typeId != pSym->TypeIndex)
             EmitStructMembersRecursive(pSym->TypeIndex, baseAddr, baseAddr, &ctx, &cov, 0);
-        if (!ctx.count && GetTypeSymName(typeId, szTypeName, sizeof szTypeName)) {
+        if (!ctx.count && GetTypeSymName(typeId, szTypeName, sizeof szTypeName))
+        {
             DWORD altType = LookupTypeIndexByName(szTypeName);
             if (altType && altType != typeId)
                 EmitStructMembersRecursive(altType, baseAddr, baseAddr, &ctx, &cov, 0);
         }
     }
 
-    if (!ctx.count && _stricmp(szBase, "d3dpp") == 0) {
-        static const struct { LPCSTR name; DWORD off; } members[] = {
-            { "BackBufferWidth", 0 },
-            { "BackBufferHeight", 4 },
-            { "BackBufferFormat", 8 },
-            { "BackBufferCount", 12 },
-            { "MultiSampleType", 16 },
-            { "SwapEffect", 20 },
-            { "Windowed", 28 },
-            { "EnableAutoDepthStencil", 32 },
-            { "AutoDepthStencilFormat", 36 },
-            { "FullScreen_RefreshRateInHz", 44 },
-            { "FullScreen_PresentationInterval", 48 },
+    if (!ctx.count && _stricmp(szBase, "d3dpp") == 0)
+    {
+        static const struct
+        {
+            LPCSTR name;
+            DWORD off;
+        } members[] = {
+            {"BackBufferWidth", 0},
+            {"BackBufferHeight", 4},
+            {"BackBufferFormat", 8},
+            {"BackBufferCount", 12},
+            {"MultiSampleType", 16},
+            {"SwapEffect", 20},
+            {"Windowed", 28},
+            {"EnableAutoDepthStencil", 32},
+            {"AutoDepthStencilFormat", 36},
+            {"FullScreen_RefreshRateInHz", 44},
+            {"FullScreen_PresentationInterval", 48},
         };
-        for (i = 0; i < sizeof members / sizeof members[0] && ctx.count < ctx.maxVars; ++i) {
+        for (i = 0; i < sizeof members / sizeof members[0] && ctx.count < ctx.maxVars; ++i)
+        {
             DWORD dw = 0;
             char szVal[64];
             if (!ReadXboxDword((PVOID)(baseAddr + members[i].off), &dw))
@@ -2523,8 +2685,10 @@ HRESULT SymbolsEvaluate(LPCSTR szExpr, PXBDM_CONTEXT pctx, char *szValue, int cc
         name[sizeof name - 1] = 0;
     }
 
-    if (ParseMemberExpr(name, base, sizeof base, member, sizeof member, &fDeref)) {
-        if (fDeref) {
+    if (ParseMemberExpr(name, base, sizeof base, member, sizeof member, &fDeref))
+    {
+        if (fDeref)
+        {
             ULONG_PTR structAddr = 0;
             DWORD offset = 0;
 
@@ -2533,14 +2697,17 @@ HRESULT SymbolsEvaluate(LPCSTR szExpr, PXBDM_CONTEXT pctx, char *szValue, int cc
             if (!ResolveSymbolValue(pSym, pctx, &dw))
                 goto read_fail;
             structAddr = (ULONG_PTR)dw;
-            if (!FindMemberOffset(GetUdtTypeIndex(pSym->TypeIndex), member, &offset)) {
+            if (!FindMemberOffset(GetUdtTypeIndex(pSym->TypeIndex), member, &offset))
+            {
                 if (!FindMemberOffset(pSym->TypeIndex, member, &offset) &&
                     !LookupD3dppMemberOffset(member, &offset))
                     goto member_fail;
             }
             if (!ReadXboxDword((PVOID)(structAddr + offset), &dw))
                 goto read_fail;
-        } else if (!ReadMemberValue(base, pctx, member, &dw)) {
+        }
+        else if (!ReadMemberValue(base, pctx, member, &dw))
+        {
             goto member_fail;
         }
         FormatMemberValue(szValue, cchValue, dw, member, 0);

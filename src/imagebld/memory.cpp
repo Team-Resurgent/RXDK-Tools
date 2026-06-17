@@ -17,24 +17,22 @@ Abstract:
 
 LPVOID
 ImgbAllocateMemory(
-    SIZE_T cbBytes
-    )
+    SIZE_T cbBytes)
 {
     LPVOID lpvMemory;
 
     lpvMemory = (LPVOID)LocalAlloc(LMEM_FIXED | LMEM_ZEROINIT, cbBytes);
 
-    if (lpvMemory == NULL) {
+    if (lpvMemory == NULL)
+    {
         ImgbResourcePrintErrorAndExit(IDS_NO_MEMORY);
     }
 
     return lpvMemory;
 }
 
-VOID
-ImgbFreeMemory(
-    LPVOID lpMemory
-    )
+VOID ImgbFreeMemory(
+    LPVOID lpMemory)
 {
     LocalFree((HLOCAL)lpMemory);
 }

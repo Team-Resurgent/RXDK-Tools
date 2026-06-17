@@ -25,23 +25,20 @@ Abstract:
 // string "XBEH".
 //
 
-#define XBEIMAGE_SIGNATURE                      0x48454258
+#define XBEIMAGE_SIGNATURE 0x48454258
 
 //
 // Define the standard base address for an XBE image.
 //
 
-#define XBEIMAGE_STANDARD_BASE_ADDRESS          0x00010000
+#define XBEIMAGE_STANDARD_BASE_ADDRESS 0x00010000
 
 //
 // Define the entry point signature for an XBE image.
 //
 
-typedef
-VOID
-(__cdecl *PXBEIMAGE_ENTRY_POINT)(
-    VOID
-    );
+typedef VOID(__cdecl *PXBEIMAGE_ENTRY_POINT)(
+    VOID);
 
 //
 // Every "pointer" field in the on-disk XBE structures is really a 32-bit Xbox
@@ -58,20 +55,20 @@ typedef ULONG XBEVA;
 // certificate.
 //
 
-#define XBEIMAGE_TITLE_NAME_LENGTH              40
+#define XBEIMAGE_TITLE_NAME_LENGTH 40
 
 //
 // Define the number of alternate title identifiers that can be stored in the
 // XBE image certificate.
 //
 
-#define XBEIMAGE_ALTERNATE_TITLE_ID_COUNT       16
+#define XBEIMAGE_ALTERNATE_TITLE_ID_COUNT 16
 
 //
 // Define the length of the keys stored in the XBE image certificate.
 //
 
-#define XBEIMAGE_CERTIFICATE_KEY_LENGTH         16
+#define XBEIMAGE_CERTIFICATE_KEY_LENGTH 16
 
 //
 // Define the structure of the XBE certificate raw data key.
@@ -83,34 +80,35 @@ typedef UCHAR XBEIMAGE_CERTIFICATE_KEY[XBEIMAGE_CERTIFICATE_KEY_LENGTH];
 // Define the game region flags for the XBE image certificate.
 //
 
-#define XBEIMAGE_GAME_REGION_NA                 0x00000001
-#define XBEIMAGE_GAME_REGION_JAPAN              0x00000002
-#define XBEIMAGE_GAME_REGION_RESTOFWORLD        0x00000004
-#define XBEIMAGE_GAME_REGION_MANUFACTURING      0x80000000
+#define XBEIMAGE_GAME_REGION_NA 0x00000001
+#define XBEIMAGE_GAME_REGION_JAPAN 0x00000002
+#define XBEIMAGE_GAME_REGION_RESTOFWORLD 0x00000004
+#define XBEIMAGE_GAME_REGION_MANUFACTURING 0x80000000
 
 //
 // Define the media type flags for the XBE image certificate.
 //
 
-#define XBEIMAGE_MEDIA_TYPE_HARD_DISK           0x00000001
-#define XBEIMAGE_MEDIA_TYPE_DVD_X2              0x00000002
-#define XBEIMAGE_MEDIA_TYPE_DVD_CD              0x00000004
-#define XBEIMAGE_MEDIA_TYPE_CD                  0x00000008
-#define XBEIMAGE_MEDIA_TYPE_DVD_5_RO            0x00000010
-#define XBEIMAGE_MEDIA_TYPE_DVD_9_RO            0x00000020
-#define XBEIMAGE_MEDIA_TYPE_DVD_5_RW            0x00000040
-#define XBEIMAGE_MEDIA_TYPE_DVD_9_RW            0x00000080
-#define XBEIMAGE_MEDIA_TYPE_DONGLE              0x00000100
-#define XBEIMAGE_MEDIA_TYPE_MEDIA_BOARD         0x00000200
+#define XBEIMAGE_MEDIA_TYPE_HARD_DISK 0x00000001
+#define XBEIMAGE_MEDIA_TYPE_DVD_X2 0x00000002
+#define XBEIMAGE_MEDIA_TYPE_DVD_CD 0x00000004
+#define XBEIMAGE_MEDIA_TYPE_CD 0x00000008
+#define XBEIMAGE_MEDIA_TYPE_DVD_5_RO 0x00000010
+#define XBEIMAGE_MEDIA_TYPE_DVD_9_RO 0x00000020
+#define XBEIMAGE_MEDIA_TYPE_DVD_5_RW 0x00000040
+#define XBEIMAGE_MEDIA_TYPE_DVD_9_RW 0x00000080
+#define XBEIMAGE_MEDIA_TYPE_DONGLE 0x00000100
+#define XBEIMAGE_MEDIA_TYPE_MEDIA_BOARD 0x00000200
 #define XBEIMAGE_MEDIA_TYPE_NONSECURE_HARD_DISK 0x40000000
-#define XBEIMAGE_MEDIA_TYPE_NONSECURE_MODE      0x80000000
-#define XBEIMAGE_MEDIA_TYPE_MEDIA_MASK          0x00FFFFFF
+#define XBEIMAGE_MEDIA_TYPE_NONSECURE_MODE 0x80000000
+#define XBEIMAGE_MEDIA_TYPE_MEDIA_MASK 0x00FFFFFF
 
 //
 // Define the structure of the XBE certificate.
 //
 
-typedef struct _XBEIMAGE_CERTIFICATE {
+typedef struct _XBEIMAGE_CERTIFICATE
+{
 
     //
     // Specifies the number of bytes stored in this certificate structure.
@@ -202,16 +200,17 @@ typedef struct _XBEIMAGE_CERTIFICATE {
 // loader.
 //
 
-#define XBEIMAGE_CERTIFICATE_BASE_SIZEOF \
+#define XBEIMAGE_CERTIFICATE_BASE_SIZEOF                          \
     (FIELD_OFFSET(XBEIMAGE_CERTIFICATE, AlternateSignatureKeys) + \
-    (sizeof(XBEIMAGE_CERTIFICATE_KEY) * XBEIMAGE_ALTERNATE_TITLE_ID_COUNT))
+     (sizeof(XBEIMAGE_CERTIFICATE_KEY) * XBEIMAGE_ALTERNATE_TITLE_ID_COUNT))
 
 //
 // Define the structure of the XBE import directory.  A directory entry exists
 // for each image that the XBE image imports from.
 //
 
-typedef struct _XBEIMAGE_IMPORT_DESCRIPTOR {
+typedef struct _XBEIMAGE_IMPORT_DESCRIPTOR
+{
 
     //
     // Specifies the pointer to the array of import thunks.  All import thunks
@@ -230,18 +229,19 @@ typedef struct _XBEIMAGE_IMPORT_DESCRIPTOR {
 // Defines the flags that apply to XBE image sections.
 //
 
-#define XBEIMAGE_SECTION_WRITEABLE              0x00000001
-#define XBEIMAGE_SECTION_PRELOAD                0x00000002
-#define XBEIMAGE_SECTION_EXECUTABLE             0x00000004
-#define XBEIMAGE_SECTION_INSERTFILE             0x00000008
-#define XBEIMAGE_SECTION_HEAD_PAGE_READONLY     0x00000010
-#define XBEIMAGE_SECTION_TAIL_PAGE_READONLY     0x00000020
+#define XBEIMAGE_SECTION_WRITEABLE 0x00000001
+#define XBEIMAGE_SECTION_PRELOAD 0x00000002
+#define XBEIMAGE_SECTION_EXECUTABLE 0x00000004
+#define XBEIMAGE_SECTION_INSERTFILE 0x00000008
+#define XBEIMAGE_SECTION_HEAD_PAGE_READONLY 0x00000010
+#define XBEIMAGE_SECTION_TAIL_PAGE_READONLY 0x00000020
 
 //
 // Define the structure of the XBE image section.
 //
 
-typedef struct _XBEIMAGE_SECTION {
+typedef struct _XBEIMAGE_SECTION
+{
 
     //
     // Specifies attributes about the section.
@@ -300,13 +300,14 @@ typedef struct _XBEIMAGE_SECTION {
 // Define the length of the library name stored in a library version structure.
 //
 
-#define XBEIMAGE_LIBRARY_VERSION_NAME_LENGTH    8
+#define XBEIMAGE_LIBRARY_VERSION_NAME_LENGTH 8
 
 //
 // Define the structure of a XBE library version descriptor.
 //
 
-typedef struct _XBEIMAGE_LIBRARY_VERSION {
+typedef struct _XBEIMAGE_LIBRARY_VERSION
+{
 
     //
     // Specifies ASCII text padded with nulls to identify the library.
@@ -352,7 +353,8 @@ typedef struct _XBEIMAGE_LIBRARY_VERSION {
 // structure at file byte offset zero.
 //
 
-typedef struct _XBEIMAGE_HEADER {
+typedef struct _XBEIMAGE_HEADER
+{
 
     //
     // Contains XBEIMAGE_SIGNATURE.
@@ -540,27 +542,29 @@ typedef struct _XBEIMAGE_HEADER {
 C_ASSERT(sizeof(XBEVA) == 4);
 C_ASSERT(sizeof(XBEIMAGE_IMPORT_DESCRIPTOR) == 8);
 C_ASSERT(FIELD_OFFSET(XBEIMAGE_HEADER, SizeOfImage) -
-         FIELD_OFFSET(XBEIMAGE_HEADER, BaseAddress) == 8);
+             FIELD_OFFSET(XBEIMAGE_HEADER, BaseAddress) ==
+         8);
 C_ASSERT(FIELD_OFFSET(XBEIMAGE_HEADER, SizeOfMicrosoftLogo) -
-         FIELD_OFFSET(XBEIMAGE_HEADER, MicrosoftLogo) == 4);
+             FIELD_OFFSET(XBEIMAGE_HEADER, MicrosoftLogo) ==
+         4);
 #endif
 
 //
 // Define the initialization flags stored in the image header.
 //
 
-#define XINIT_MOUNT_UTILITY_DRIVE               0x00000001
-#define XINIT_FORMAT_UTILITY_DRIVE              0x00000002
-#define XINIT_LIMIT_DEVKIT_MEMORY               0x00000004
-#define XINIT_NO_SETUP_HARD_DISK                0x00000008
-#define XINIT_DONT_MODIFY_HARD_DISK             0x00000010
-#define XINIT_UTILITY_DRIVE_CLUSTER_SIZE_MASK   0xC0000000
+#define XINIT_MOUNT_UTILITY_DRIVE 0x00000001
+#define XINIT_FORMAT_UTILITY_DRIVE 0x00000002
+#define XINIT_LIMIT_DEVKIT_MEMORY 0x00000004
+#define XINIT_NO_SETUP_HARD_DISK 0x00000008
+#define XINIT_DONT_MODIFY_HARD_DISK 0x00000010
+#define XINIT_UTILITY_DRIVE_CLUSTER_SIZE_MASK 0xC0000000
 
-#define XINIT_UTILITY_DRIVE_CLUSTER_SIZE_SHIFT  30
-#define XINIT_UTILITY_DRIVE_16K_CLUSTER_SIZE    0x00000000
-#define XINIT_UTILITY_DRIVE_32K_CLUSTER_SIZE    0x40000000
-#define XINIT_UTILITY_DRIVE_64K_CLUSTER_SIZE    0x80000000
-#define XINIT_UTILITY_DRIVE_128K_CLUSTER_SIZE   0xC0000000
+#define XINIT_UTILITY_DRIVE_CLUSTER_SIZE_SHIFT 30
+#define XINIT_UTILITY_DRIVE_16K_CLUSTER_SIZE 0x00000000
+#define XINIT_UTILITY_DRIVE_32K_CLUSTER_SIZE 0x40000000
+#define XINIT_UTILITY_DRIVE_64K_CLUSTER_SIZE 0x80000000
+#define XINIT_UTILITY_DRIVE_128K_CLUSTER_SIZE 0xC0000000
 
 #include <poppack.h>
 

@@ -8,7 +8,7 @@ Module Name:
     menu.h
 
 Abstract:
-    
+
     Declars the CXboxContextMenu class
 
 Environment:
@@ -34,19 +34,23 @@ class CXboxMenu;
 typedef HRESULT (CXboxMenu::*PMENU_VERB)(LPCMINVOKECOMMANDINFO pici);
 
 // CXboxMenu
-class ATL_NO_VTABLE CXboxMenu : 
-	public CComObjectRootEx<CComMultiThreadModel>,
-    public CShellObjectWithSite,
-    public IContextMenu
+class ATL_NO_VTABLE CXboxMenu : public CComObjectRootEx<CComMultiThreadModel>,
+                                public CShellObjectWithSite,
+                                public IContextMenu
 {
   public:
-    
     /*
     **  c'tor and d'tor
     */
-      CXboxMenu() : m_uItemCount(FALSE), m_pSelection(NULL){}
-    ~CXboxMenu(){if(m_pSelection) m_pSelection->Release();}
-    static HRESULT Create(UINT cidl, LPCITEMIDLIST * apidl, CXboxFolder *pParent, IContextMenu **ppContextMenu);
+    CXboxMenu() : m_uItemCount(FALSE), m_pSelection(NULL)
+    {
+    }
+    ~CXboxMenu()
+    {
+        if (m_pSelection)
+            m_pSelection->Release();
+    }
+    static HRESULT Create(UINT cidl, LPCITEMIDLIST *apidl, CXboxFolder *pParent, IContextMenu **ppContextMenu);
 
     /*
     ** ATL COM INTERFACE MAP
@@ -57,9 +61,8 @@ class ATL_NO_VTABLE CXboxMenu :
     COM_INTERFACE_ENTRY_IID(IID_IObjectWithSite, IObjectWithSite)
     COM_INTERFACE_ENTRY_IID(IID_IContextMenu, IContextMenu)
     END_COM_MAP()
-  
-  public:
 
+  public:
     /*
     **  IContextMenu methods
     */
@@ -69,14 +72,12 @@ class ATL_NO_VTABLE CXboxMenu :
 
     typedef struct _MENU_ITEM_ENTRY
     {
-        UINT        uResourceId;       // Resource ID from which to get display string
-        LPCSTR      szLangIndepName;   // Language independent name of item
-        PMENU_VERB  pmfnVerb;          // Pointer to member function that execture verb 
-    }MENU_ITEM_ENTRY, *PMENU_ITEM_ENTRY;
+        UINT uResourceId;       // Resource ID from which to get display string
+        LPCSTR szLangIndepName; // Language independent name of item
+        PMENU_VERB pmfnVerb;    // Pointer to member function that execture verb
+    } MENU_ITEM_ENTRY, *PMENU_ITEM_ENTRY;
 
   protected:
-
-
     UINT GetCommandIndex(LPCMINVOKECOMMANDINFO pici);
 
     /*
@@ -103,21 +104,19 @@ class ATL_NO_VTABLE CXboxMenu :
 
     // Also supported, but not in the menu
     HRESULT CreateShortcut(LPCMINVOKECOMMANDINFO pici);
-    
+
     void ExploreOpen(LPCMINVOKECOMMANDINFO pici, BOOL fOpen);
-    
 
     /*
     **  A CXboxFolder selection clone that contains the context.
     */
 
-    DWORD        m_dwVerbs;
-    UINT         m_uItemCount;
+    DWORD m_dwVerbs;
+    UINT m_uItemCount;
     CXboxFolder *m_pSelection;
 
     static MENU_ITEM_ENTRY sm_MenuItems[];
     UINT m_uIdOffset;
-    
 };
 
 #endif //__XBOXMENU_H__

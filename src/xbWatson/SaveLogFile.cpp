@@ -7,14 +7,12 @@
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++ INCLUDE FILES +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 // "stdafx.h"       -- Precompiled header file
 #include "stdafx.h"
-
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++ FUNCTIONS +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -32,12 +30,12 @@
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 bool DumpLog(HWND hwndWindow, DWORD dwEventType, DWORD dwThreadId)
 {
-    sBreakInfo   breakinfo;
+    sBreakInfo breakinfo;
     OPENFILENAME ofn;
     static TCHAR szTitleName[MAX_PATH], szFileName[MAX_PATH];
-    static TCHAR szFilter[] = TEXT("Log Files (*.LOG)\0*.log\0") \
-                              TEXT("All Files (*.*)\0*.*\0\0");
-    
+    static TCHAR szFilter[] = TEXT("Log Files (*.LOG)\0*.log\0")
+        TEXT("All Files (*.*)\0*.*\0\0");
+
     // Grab a slew of exception-related information
     if (!GetBreakInfo(dwThreadId, dwEventType, &breakinfo))
     {
@@ -48,15 +46,15 @@ bool DumpLog(HWND hwndWindow, DWORD dwEventType, DWORD dwThreadId)
 
     // Initialize the common save-file dialog box structure
     memset(&ofn, 0, sizeof(ofn));
-    ofn.lStructSize    = sizeof(OPENFILENAME);
-    ofn.lpstrFilter    = szFilter;
-    ofn.nMaxFile       = MAX_PATH;
-    ofn.nMaxFileTitle  = MAX_PATH;
-    ofn.lpstrDefExt    = TEXT("log");
-    ofn.hwndOwner      = hwndWindow;
-    ofn.lpstrFile      = szFileName;
+    ofn.lStructSize = sizeof(OPENFILENAME);
+    ofn.lpstrFilter = szFilter;
+    ofn.nMaxFile = MAX_PATH;
+    ofn.nMaxFileTitle = MAX_PATH;
+    ofn.lpstrDefExt = TEXT("log");
+    ofn.hwndOwner = hwndWindow;
+    ofn.lpstrFile = szFileName;
     ofn.lpstrFileTitle = szTitleName;
-    ofn.Flags          = OFN_OVERWRITEPROMPT;
+    ofn.Flags = OFN_OVERWRITEPROMPT;
 
     // Pop up the common save-file dialog box.
     // UNDONE-FEATURE: Might be nice to track and reuse last-known-good filename for ease of saving...
@@ -68,7 +66,7 @@ bool DumpLog(HWND hwndWindow, DWORD dwEventType, DWORD dwThreadId)
     {
         // Figure out why we died
         DWORD dwErr = GetLastError();
-        switch(dwErr)
+        switch (dwErr)
         {
         case ERROR_ALREADY_EXISTS:
             // Already prompted (automatically) for this in the GetSaveFileName dialog.  Fall
@@ -118,22 +116,22 @@ bool SaveLogFile(HWND hwndWindow, HWND hwndEditControl)
     OPENFILENAME ofn;
     DWORD dwWritten;
     static TCHAR szTitleName[MAX_PATH], szFileName[MAX_PATH];
-    static TCHAR szFilter[] = TEXT("Text Files (*.TXT)\0*.txt\0") \
-                              TEXT("All Files (*.*)\0*.*\0\0");
+    static TCHAR szFilter[] = TEXT("Text Files (*.TXT)\0*.txt\0")
+        TEXT("All Files (*.*)\0*.*\0\0");
 
     char szBuffer[65536];
 
     // Initialize the common save-file dialog box structure
     memset(&ofn, 0, sizeof(ofn));
-    ofn.lStructSize    = sizeof(OPENFILENAME);
-    ofn.lpstrFilter    = szFilter;
-    ofn.nMaxFile       = MAX_PATH;
-    ofn.nMaxFileTitle  = MAX_PATH;
-    ofn.lpstrDefExt    = TEXT("txt");
-    ofn.hwndOwner      = hwndWindow;
-    ofn.lpstrFile      = szFileName;
+    ofn.lStructSize = sizeof(OPENFILENAME);
+    ofn.lpstrFilter = szFilter;
+    ofn.nMaxFile = MAX_PATH;
+    ofn.nMaxFileTitle = MAX_PATH;
+    ofn.lpstrDefExt = TEXT("txt");
+    ofn.hwndOwner = hwndWindow;
+    ofn.lpstrFile = szFileName;
     ofn.lpstrFileTitle = szTitleName;
-    ofn.Flags          = OFN_OVERWRITEPROMPT;
+    ofn.Flags = OFN_OVERWRITEPROMPT;
 
     // Pop up the common save-file dialog box.
     // UNDONE-FEATURE: Might be nice to track and re-use last-known-good filename for ease of saving...
@@ -145,7 +143,7 @@ bool SaveLogFile(HWND hwndWindow, HWND hwndEditControl)
     {
         // Figure out why we died
         DWORD dwErr = GetLastError();
-        switch(dwErr)
+        switch (dwErr)
         {
         case ERROR_ALREADY_EXISTS:
             // Already prompted (automatically) for this in the GetSaveFileName dialog.  Fall
@@ -178,7 +176,7 @@ bool SaveLogFile(HWND hwndWindow, HWND hwndEditControl)
         // An error occurred.  Figure out why we died
         CloseHandle(hfile);
         DWORD dwErr = GetLastError();
-        switch(dwErr)
+        switch (dwErr)
         {
         case ERROR_DISK_FULL:
             MessageBox(NULL, "The specified drive is full.  Please free some space on it or select another drive, and try again.", "Insufficient disk space", MB_ICONWARNING | MB_OK);

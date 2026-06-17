@@ -7,14 +7,12 @@
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++ INCLUDE FILES +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 // "stdafx.h"       -- Precompiled header file
 #include "stdafx.h"
-
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++ LOCAL GLOBAL VARIABLES ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -23,7 +21,6 @@
 // gs_dwThreadId     -- Id of the thread in which the RIP occurred.
 static DWORD gs_dwThreadId;
 
-
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++ GLOBAL VARIABLES ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -31,7 +28,6 @@ static DWORD gs_dwThreadId;
 // g_pszRIP          -- Pointer to string passed back from Xbox in the RIP. This is global because
 //                      GetBreakInfo needs to access it.
 char *g_pszRIP;
-
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++ FUNCTIONS +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -51,23 +47,23 @@ LRESULT CALLBACK RIPDlgProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
 {
     static char szLogSaved[] = "(A crash dump has been saved)";
     char szBuf[1024];
-    
+
     // s_fSaved             -- Tracks whether or not we've saved a file already.  Used in WM_PAINT.
     static bool s_fSaved = false;
 
     // ps                   -- Standard windows practice.  Used in WM_PAINT.
-	PAINTSTRUCT ps;
+    PAINTSTRUCT ps;
     HDC hdc;
 
     // hfont, hfontPrev, lf -- Variables necessary for outputing text
-    HFONT   hfont, hfontPrev;
+    HFONT hfont, hfontPrev;
     LOGFONT lf;
 
     XBDM_CONTEXT cr;
 
     // Handle the specified message
-	switch (message)
-	{
+    switch (message)
+    {
     case WM_INITDIALOG:
         MessageBeep(MB_ICONEXCLAMATION);
         SetWindowPos(hwnd, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
@@ -84,7 +80,7 @@ LRESULT CALLBACK RIPDlgProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
 
     case WM_PAINT:
         // Standard windows WM_PAINT handling.
-		hdc = BeginPaint(hwnd, &ps);
+        hdc = BeginPaint(hwnd, &ps);
 
         // Don't draw any background in the ExtTextOut calls below.
         SetBkMode(hdc, TRANSPARENT);
@@ -127,7 +123,7 @@ LRESULT CALLBACK RIPDlgProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
         return TRUE;
 
     case WM_COMMAND:
-        switch(LOWORD(wParam))
+        switch (LOWORD(wParam))
         {
         case ID_REBOOT:
             // Reboot the Xbox
@@ -152,14 +148,14 @@ LRESULT CALLBACK RIPDlgProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
         case ID_BREAK:
             // User wants to hit an INT 3.
             DmGetThreadContext(gs_dwThreadId, &cr);
-            DmSetBreakpoint((void*)(ULONG_PTR)cr.Eip);
-//            DmDoBreak();
+            DmSetBreakpoint((void *)(ULONG_PTR)cr.Eip);
+            //            DmDoBreak();
             break;
 
         case ID_CONTINUE:
             // Ignore the RIP.  Tell the Xbox to continue running
-		    DmContinueThread(gs_dwThreadId, FALSE);
-		    DmGo();
+            DmContinueThread(gs_dwThreadId, FALSE);
+            DmGo();
             break;
         }
 
@@ -187,8 +183,8 @@ void HandleRIP(DWORD dwThreadId, char *pszRIP)
     // Track the  thread that the RIP occurred in.  Note: Can't avoid global variables with a
     // dialog box...
     gs_dwThreadId = dwThreadId;
-    g_pszRIP     = pszRIP;
+    g_pszRIP = pszRIP;
 
     // Open the RIP dialog box - this will handle Ignore, Dump, and Reboot for us.
-    DialogBox(g_hInstance, (LPCTSTR)IDD_RIP, g_hwnd, (DLGPROC)RIPDlgProc);    
+    DialogBox(g_hInstance, (LPCTSTR)IDD_RIP, g_hwnd, (DLGPROC)RIPDlgProc);
 }

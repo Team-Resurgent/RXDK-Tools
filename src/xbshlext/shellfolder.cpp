@@ -16,12 +16,12 @@ Abstract:
 
 Environment:
 
-    Windows 2000 and Later 
+    Windows 2000 and Later
     User Mode
     Compiles UNICODE, but uses many ANSI APIs explictly.
 
 Revision History:
-    
+
     06-29-2001 : created
 
 --*/
@@ -32,15 +32,14 @@ Revision History:
 //-----------------------------------------------------------------------------------------------------
 HRESULT
 CXboxFolder::GetClassID(
-    LPCLSID lpClassID
-    )
+    LPCLSID lpClassID)
 /*++
   Routine Description:
     Should return the CLSID of our IShellFolder implementation.
     This is probably used by clients to make short-cuts.
 --*/
 {
-    if(lpClassID)
+    if (lpClassID)
     {
         *lpClassID = __uuidof(XboxFolder);
         return S_OK;
@@ -48,11 +47,9 @@ CXboxFolder::GetClassID(
     return E_FAIL;
 }
 
-
 HRESULT
 CXboxFolder::Initialize(
-    LPCITEMIDLIST pidl
-    )
+    LPCITEMIDLIST pidl)
 /*++
   Routine Description:
     Only CXboxRoot supports Initialize so we return E_NOTIMPL and override this
@@ -65,15 +62,14 @@ CXboxFolder::Initialize(
 
 HRESULT
 CXboxRoot::Initialize(
-    LPCITEMIDLIST pidlRoot
-    )
+    LPCITEMIDLIST pidlRoot)
 /*++
   Routine Description:
     Implements IPersistFolder::Initialize for CXboxRoot.
 
   Arguments:
     pidlRoot - pidl of Xbox root.
-  
+
 --*/
 {
     HRESULT hr;
@@ -92,9 +88,9 @@ CXboxRoot::Initialize(
     // Do not call SHGetFileInfo on our own namespace pidl from inside the
     // extension; that re-enters shell namespace resolution and can crash/hang.
     hr = InitBaseClass(
-          "Xbox Neighborhood",
-          ROOT_SHELL_ATTRIBUTES,
-          pidlRoot);
+        "Xbox Neighborhood",
+        ROOT_SHELL_ATTRIBUTES,
+        pidlRoot);
     if (SUCCEEDED(hr))
     {
         m_uPathDepth = 0;
@@ -103,35 +99,37 @@ CXboxRoot::Initialize(
     return hr;
 }
 
-
 //-----------------------------------------------------------------------------------------------------
 //  IShellFolder
 //-----------------------------------------------------------------------------------------------------
 
-HRESULT CXboxFolder::BindToObject(LPCITEMIDLIST pidl, LPBC pbc, REFIID riid, void **ppv){return E_NOTIMPL;}
+HRESULT CXboxFolder::BindToObject(LPCITEMIDLIST pidl, LPBC pbc, REFIID riid, void **ppv)
+{
+    return E_NOTIMPL;
+}
 
 HRESULT CXboxRoot::BindToObject(LPCITEMIDLIST pidl, LPBC pbc, REFIID riid, void **ppv)
 /*++
   Routine Description:
-  
+
     Implements IShellFolder::BindToObject.  Gets an IShellFolder * for any in the namespace.
     This may be an immediate child or any number of levels down.
 
   Arguments:
-  
+
     pidl - pidl of child to get.
     pbc  - a binding context, we just ignore this.
     riid - interface to get.
     ppv  - out parameter for interface.
 
   Result:
-    
+
     S_OK on success.
     E_INVALIDARG - if the pidl does not represent a valid child.
     E_NOINTERFACE - if the desired interface does not exist.
-    
+
   Comments:
-    
+
     The pidl must be relative.  The first SHITEM ID will always be the machine name.
     We can us this to a connection interface.
 
@@ -148,8 +146,8 @@ HRESULT CXboxRoot::BindToObject(LPCITEMIDLIST pidl, LPBC pbc, REFIID riid, void 
 
 --*/
 {
-    char  szPathName[MAX_XBOX_PATH];
-    UINT  uDepth;
+    char szPathName[MAX_XBOX_PATH];
+    UINT uDepth;
     IXboxConnection *pConnection;
     HRESULT hr;
 
@@ -158,19 +156,18 @@ HRESULT CXboxRoot::BindToObject(LPCITEMIDLIST pidl, LPBC pbc, REFIID riid, void 
     ATLTRACE("\n");
     DEBUG_DUMP_PIDL(pidl);
 
-    
     uDepth = PathFromPidl(pidl, szPathName);
-    
+
     //
     //  It is not legal to send a NULL pidl.
     //
-    if(0==uDepth)
+    if (0 == uDepth)
     {
         _ASSERTE(FALSE);
         return E_INVALIDARG;
     }
 
-    if('?' == *pidl->mkid.abID)
+    if ('?' == *pidl->mkid.abID)
     {
         return E_FAIL;
     }
@@ -180,9 +177,9 @@ HRESULT CXboxRoot::BindToObject(LPCITEMIDLIST pidl, LPBC pbc, REFIID riid, void 
     //
 
     hr = Utils::GetXboxConnection((LPSTR)pidl->mkid.abID, &pConnection);
-    if(FAILED(hr))
+    if (FAILED(hr))
     {
-        if(pbc)
+        if (pbc)
         {
             char szError[60];
             FormatUtils::XboxErrorString(hr, szError, sizeof(szError));
@@ -191,18 +188,20 @@ HRESULT CXboxRoot::BindToObject(LPCITEMIDLIST pidl, LPBC pbc, REFIID riid, void 
             //  BUGBUG: No parent hwnd for this message box (chrispi fixed a build break here)
             //
 
-            WindowUtils::MessageBoxResource(NULL, IDS_ERROR_OPENNING_FOLDER, IDS_ERROR_OPENNING_FOLDER_CAPTION, MB_OK|MB_ICONSTOP, szPathName, szError);
+            WindowUtils::MessageBoxResource(NULL, IDS_ERROR_OPENNING_FOLDER, IDS_ERROR_OPENNING_FOLDER_CAPTION, MB_OK | MB_ICONSTOP, szPathName, szError);
         }
         RETURN(hr);
     }
 
-    if(1==uDepth)
+    if (1 == uDepth)
     {
         hr = CXboxConsole::Create(szPathName, m_pidlRoot, pConnection, riid, ppv);
-    } else if(2==uDepth)
+    }
+    else if (2 == uDepth)
     {
         hr = CXboxVolume::Create(szPathName, m_pidlRoot, pConnection, riid, ppv);
-    } else
+    }
+    else
     {
         hr = CXboxDirectory::Create(szPathName, m_pidlRoot, pConnection, riid, ppv);
     }
@@ -212,9 +211,9 @@ HRESULT CXboxRoot::BindToObject(LPCITEMIDLIST pidl, LPBC pbc, REFIID riid, void 
 HRESULT CXboxConsole::BindToObject(LPCITEMIDLIST pidl, LPBC pbc, REFIID riid, void **ppv)
 /*++
   Routine Description:
-  
+
     Same as CXboxRoot::BindToObject with a couple of differences in the implementation:
-    
+
     1) We already have a connection it is one of our members.
 
     2) We need to concatanate the path with our own.
@@ -223,9 +222,9 @@ HRESULT CXboxConsole::BindToObject(LPCITEMIDLIST pidl, LPBC pbc, REFIID riid, vo
        If Depth is greater than 1, we need a Directory.
 --*/
 {
-    char  szPathName[MAX_XBOX_PATH];
+    char szPathName[MAX_XBOX_PATH];
     LPSTR pszPathName;
-    UINT  uDepth;
+    UINT uDepth;
     HRESULT hr;
 
     ENTER_SPEW
@@ -248,11 +247,11 @@ HRESULT CXboxConsole::BindToObject(LPCITEMIDLIST pidl, LPBC pbc, REFIID riid, vo
     //  Append the path from the relative pidl
     //
     uDepth = PathFromPidl(pidl, pszPathName);
-    
+
     //
     //  It is not legal to send a NULL pidl.
     //
-    if(0==uDepth)
+    if (0 == uDepth)
     {
         _ASSERTE(FALSE);
         RETURN(E_INVALIDARG);
@@ -261,10 +260,11 @@ HRESULT CXboxConsole::BindToObject(LPCITEMIDLIST pidl, LPBC pbc, REFIID riid, vo
     //
     //  Create the correct object depending on the depth.
     //
-    if(1==uDepth)
+    if (1 == uDepth)
     {
         hr = CXboxVolume::Create(szPathName, m_pidlRoot, m_pConnection, riid, ppv);
-    } else
+    }
+    else
     {
         hr = CXboxDirectory::Create(szPathName, m_pidlRoot, m_pConnection, riid, ppv);
     }
@@ -274,17 +274,17 @@ HRESULT CXboxConsole::BindToObject(LPCITEMIDLIST pidl, LPBC pbc, REFIID riid, vo
 HRESULT CXboxFileSystemFolder::BindToObject(LPCITEMIDLIST pidl, LPBC pbc, REFIID riid, void **ppv)
 /*++
   Routine Description:
-  
+
     Same as CXboxConsole::BindToObject with a couple of differences in the implementation:
-    
+
     Always Create a directory.
 --*/
 {
-    char  szPathName[MAX_XBOX_PATH];
+    char szPathName[MAX_XBOX_PATH];
     LPSTR pszPathName;
-    UINT  uDepth;
+    UINT uDepth;
     HRESULT hr;
-    
+
     ENTER_SPEW
     DEBUG_DUMP_IID(riid);
     ATLTRACE("\n");
@@ -305,21 +305,20 @@ HRESULT CXboxFileSystemFolder::BindToObject(LPCITEMIDLIST pidl, LPBC pbc, REFIID
     //  Append the path from the relative pidl
     //
     uDepth = PathFromPidl(pidl, pszPathName);
-    
+
     //
     //  It is not legal to send a NULL pidl.
     //
-    if(0==uDepth)
+    if (0 == uDepth)
     {
         _ASSERTE(FALSE);
         RETURN(E_INVALIDARG);
     }
 
     hr = CXboxDirectory::Create(szPathName, m_pidlRoot, m_pConnection, riid, ppv);
-    
+
     RETURN(hr);
 }
-
 
 HRESULT CXboxFolder::BindToStorage(LPCITEMIDLIST pidl, LPBC pbc, REFIID riid, void **ppv)
 /*++
@@ -348,14 +347,14 @@ HRESULT CXboxFolder::CompareIDs(LPARAM lParam, LPCITEMIDLIST pidl1, LPCITEMIDLIS
     S_EQUAL   - if they refer to the same object.
     S_GREATER - if pidl1 is greater than pidl2
     S_LESS    - if pidl1 is before pidl2.
-    
+
     Failure codes (E_EQUAL, E_GREATER, E_LESS) in some situations, see caveats.
 
  Caveats:
 
    This appears to be a simple idea, but I found this to be one of the most deceptively
    sophisticated methods in the shell API.  Even small bugs cause really strange behavior.
-   
+
    All sorts of layers use this to determine pidl identity.  Within the shell only the owning
    namespace extension can properly say whether two pidls refer to the same object.  This is how
    you ask.
@@ -394,9 +393,9 @@ HRESULT CXboxFolder::CompareIDs(LPARAM lParam, LPCITEMIDLIST pidl1, LPCITEMIDLIS
     LPCITEMIDLIST pidl1Temp = pidl1;
     LPCITEMIDLIST pidl2Temp = pidl2;
     int iNameCmp;
-    USHORT cbTotal=0;
-    BOOL fCannotFail = (0==lParam) ? TRUE : FALSE;
-    
+    USHORT cbTotal = 0;
+    BOOL fCannotFail = (0 == lParam) ? TRUE : FALSE;
+
     ATLTRACE("CompareIDs: %d\n", lParam);
     DEBUG_DUMP_PIDL(pidl1);
     DEBUG_DUMP_PIDL(pidl2);
@@ -427,7 +426,7 @@ HRESULT CXboxFolder::CompareIDs(LPARAM lParam, LPCITEMIDLIST pidl1, LPCITEMIDLIS
             //
             //  Not the end so just return the result of the last string compare.
             //
-            { 
+            {
                 hr = ResultFromCompare(iNameCmp);
             }
             else
@@ -439,41 +438,42 @@ HRESULT CXboxFolder::CompareIDs(LPARAM lParam, LPCITEMIDLIST pidl1, LPCITEMIDLIS
                 //  If the common parent is not us, we do not support support
                 //  anything but name based ordering.
                 //
-                if(cbTotal)
+                if (cbTotal)
                 {
 
                     ATLTRACE("Inefficient CompareItemIDs.");
-                    _ASSERTE(0==(lParam&SHCIDS_COLUMNMASK));
+                    _ASSERTE(0 == (lParam & SHCIDS_COLUMNMASK));
                     hr = ResultFromCompare(iNameCmp);
-
-                } else
+                }
+                else
                 //
                 //  The common parent is us.  That is good, that we probably won't have to
                 //  hit the wire.  (When the sort criteria was set, we refreshed our children).
                 //
                 {
-                    hr = CompareItemIDs(lParam&SHCIDS_COLUMNMASK, iNameCmp, &pidl1Temp->mkid, &pidl2Temp->mkid);
+                    hr = CompareItemIDs(lParam & SHCIDS_COLUMNMASK, iNameCmp, &pidl1Temp->mkid, &pidl2Temp->mkid);
                 }
-                
+
                 //
                 // Check if the common parent failed the comparison, and if we cannot fail.
                 //
 
-                if(FAILED(hr) && fCannotFail)
+                if (FAILED(hr) && fCannotFail)
                 {
-                    //Get rid of the severity and facility, and just keep the result
-                    //stored by CompareItemIDs
-                    hr = LOWORD(hr); 
+                    // Get rid of the severity and facility, and just keep the result
+                    // stored by CompareItemIDs
+                    hr = LOWORD(hr);
                 }
             }
             RETURN(hr);
-        } else
+        }
+        else
         {
-          //
-          // Tracking the pidl length as we go will help, when
-          // we need to get a CXboxFolder.
-          //
-          cbTotal += pidl1Temp->mkid.cb;
+            //
+            // Tracking the pidl length as we go will help, when
+            // we need to get a CXboxFolder.
+            //
+            cbTotal += pidl1Temp->mkid.cb;
         }
         pidl1Temp = AdvancePtr(pidl1Temp, pidl1Temp->mkid.cb);
         pidl2Temp = AdvancePtr(pidl2Temp, pidl2Temp->mkid.cb);
@@ -500,7 +500,6 @@ HRESULT CXboxFolder::CompareIDs(LPARAM lParam, LPCITEMIDLIST pidl1, LPCITEMIDLIS
     RETURN(hr);
 }
 
-
 HRESULT CXboxFolder::CreateViewObject(HWND hwnd, REFIID riid, void **ppv)
 /*++
   Routine Description:
@@ -509,51 +508,51 @@ HRESULT CXboxFolder::CreateViewObject(HWND hwnd, REFIID riid, void **ppv)
     This routine has two purposes really.
 
     1) Get a view (IShellView or IShellView2).  This we handle here.
-    
+
     2) It can also ask for anything that GetUIObjectOf can ask for.
        This we handle by calling GetUIObjectOf with cidl set to 0, and
        apidl set to NULL.  See GetUIObjectOf comments to understand
        why this works this way.
 --*/
 {
-   ENTER_SPEW
-   DEBUG_DUMP_IID(riid);
+    ENTER_SPEW
+    DEBUG_DUMP_IID(riid);
 
-   //
-   //   If it is not looking for a shell view, just defer
-   //   to GetUIObjectOf.
-   //
-   if( (IID_IShellView==riid) || (IID_IShellView2==riid) )
-   {
-       //
-       //   Instantiate our view callback.
-       //
-       return CXboxViewCB::CreateShellView(this, hwnd, riid, ppv);
-   }
-      
-   return GetUIObjectOf(hwnd, 0, NULL, riid, NULL, ppv);
+    //
+    //   If it is not looking for a shell view, just defer
+    //   to GetUIObjectOf.
+    //
+    if ((IID_IShellView == riid) || (IID_IShellView2 == riid))
+    {
+        //
+        //   Instantiate our view callback.
+        //
+        return CXboxViewCB::CreateShellView(this, hwnd, riid, ppv);
+    }
+
+    return GetUIObjectOf(hwnd, 0, NULL, riid, NULL, ppv);
 }
 
 HRESULT CXboxFolder::EnumObjects(HWND hwnd, DWORD grfFlags, IEnumIDList **ppEnumIDList)
 /*++
   Routine Description:
     Implements IShellFolder::EnumObjects.
-    
+
     We can implement this all here since all we need are the simple pidls and the
-    shell attributes. 
+    shell attributes.
 --*/
 {
     HRESULT hr;
     CComObject<CEnumIdList> *pEnumerator = NULL;
     UINT uChildIndex, uFilteredChildCount;
     DWORD dwXorMask, dwAndMask;
-    
+
     ENTER_SPEW
 
     //
     // Null the out parameter in case we need to fail.
     //
-    *ppEnumIDList = NULL;  
+    *ppEnumIDList = NULL;
 
     //  BUILD FILTER MASK FOR CHILDREN
     //
@@ -567,17 +566,17 @@ HRESULT CXboxFolder::EnumObjects(HWND hwnd, DWORD grfFlags, IEnumIDList **ppEnum
     //  IN  ^ XORMASK & ANDMASK = OUT  | Comment
     //================================================================================
     //   X  |    X         0    =  0   | If ANDMASK clear, always accept
-    //--------------------------------------------------------------------------------  
+    //--------------------------------------------------------------------------------
     //   1  |    1         1    =  0   | ANDMASK set, XORMASK set then
     //   0  |    1         1    =  1   | Accept if IN is set
-    //--------------------------------------------------------------------------------  
+    //--------------------------------------------------------------------------------
     //   1  |    0         1    =  1   | ANDMASK set, XORMASK clear then
     //   0  |    0         1    =  0   | Accept if IN is clear
-    //--------------------------------------------------------------------------------  
+    //--------------------------------------------------------------------------------
     //
     dwXorMask = 0;
     dwAndMask = 0;
-    if(!(grfFlags&SHCONTF_INCLUDEHIDDEN)) 
+    if (!(grfFlags & SHCONTF_INCLUDEHIDDEN))
     {
         dwAndMask |= SFGAO_HIDDEN;
     }
@@ -586,24 +585,24 @@ HRESULT CXboxFolder::EnumObjects(HWND hwnd, DWORD grfFlags, IEnumIDList **ppEnum
     //  Switch on the state of SHCONTF_NONFOLDERS and SHCONTF_FOLDERS flag.
     //
 
-    DWORD dwFolderBits = (SHCONTF_NONFOLDERS|SHCONTF_FOLDERS)&grfFlags;
-    switch(dwFolderBits)
+    DWORD dwFolderBits = (SHCONTF_NONFOLDERS | SHCONTF_FOLDERS) & grfFlags;
+    switch (dwFolderBits)
     {
-        case SHCONTF_FOLDERS:
-          dwXorMask |= SFGAO_FOLDER;
-          //fall through to set the AND mask
-        case SHCONTF_NONFOLDERS:
-          dwAndMask |= SFGAO_FOLDER;
-          break;
-        case 0:
-          // Someone is asking for neither folders nor non-folders.
-          // What is the point of even calling?  The logical response
-          // is to enumerate nothing, but give them everything anyway.
-          //
-          // Fall through to the case of both, after asserting.
-          _ASSERTE(FALSE);
-        case (SHCONTF_NONFOLDERS|SHCONTF_FOLDERS):
-          break;
+    case SHCONTF_FOLDERS:
+        dwXorMask |= SFGAO_FOLDER;
+        // fall through to set the AND mask
+    case SHCONTF_NONFOLDERS:
+        dwAndMask |= SFGAO_FOLDER;
+        break;
+    case 0:
+        // Someone is asking for neither folders nor non-folders.
+        // What is the point of even calling?  The logical response
+        // is to enumerate nothing, but give them everything anyway.
+        //
+        // Fall through to the case of both, after asserting.
+        _ASSERTE(FALSE);
+    case (SHCONTF_NONFOLDERS | SHCONTF_FOLDERS):
+        break;
     };
 
     //
@@ -611,11 +610,11 @@ HRESULT CXboxFolder::EnumObjects(HWND hwnd, DWORD grfFlags, IEnumIDList **ppEnum
     //
 
     hr = RefreshChildren();
-    if(FAILED(hr))
+    if (FAILED(hr))
     {
         return hr;
     }
-    
+
     //
     //  Allocate array of PIDLs for all our children, even though
     //  some might not make it through the filter, we shouldn't
@@ -623,26 +622,27 @@ HRESULT CXboxFolder::EnumObjects(HWND hwnd, DWORD grfFlags, IEnumIDList **ppEnum
     //
 
     LPITEMIDLIST *enumPidlArray = new LPITEMIDLIST[m_uChildCount];
-    if(NULL == enumPidlArray) return E_OUTOFMEMORY;
-    memset(enumPidlArray, 0, m_uChildCount*sizeof(LPITEMIDLIST));
+    if (NULL == enumPidlArray)
+        return E_OUTOFMEMORY;
+    memset(enumPidlArray, 0, m_uChildCount * sizeof(LPITEMIDLIST));
 
     //
     //  Walk our children.  Filter them based on grfFlags and
     //  add them to enumPidlArray.
     //
 
-    for(uChildIndex = 0, uFilteredChildCount = 0; uChildIndex < m_uChildCount; uChildIndex++)
+    for (uChildIndex = 0, uFilteredChildCount = 0; uChildIndex < m_uChildCount; uChildIndex++)
     {
-        if(0 == ((m_rgulChildShellAttributes[uChildIndex]^dwXorMask)&dwAndMask))
+        if (0 == ((m_rgulChildShellAttributes[uChildIndex] ^ dwXorMask) & dwAndMask))
         {
             enumPidlArray[uFilteredChildCount] = GetChildPidl(uChildIndex, CPidlUtils::PidlTypeSimple);
-            if(enumPidlArray[uFilteredChildCount])
+            if (enumPidlArray[uFilteredChildCount])
             {
                 uFilteredChildCount++;
             }
         }
     }
-    
+
     //
     //  Create an enumerator object
     //
@@ -652,36 +652,35 @@ HRESULT CXboxFolder::EnumObjects(HWND hwnd, DWORD grfFlags, IEnumIDList **ppEnum
     //  Initialize the enumerator object with our child array
     //
 
-    if(SUCCEEDED(hr))
+    if (SUCCEEDED(hr))
     {
         //
         //  We know that these next two operations cannot fail based on the implemenation
         //  of ATL's enumerator.
         //
-        hr = pEnumerator->Init(enumPidlArray, enumPidlArray+uFilteredChildCount, NULL, AtlFlagTakeOwnership);
+        hr = pEnumerator->Init(enumPidlArray, enumPidlArray + uFilteredChildCount, NULL, AtlFlagTakeOwnership);
         _ASSERTE(SUCCEEDED(hr));
-        
+
         hr = pEnumerator->QueryInterface(IID_IEnumIDList, (void **)ppEnumIDList);
         _ASSERTE(SUCCEEDED(hr));
-
-    } else
-    {
-      //
-      //  If we could not create an enumerator, we need to free
-      //  the array ourselves.
-      //
-
-      for(uChildIndex = 0; uChildIndex < uFilteredChildCount; uChildIndex++)
-      {
-        g_pShellMalloc->Free(enumPidlArray[uChildIndex]);
-      }
     }
-       
+    else
+    {
+        //
+        //  If we could not create an enumerator, we need to free
+        //  the array ourselves.
+        //
+
+        for (uChildIndex = 0; uChildIndex < uFilteredChildCount; uChildIndex++)
+        {
+            g_pShellMalloc->Free(enumPidlArray[uChildIndex]);
+        }
+    }
+
     return hr;
 }
 
-
-HRESULT CXboxFolder::GetAttributesOf(UINT cidl, LPCITEMIDLIST * apidl, ULONG * drgfInOut)
+HRESULT CXboxFolder::GetAttributesOf(UINT cidl, LPCITEMIDLIST *apidl, ULONG *drgfInOut)
 /*++
   Routine Description:
     Implements IShellFolder::GetAttributesOf.
@@ -689,7 +688,7 @@ HRESULT CXboxFolder::GetAttributesOf(UINT cidl, LPCITEMIDLIST * apidl, ULONG * d
     Gets the shell attributes of a subset of children.
 
     1) Make sure we have a child list.
-    
+
     2) Loop over all the simple pidls.
 
     3) For each, get our child index, then and its attributes with *drgfInOut.
@@ -707,7 +706,7 @@ HRESULT CXboxFolder::GetAttributesOf(UINT cidl, LPCITEMIDLIST * apidl, ULONG * d
   Remarks:
    Sometimes cidl is 0, this is not documented.  In this case, we just return our own attributes.
 
---*/             
+--*/
 {
     UINT uItemIdIndex;
     UINT uChildIndex;
@@ -718,24 +717,24 @@ HRESULT CXboxFolder::GetAttributesOf(UINT cidl, LPCITEMIDLIST * apidl, ULONG * d
     //
     //  Handle the query self case.
     //
-    if(0==cidl)
+    if (0 == cidl)
     {
         *drgfInOut &= m_ulShellAttributes;
         *drgfInOut &= ~SFGAO_CANLINK;
         RETURN(S_OK);
     }
 
-    if(*drgfInOut&SFGAO_VALIDATE)
+    if (*drgfInOut & SFGAO_VALIDATE)
     {
         m_fChildrenValid = FALSE;
     }
     hr = RefreshChildren();
-    if(FAILED(hr))
+    if (FAILED(hr))
     {
         return hr;
     }
 
-    for(uItemIdIndex = 0; uItemIdIndex < cidl; uItemIdIndex++)
+    for (uItemIdIndex = 0; uItemIdIndex < cidl; uItemIdIndex++)
     {
         //
         //  If this is our pidl, apidl[uItemIdIndex]->mkid.abID is
@@ -745,16 +744,17 @@ HRESULT CXboxFolder::GetAttributesOf(UINT cidl, LPCITEMIDLIST * apidl, ULONG * d
         //
 
         hr = GetChildIndex((LPSTR)apidl[uItemIdIndex]->mkid.abID, &uChildIndex);
- 
+
         //
         //  bitwise-AND in the flags.
         //
 
-        if(FAILED(hr))
+        if (FAILED(hr))
         {
             *drgfInOut = 0;
             return hr;
-        } else
+        }
+        else
         {
             *drgfInOut &= m_rgulChildShellAttributes[uChildIndex];
         }
@@ -787,21 +787,21 @@ HRESULT CXboxFolder::GetDisplayNameOf(LPCITEMIDLIST pidl, DWORD uFlags, STRRET *
 
   SHGFN_NORMAL - This name is definately what ends up as short-cut names.  It seems to be called for other purposes too, but
   I never see this UI show up, so who knows.  The docs say the path should be relative to the desktop.  Not really, rather it
-  
+
   SHGDN_FORADDRESSBAR - The shell sends this to get the title of the window, when the user has NOT turned on the full-path name in title bar option.
 
   SHGDN_FORADDRESSBAR|SHGDN_FORPARSING - The shell sends this to get the title of the window, when the user has turned on the full-path name in title bar option.
-  
---*/             
+
+--*/
 {
     LPCITEMIDLIST pidlWalk;
-    LPCSTR        pszRootName;
-    UINT          uRootLength;
-    UINT          uParentLength;
-    UINT          uChildLength;
-    UINT          uTotalLength;
-    SHFILEINFOA   shellFileInfo;
-    char          szPidlPath[MAX_XBOX_PATH];
+    LPCSTR pszRootName;
+    UINT uRootLength;
+    UINT uParentLength;
+    UINT uChildLength;
+    UINT uTotalLength;
+    SHFILEINFOA shellFileInfo;
+    char szPidlPath[MAX_XBOX_PATH];
 
     ENTER_SPEW
     DEBUG_DUMP_PIDL(pidl);
@@ -810,7 +810,7 @@ HRESULT CXboxFolder::GetDisplayNameOf(LPCITEMIDLIST pidl, DWORD uFlags, STRRET *
 
     //  The normal display for the root, or for a console, is just the simple
     //  short name as return by SHGDN_INFOLDER.
-    if(SHGDN_NORMAL==uFlags && (m_uPathDepth<1))
+    if (SHGDN_NORMAL == uFlags && (m_uPathDepth < 1))
     {
         uFlags = SHGDN_INFOLDER;
     }
@@ -821,7 +821,7 @@ HRESULT CXboxFolder::GetDisplayNameOf(LPCITEMIDLIST pidl, DWORD uFlags, STRRET *
     //  path it also sets SHGDN_FORPARSING.  The documentation on the *actual* use of the flags
     //  by the shell is wrong, but by now we expect nothing more.
     //
-    if(uFlags&SHGDN_INFOLDER || ((uFlags&SHGDN_FORADDRESSBAR) && !(SHGDN_FORPARSING&uFlags)))
+    if (uFlags & SHGDN_INFOLDER || ((uFlags & SHGDN_FORADDRESSBAR) && !(SHGDN_FORPARSING & uFlags)))
     {
         //
         //  We are guaranteed to be a simple pidl, if the
@@ -829,7 +829,7 @@ HRESULT CXboxFolder::GetDisplayNameOf(LPCITEMIDLIST pidl, DWORD uFlags, STRRET *
         //  is playing by the rules!
         //
 
-        if(pidlWalk->mkid.cb)
+        if (pidlWalk->mkid.cb)
         {
             return E_FAIL;
         }
@@ -838,27 +838,27 @@ HRESULT CXboxFolder::GetDisplayNameOf(LPCITEMIDLIST pidl, DWORD uFlags, STRRET *
         //  The name is simply pidl->mkid.abID, just
         //  after cb, which is of size sizeof(USHORT).
         //
-        
+
         psr->uType = STRRET_OFFSET;
         psr->uOffset = sizeof(USHORT);
-        
-       
-        //If first character is '?' skip it.
-        if('?'==pidl->mkid.abID[0])
+
+        // If first character is '?' skip it.
+        if ('?' == pidl->mkid.abID[0])
         {
             psr->uOffset += 1;
         }
         return S_OK;
     }
-    
+
     // If we are normal, then we have a nicely formated display.
-    if(SHGDN_NORMAL==uFlags)
-    {   
-        //The name is <item> on <machine>.
+    if (SHGDN_NORMAL == uFlags)
+    {
+        // The name is <item> on <machine>.
         char *pszItem = (LPSTR)pidl->mkid.abID;
         char szConsoleName[MAX_XBOX_PATH];
-        //Handle Add Xbox wizard
-        if('?'==*pszItem) pszItem++;
+        // Handle Add Xbox wizard
+        if ('?' == *pszItem)
+            pszItem++;
         GetConsoleName(szConsoleName);
         psr->uType = STRRET_CSTR;
         WindowUtils::rsprintf(psr->cStr, IDS_NORMAL_NAME_FORMAT, pszItem, szConsoleName);
@@ -866,13 +866,14 @@ HRESULT CXboxFolder::GetDisplayNameOf(LPCITEMIDLIST pidl, DWORD uFlags, STRRET *
     }
 
     // Get the name of our root.
-    if(SHGetFileInfoA((LPSTR)m_pidlRoot, 0, &shellFileInfo, sizeof(shellFileInfo), SHGFI_PIDL|SHGFI_DISPLAYNAME))
+    if (SHGetFileInfoA((LPSTR)m_pidlRoot, 0, &shellFileInfo, sizeof(shellFileInfo), SHGFI_PIDL | SHGFI_DISPLAYNAME))
     {
         pszRootName = shellFileInfo.szDisplayName;
-        uRootLength = 
-        uTotalLength = strlen(shellFileInfo.szDisplayName);
+        uRootLength =
+            uTotalLength = strlen(shellFileInfo.szDisplayName);
         uTotalLength += 1; // the one is for '\\'
-    } else
+    }
+    else
     {
         RETURN(HRESULT_FROM_WIN32(GetLastError()));
     }
@@ -880,20 +881,21 @@ HRESULT CXboxFolder::GetDisplayNameOf(LPCITEMIDLIST pidl, DWORD uFlags, STRRET *
     //
     // If we are not the root, add in our path length
     //
-    if(0 != m_uPathDepth)
+    if (0 != m_uPathDepth)
     {
-        uParentLength = GetPathLen(); 
-        uTotalLength += uParentLength + 1;  // the one is for '\\'
-    } else
+        uParentLength = GetPathLen();
+        uTotalLength += uParentLength + 1; // the one is for '\\'
+    }
+    else
     {
         uParentLength = 0;
     }
-    
+
     //
     // Path from pidl.
     //
     PathFromPidl(pidl, szPidlPath);
-    uChildLength = strlen(szPidlPath)+1;  // the one is for '\0'
+    uChildLength = strlen(szPidlPath) + 1; // the one is for '\0'
     uTotalLength += uChildLength;
 
     //
@@ -902,12 +904,11 @@ HRESULT CXboxFolder::GetDisplayNameOf(LPCITEMIDLIST pidl, DWORD uFlags, STRRET *
     //  the root), and the pidl name relative to us.
     //
 
-
     //
     //  The total name may be longer than MAX_PATH, so be careful
     //  with psr
 
-    if(MAX_PATH >= uTotalLength)
+    if (MAX_PATH >= uTotalLength)
     {
         LPSTR pszPosition;
 
@@ -933,11 +934,11 @@ HRESULT CXboxFolder::GetDisplayNameOf(LPCITEMIDLIST pidl, DWORD uFlags, STRRET *
         *pszPosition++ = '\\';
 
         //
-        //  If we are not the root, add the parent 
+        //  If we are not the root, add the parent
         //  path (that would be this object's path)
         //
 
-        if(uParentLength)
+        if (uParentLength)
         {
             GetPath(pszPosition);
             pszPosition += uParentLength;
@@ -950,10 +951,8 @@ HRESULT CXboxFolder::GetDisplayNameOf(LPCITEMIDLIST pidl, DWORD uFlags, STRRET *
 
         memcpy(pszPosition, szPidlPath, uChildLength);
         ATLTRACE("DisplayName = %s\n", psr->cStr);
-
-
-
-    } else
+    }
+    else
 
     //
     //  Too long STRRET_CSTR, use STRRET_WSTR.
@@ -962,8 +961,8 @@ HRESULT CXboxFolder::GetDisplayNameOf(LPCITEMIDLIST pidl, DWORD uFlags, STRRET *
         //
         //  Allocate a buffer for the string with the shell's IMalloc
         //
-        LPWSTR pwszPosition = (LPOLESTR)g_pShellMalloc->Alloc(uTotalLength*sizeof(WCHAR));
-        if(pwszPosition)
+        LPWSTR pwszPosition = (LPOLESTR)g_pShellMalloc->Alloc(uTotalLength * sizeof(WCHAR));
+        if (pwszPosition)
         {
             //
             //  Exactly the same as the cStr case, except
@@ -975,16 +974,16 @@ HRESULT CXboxFolder::GetDisplayNameOf(LPCITEMIDLIST pidl, DWORD uFlags, STRRET *
             Utils::CopyAtoW(pwszPosition, pszRootName);
             pwszPosition += uRootLength;
             *pwszPosition++ = L'\\';
-            if(uParentLength)
+            if (uParentLength)
             {
                 GetPath(pwszPosition);
-                pwszPosition += uParentLength*sizeof(WCHAR);
+                pwszPosition += uParentLength * sizeof(WCHAR);
                 *pwszPosition++ = L'\\';
             }
             Utils::CopyAtoW(pwszPosition, szPidlPath);
             ATLTRACE("DisplayName = %ls\n", psr->pOleStr);
-
-        } else
+        }
+        else
         {
             //
             //  Couldn't allocate buffer/
@@ -994,13 +993,10 @@ HRESULT CXboxFolder::GetDisplayNameOf(LPCITEMIDLIST pidl, DWORD uFlags, STRRET *
         }
     }
 
-    
-
     return S_OK;
 }
 
-
-HRESULT CXboxFolder::GetUIObjectOf(HWND hwnd, UINT cidl, LPCITEMIDLIST * apidl, REFIID riid, UINT * prgfInOut, void **ppv)
+HRESULT CXboxFolder::GetUIObjectOf(HWND hwnd, UINT cidl, LPCITEMIDLIST *apidl, REFIID riid, UINT *prgfInOut, void **ppv)
 /*++
   Routine Description:
     Implements IShellFolder::GetUIObjectOf.
@@ -1009,7 +1005,7 @@ HRESULT CXboxFolder::GetUIObjectOf(HWND hwnd, UINT cidl, LPCITEMIDLIST * apidl, 
 
        Interface     |   C++ Class
        ==========================
-       IContextMenu  |  CXboxMenu 
+       IContextMenu  |  CXboxMenu
        IDataObject   |  CXboxDataObject
        IDropTarget   |  CXboxDropTarget
        IExtractIcon  |  CXboxIcon
@@ -1029,18 +1025,18 @@ HRESULT CXboxFolder::GetUIObjectOf(HWND hwnd, UINT cidl, LPCITEMIDLIST * apidl, 
     ENTER_SPEW
     DEBUG_DUMP_IID(riid);
 
-    if(cidl)
+    if (cidl)
     {
         //
         //  If asking for child's object, we need to refresh the list
         //
         hr = RefreshChildren();
-        if(FAILED(hr))
+        if (FAILED(hr))
         {
             return hr;
         }
     }
-    
+
     //
     //  NULL ppv in case we fail.
     //
@@ -1051,18 +1047,19 @@ HRESULT CXboxFolder::GetUIObjectOf(HWND hwnd, UINT cidl, LPCITEMIDLIST * apidl, 
     //  IExtractIcon is a special case, handle it first.
     //
 
-    if(IID_IExtractIcon == riid)
+    if (IID_IExtractIcon == riid)
     {
         CComObject<CXboxExtractIcon> *pExtractIcon = new CComObject<CXboxExtractIcon>;
-        if(pExtractIcon)
+        if (pExtractIcon)
         {
             VisitThese(cidl, apidl, pExtractIcon, IXboxVisitor::FlagContinue);
             hr = pExtractIcon->GetHResult();
-            if(SUCCEEDED(hr))
+            if (SUCCEEDED(hr))
             {
                 hr = pExtractIcon->QueryInterface(IID_IExtractIcon, ppv);
                 _ASSERTE(SUCCEEDED(hr));
-            } else
+            }
+            else
             {
                 delete pExtractIcon;
             }
@@ -1075,23 +1072,25 @@ HRESULT CXboxFolder::GetUIObjectOf(HWND hwnd, UINT cidl, LPCITEMIDLIST * apidl, 
     //
     hr = E_NOINTERFACE;
 
-    if(IID_IContextMenu == riid)
+    if (IID_IContextMenu == riid)
     {
         hr = CXboxMenu::Create(cidl, apidl, this, (IContextMenu **)ppv);
-    } else if(IID_IDataObject == riid)
+    }
+    else if (IID_IDataObject == riid)
     {
         hr = CXboxDataObject::Create(cidl, apidl, this, (IDataObject **)ppv);
-    } else if (IID_IDropTarget == riid)
+    }
+    else if (IID_IDropTarget == riid)
     {
         hr = CXboxDropTarget::Create(hwnd, cidl, apidl, this, (IDropTarget **)ppv);
-    } else
+    }
+    else
     {
         hr = E_NOINTERFACE;
     }
-    
+
     RETURN(hr);
 }
-
 
 HRESULT CXboxFolder::ParseDisplayName(HWND hwnd, LPBC pbc, LPOLESTR pszDisplayName, ULONG *pchEaten, LPITEMIDLIST *ppidl, ULONG *pdwAttributes)
 /*++
@@ -1120,55 +1119,56 @@ HRESULT CXboxFolder::ParseDisplayName(HWND hwnd, LPBC pbc, LPOLESTR pszDisplayNa
     we must return an error.  In general, if pdwAttributes, we need to get the attributes.  If the attributes
     selected are determined by class only (i.e. NOT SFGAO_READONLY, SFGAO_HIDDEN, or in most cases SFGAO_FOLDER)
     we can often answer with a canned response.  Otherwise, we have to go over the wire anyway, which validates
-    
+
     We always parse to the end, so *pchEaten is always _wcslen(pszDisplayName) if pchEaten.
 --*/
 {
-    HRESULT  hr = S_OK;
-    BOOL     fLeadingSlash;
-    BOOL     fTrailingSlash;
-    UINT     uDisplayNameLen;
-    UINT     uRelativeDepth;
-    BOOL     fStrippedProtocol = FALSE;
-    
+    HRESULT hr = S_OK;
+    BOOL fLeadingSlash;
+    BOOL fTrailingSlash;
+    UINT uDisplayNameLen;
+    UINT uRelativeDepth;
+    BOOL fStrippedProtocol = FALSE;
+
     ENTER_SPEW
     ATLTRACE("DisplayName = %ls", pszDisplayName);
 
     //
     //  Handle the case were this is the xbox:// protocol
     //
-    if(0==wcsncmp(pszDisplayName, L"xbox://", 7))
+    if (0 == wcsncmp(pszDisplayName, L"xbox://", 7))
     {
         pszDisplayName += 7;
         LPWSTR pwszParse = pszDisplayName;
-        while(*pwszParse)
+        while (*pwszParse)
         {
             // convert '/' to '\\'
-            if(L'/'==*pwszParse) *pwszParse = L'\\';
+            if (L'/' == *pwszParse)
+                *pwszParse = L'\\';
             pwszParse++;
         }
-        if(L'\\' == *(pwszParse-1)) *(pwszParse-1) = L'\0';  //strip '/' or '\\' at the end.
+        if (L'\\' == *(pwszParse - 1))
+            *(pwszParse - 1) = L'\0'; // strip '/' or '\\' at the end.
         fStrippedProtocol = TRUE;
     }
-    
+
     //
     //  Get a pidl
     //
 
-    *ppidl =  PidlFromPath(
-                   pszDisplayName,
-                   &uDisplayNameLen,
-                   &uRelativeDepth,
-                   &fLeadingSlash,
-                   &fTrailingSlash
-                   );
-    
+    *ppidl = PidlFromPath(
+        pszDisplayName,
+        &uDisplayNameLen,
+        &uRelativeDepth,
+        &fLeadingSlash,
+        &fTrailingSlash);
+
     //
     //  If we didn't get a pidl there is one reason,
     //  out of memory.
     //
 
-    if(!*ppidl)
+    if (!*ppidl)
     {
         return E_OUTOFMEMORY;
     }
@@ -1178,16 +1178,16 @@ HRESULT CXboxFolder::ParseDisplayName(HWND hwnd, LPBC pbc, LPOLESTR pszDisplayNa
     //
 
     _ASSERTE(FALSE == fLeadingSlash);
-    
 
     //
-    //  We ate everything. 
+    //  We ate everything.
     //
 
-    if(pchEaten)
+    if (pchEaten)
     {
         *pchEaten = uDisplayNameLen;
-        if(fStrippedProtocol) *pchEaten += 7;
+        if (fStrippedProtocol)
+            *pchEaten += 7;
     }
 
     //
@@ -1195,10 +1195,10 @@ HRESULT CXboxFolder::ParseDisplayName(HWND hwnd, LPBC pbc, LPOLESTR pszDisplayNa
     //  or the item.
     //
 
-    if(pdwAttributes)
+    if (pdwAttributes)
     {
-        LPSTR pszPathName = (LPSTR)_alloca(uDisplayNameLen+1);
-        Utils::CopyWtoA(pszPathName, fLeadingSlash ? pszDisplayName+1 : pszDisplayName);
+        LPSTR pszPathName = (LPSTR)_alloca(uDisplayNameLen + 1);
+        Utils::CopyWtoA(pszPathName, fLeadingSlash ? pszDisplayName + 1 : pszDisplayName);
 
         //
         //  If the relative depth is one, it is an immediate child.
@@ -1206,13 +1206,13 @@ HRESULT CXboxFolder::ParseDisplayName(HWND hwnd, LPBC pbc, LPOLESTR pszDisplayNa
         //  just fill out the attributes from our child cache.
         //
 
-        if((1 == uRelativeDepth) && m_fChildrenValid)
+        if ((1 == uRelativeDepth) && m_fChildrenValid)
         {
-            if(!(*pdwAttributes&SFGAO_VALIDATE))
+            if (!(*pdwAttributes & SFGAO_VALIDATE))
             {
                 UINT uChildIndex;
                 hr = GetChildIndex(pszPathName, &uChildIndex);
-                if(SUCCEEDED(hr))
+                if (SUCCEEDED(hr))
                 {
                     *pdwAttributes &= m_rgulChildShellAttributes[uChildIndex];
 
@@ -1221,11 +1221,11 @@ HRESULT CXboxFolder::ParseDisplayName(HWND hwnd, LPBC pbc, LPOLESTR pszDisplayNa
                     //  is not set, it is an illegal path.
                     //
 
-                    if(fTrailingSlash && !(*pdwAttributes&SFGAO_FOLDER))
+                    if (fTrailingSlash && !(*pdwAttributes & SFGAO_FOLDER))
                     {
                         g_pShellMalloc->Free(*ppidl);
                         *ppidl = NULL;
-                        _ASSERT(FALSE);//For early debug purposes.
+                        _ASSERT(FALSE); // For early debug purposes.
                         return E_FAIL;
                     }
                     ATLTRACE("Pidl Not verified: ");
@@ -1234,28 +1234,27 @@ HRESULT CXboxFolder::ParseDisplayName(HWND hwnd, LPBC pbc, LPOLESTR pszDisplayNa
                 }
             }
         }
-        
+
         //
         //  We weren't able to get the attributes the quick and dirty way
         //  (either SFGAO_VALIDATE or we had now cached attributes).  So now
         //  force a wire transaction.
         //
-        
+
         hr = ValidateItem(pszPathName, uRelativeDepth, pdwAttributes);
-        if(FAILED(hr))
+        if (FAILED(hr))
         {
             g_pShellMalloc->Free(*ppidl);
-            *ppidl = NULL; 
+            *ppidl = NULL;
         }
     }
-    if(SUCCEEDED(hr))
+    if (SUCCEEDED(hr))
     {
         ATLTRACE("Pidl verified: ");
         DEBUG_DUMP_PIDL(*ppidl);
     }
     RETURN(hr);
 }
-
 
 HRESULT CXboxFolder::SetNameOf(HWND hWnd, LPCITEMIDLIST pidl, LPCOLESTR pszName, DWORD uFlags, LPITEMIDLIST *ppidl)
 /*++
@@ -1308,25 +1307,26 @@ HRESULT CXboxFileSystemFolder::SetNameOf(HWND hWnd, LPCITEMIDLIST pidl, LPCOLEST
     return value of IXboxConnection::Rename
 --*/
 {
-    HRESULT      hr;
-    char         *pszNewName;
-    char         szWireNameSource[MAX_PATH];
-    char         szWireNameDest[MAX_PATH];
-    UINT         uIllegalCharacterCount;
+    HRESULT hr;
+    char *pszNewName;
+    char szWireNameSource[MAX_PATH];
+    char szWireNameDest[MAX_PATH];
+    UINT uIllegalCharacterCount;
     LPITEMIDLIST pidlAbsolute;
-    UINT         uChildIndex;
-    UINT         uNewNameLen;
-    BOOL         fReturnSuccess = TRUE;
-    
-    if(ppidl) *ppidl = NULL;
+    UINT uChildIndex;
+    UINT uNewNameLen;
+    BOOL fReturnSuccess = TRUE;
+
+    if (ppidl)
+        *ppidl = NULL;
 
     //
     //  Allocate space for new name
     //
 
-    uNewNameLen = wcslen(pszName)+1;
+    uNewNameLen = wcslen(pszName) + 1;
     pszNewName = new char[uNewNameLen];
-    if(!pszNewName)
+    if (!pszNewName)
     {
         return E_OUTOFMEMORY;
     }
@@ -1336,13 +1336,13 @@ HRESULT CXboxFileSystemFolder::SetNameOf(HWND hWnd, LPCITEMIDLIST pidl, LPCOLEST
     //
 
     uIllegalCharacterCount = Utils::CopyWtoA(pszNewName, pszName);
-    if(uIllegalCharacterCount)
+    if (uIllegalCharacterCount)
     {
-        if(hWnd)
+        if (hWnd)
         {
-            WindowUtils::MessageBoxResource(hWnd, IDS_RENAME_ERROR_ILLEGAL_CHARACTERS, IDS_RENAME_ERROR_CAPTION, MB_ICONSTOP|MB_OK);
+            WindowUtils::MessageBoxResource(hWnd, IDS_RENAME_ERROR_ILLEGAL_CHARACTERS, IDS_RENAME_ERROR_CAPTION, MB_ICONSTOP | MB_OK);
         }
-        delete [] pszNewName;
+        delete[] pszNewName;
         return E_INVALIDARG;
     }
 
@@ -1352,12 +1352,12 @@ HRESULT CXboxFileSystemFolder::SetNameOf(HWND hWnd, LPCITEMIDLIST pidl, LPCOLEST
 
     RefreshChildren();
     hr = GetChildIndex((LPSTR)pidl->mkid.abID, &uChildIndex);
-    if(FAILED(hr))
-    {   
+    if (FAILED(hr))
+    {
         char szError[60];
         FormatUtils::XboxErrorString(hr, szError, sizeof(szError));
-        WindowUtils::MessageBoxResource(hWnd, IDS_RENAME_XBDM_ERROR, IDS_RENAME_ERROR_CAPTION, MB_OK|MB_ICONSTOP, szError);
-        delete [] pszNewName;
+        WindowUtils::MessageBoxResource(hWnd, IDS_RENAME_XBDM_ERROR, IDS_RENAME_ERROR_CAPTION, MB_OK | MB_ICONSTOP, szError);
+        delete[] pszNewName;
         return hr;
     }
 
@@ -1375,21 +1375,21 @@ HRESULT CXboxFileSystemFolder::SetNameOf(HWND hWnd, LPCITEMIDLIST pidl, LPCOLEST
     GetWireName(szWireNameDest, m_pszPathName, pszNewName);
 
     hr = SetName(hWnd, szWireNameSource, szWireNameDest);
-    if(FAILED(hr))
+    if (FAILED(hr))
     {
         char szError[60];
         FormatUtils::XboxErrorString(hr, szError, sizeof(szError));
-        if(hWnd)
+        if (hWnd)
         {
-            WindowUtils::MessageBoxResource(hWnd, IDS_RENAME_XBDM_ERROR, IDS_RENAME_ERROR_CAPTION, MB_OK|MB_ICONSTOP, szError);
+            WindowUtils::MessageBoxResource(hWnd, IDS_RENAME_XBDM_ERROR, IDS_RENAME_ERROR_CAPTION, MB_OK | MB_ICONSTOP, szError);
         }
     }
 
     //
     //  After success, update child name
-    //  
+    //
 
-    if(SUCCEEDED(hr))
+    if (SUCCEEDED(hr))
     {
         LPITEMIDLIST newPidl;
 
@@ -1398,7 +1398,7 @@ HRESULT CXboxFileSystemFolder::SetNameOf(HWND hWnd, LPCITEMIDLIST pidl, LPCOLEST
         //
 
         strcpy(m_rgChildFileAttributes[uChildIndex].Name, pszNewName);
-        if(!(m_rgChildFileAttributes[uChildIndex].Attributes&FILE_ATTRIBUTE_DIRECTORY))
+        if (!(m_rgChildFileAttributes[uChildIndex].Attributes & FILE_ATTRIBUTE_DIRECTORY))
         {
             delete m_rgszChildTypeNames[uChildIndex];
             m_rgszChildTypeNames[uChildIndex] = GetFileTypeName(&m_rgChildFileAttributes[uChildIndex]);
@@ -1409,57 +1409,54 @@ HRESULT CXboxFileSystemFolder::SetNameOf(HWND hWnd, LPCITEMIDLIST pidl, LPCOLEST
         //
 
         newPidl = GetChildPidl(uChildIndex, CPidlUtils::PidlTypeAbsolute);
-        if(newPidl)
+        if (newPidl)
         {
-            if(pidlAbsolute)
+            if (pidlAbsolute)
             {
                 //
                 //  Send the notification
                 //
-                
-                SHChangeNotify( 
-                    (m_rgulChildShellAttributes[uChildIndex]&SFGAO_FOLDER) ? SHCNE_RENAMEFOLDER : SHCNE_RENAMEITEM,
-                    SHCNF_IDLIST|SHCNF_FLUSH,
+
+                SHChangeNotify(
+                    (m_rgulChildShellAttributes[uChildIndex] & SFGAO_FOLDER) ? SHCNE_RENAMEFOLDER : SHCNE_RENAMEITEM,
+                    SHCNF_IDLIST | SHCNF_FLUSH,
                     pidlAbsolute,
-                    newPidl
-                    );
+                    newPidl);
 
                 //
                 //  Get pidl for out parameter
                 //
             }
-            
+
             g_pShellMalloc->Free(newPidl);
-             
-            if(ppidl)
+
+            if (ppidl)
             {
                 *ppidl = GetChildPidl(uChildIndex, CPidlUtils::PidlTypeSimple);
             }
-            
         }
     }
-    
+
     //
     //  Done with the new name, we are not going to use it.
     //
-    delete [] pszNewName;
+    delete[] pszNewName;
 
     //
     //  If we managed to allocate the original pidlAbsolute, we need to free it now.
     //
 
-    if(pidlAbsolute)
+    if (pidlAbsolute)
     {
         g_pShellMalloc->Free(pidlAbsolute);
     }
 
-    if(fReturnSuccess)
+    if (fReturnSuccess)
     {
         return S_OK;
     }
     return hr;
 }
-
 
 HRESULT CXboxFileSystemFolder::SetName(HWND hWnd, LPSTR szWireNameOld, LPSTR szWireNameNew)
 {
@@ -1472,13 +1469,13 @@ HRESULT CXboxFileSystemFolder::SetName(HWND hWnd, LPSTR szWireNameOld, LPSTR szW
     //  in the kernel ROM and it is not at all important for games, it will
     //  never get fixed.  Basically, we do not support change the capitalization
     //  of the name, we succeed and don't change it.
-    if(0==_stricmp(szWireNameOld, szWireNameNew))
+    if (0 == _stricmp(szWireNameOld, szWireNameNew))
     {
-            return S_OK;
+        return S_OK;
     }
-  
+
     hr = m_pConnection->HrRenameFile(szWireNameOld, szWireNameNew);
-    if(FAILED(hr))
+    if (FAILED(hr))
     {
         HRESULT hrLoc;
         DM_FILE_ATTRIBUTES dmFileAttributes;
@@ -1486,44 +1483,43 @@ HRESULT CXboxFileSystemFolder::SetName(HWND hWnd, LPSTR szWireNameOld, LPSTR szW
 
         //
         //  The return value was XBDM_CANNOTACCESS, see if it was read only,
-        //  
+        //
 
-        if(hr==XBDM_CANNOTACCESS)
+        if (hr == XBDM_CANNOTACCESS)
         {
             hrLoc = m_pConnection->HrGetFileAttributes(szWireNameOld, &dmFileAttributes);
-            if(SUCCEEDED(hrLoc))
+            if (SUCCEEDED(hrLoc))
             {
                 dwOldAttributes = dmFileAttributes.Attributes;
-                if(dwOldAttributes&FILE_ATTRIBUTE_READONLY)
+                if (dwOldAttributes & FILE_ATTRIBUTE_READONLY)
                 {
                     // We need to confirm renaming when it is on a read only file.  If we were provided
                     // with an hWnd, and it is not a directory, confirm
-                    if(hWnd && !(dwOldAttributes&FILE_ATTRIBUTE_DIRECTORY))
+                    if (hWnd && !(dwOldAttributes & FILE_ATTRIBUTE_DIRECTORY))
                     {
                         LPSTR pszNewFriendlyName = strrchr(szWireNameNew, '\\');
                         pszNewFriendlyName++;
                         LPSTR pszOldFriendlyName = strrchr(szWireNameOld, '\\');
                         pszOldFriendlyName++;
-                        //Confirm renaming of read-only file.
-                        if(IDYES != WindowUtils::MessageBoxResource(
-                                                    hWnd,
-                                                    IDS_CONFIRM_RENAME_RO_FILE,
-                                                    IDS_CONFIRM_RENAME_CAPTION,
-                                                    MB_YESNO|MB_ICONQUESTION,
-                                                    pszOldFriendlyName, pszNewFriendlyName)
-                                                    ){
+                        // Confirm renaming of read-only file.
+                        if (IDYES != WindowUtils::MessageBoxResource(
+                                         hWnd,
+                                         IDS_CONFIRM_RENAME_RO_FILE,
+                                         IDS_CONFIRM_RENAME_CAPTION,
+                                         MB_YESNO | MB_ICONQUESTION,
+                                         pszOldFriendlyName, pszNewFriendlyName))
+                        {
                             // The user didn't want to rename, just return success.
-                            // Anything else causes the shell to pop of an error dialog.                           
+                            // Anything else causes the shell to pop of an error dialog.
                             return S_OK;
                         }
-
                     }
                     dmFileAttributes.Attributes = FILE_ATTRIBUTE_NORMAL;
                     hrLoc = m_pConnection->HrSetFileAttributes(szWireNameOld, &dmFileAttributes);
-                    if(SUCCEEDED(hrLoc))
+                    if (SUCCEEDED(hrLoc))
                     {
                         hr = m_pConnection->HrRenameFile(szWireNameOld, szWireNameNew);
-                        //Set the attributes back
+                        // Set the attributes back
                         dmFileAttributes.Attributes = dwOldAttributes;
                         m_pConnection->HrSetFileAttributes(SUCCEEDED(hr) ? szWireNameNew : szWireNameOld, &dmFileAttributes);
                     }

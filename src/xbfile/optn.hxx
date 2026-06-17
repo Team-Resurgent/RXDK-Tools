@@ -6,11 +6,12 @@
  *
  */
 
-struct OPTH {
-	char *m_szExe;
+struct OPTH
+{
+    char *m_szExe;
 
-	OPTH(int &cArg, char **&rgszArg, const char *szOptionChars="-/");
+    OPTH(int &cArg, char **&rgszArg, const char *szOptionChars = "-/");
 
-	BOOL FParseOption(char *&sz, char);
-	void UsageFailure(void);
+    BOOL FParseOption(char *&sz, char);
+    void UsageFailure(void);
 };

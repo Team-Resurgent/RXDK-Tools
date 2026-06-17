@@ -17,36 +17,36 @@
 
 class CXboxConnection : public IXboxConnection
 {
-public:
-    STDMETHOD(QueryInterface) (REFIID riid, LPVOID FAR *ppvObj);
-    STDMETHOD_(ULONG, AddRef) (void);
-    STDMETHOD_(ULONG, Release) (void);
+  public:
+    STDMETHOD(QueryInterface)(REFIID riid, LPVOID FAR *ppvObj);
+    STDMETHOD_(ULONG, AddRef)(void);
+    STDMETHOD_(ULONG, Release)(void);
 
     // IXboxConnection
-    STDMETHOD(HrSetConnectionTimeout) (DWORD dwConnectTimeout,
-        DWORD dwConversationTimeout);
-    STDMETHOD(HrUseSharedConnection) (BOOL fShare);
-    STDMETHOD(HrUseSecureConnection) (LPCSTR szPasswd);
-    STDMETHOD(HrSendCommand) (LPCSTR szCommand, LPSTR szResponse,
-        LPDWORD lpdwResponseSize);
-    STDMETHOD(HrResolveXboxName) (LPDWORD lpdwAddress);
-    STDMETHOD(HrGetNameOfXbox) (LPSTR szName, LPDWORD lpdwSize,
-        BOOL fResolvable);
-    STDMETHOD(HrSendFile) (LPCSTR szLocalName, LPCSTR szRemoteName);
-    STDMETHOD(HrReceiveFile) (LPCSTR szLocalName, LPCSTR szRemoteName);
-    STDMETHOD(HrGetFileAttributes) (LPCSTR szFileName, PDM_FILE_ATTRIBUTES pfa);
-    STDMETHOD(HrSetFileAttributes) (LPCSTR szFileName, PDM_FILE_ATTRIBUTES pfa);
-    STDMETHOD(HrMkdir) (LPCSTR szDirectoryName);
-    STDMETHOD(HrRenameFile) (LPCSTR szOldName, LPCSTR szNewName);
-    STDMETHOD(HrDeleteFile) (LPCSTR szFileName, BOOL fIsDirectory);
-    STDMETHOD(HrOpenDir) (PDM_WALK_DIR *ppwd, LPCSTR szDir, LPDWORD pdw);
-    STDMETHOD(HrWalkDir) (PDM_WALK_DIR *ppwd, LPCSTR szDir, PDM_FILE_ATTRIBUTES pfa);
-    STDMETHOD(HrCloseDir) (PDM_WALK_DIR pwd);
-    STDMETHOD(HrGetDriveList) (LPSTR rgchDrives, LPDWORD pcDrives);
-    STDMETHOD(HrGetDiskFreeSpace) (LPSTR szDrive,
-        PULARGE_INTEGER pnFreeBytesAvailableToCaller,
-        PULARGE_INTEGER pnTotalNumberOfBytes,
-        PULARGE_INTEGER pnTotalNumberOfFreeBytes);
+    STDMETHOD(HrSetConnectionTimeout)(DWORD dwConnectTimeout,
+                                      DWORD dwConversationTimeout);
+    STDMETHOD(HrUseSharedConnection)(BOOL fShare);
+    STDMETHOD(HrUseSecureConnection)(LPCSTR szPasswd);
+    STDMETHOD(HrSendCommand)(LPCSTR szCommand, LPSTR szResponse,
+                             LPDWORD lpdwResponseSize);
+    STDMETHOD(HrResolveXboxName)(LPDWORD lpdwAddress);
+    STDMETHOD(HrGetNameOfXbox)(LPSTR szName, LPDWORD lpdwSize,
+                               BOOL fResolvable);
+    STDMETHOD(HrSendFile)(LPCSTR szLocalName, LPCSTR szRemoteName);
+    STDMETHOD(HrReceiveFile)(LPCSTR szLocalName, LPCSTR szRemoteName);
+    STDMETHOD(HrGetFileAttributes)(LPCSTR szFileName, PDM_FILE_ATTRIBUTES pfa);
+    STDMETHOD(HrSetFileAttributes)(LPCSTR szFileName, PDM_FILE_ATTRIBUTES pfa);
+    STDMETHOD(HrMkdir)(LPCSTR szDirectoryName);
+    STDMETHOD(HrRenameFile)(LPCSTR szOldName, LPCSTR szNewName);
+    STDMETHOD(HrDeleteFile)(LPCSTR szFileName, BOOL fIsDirectory);
+    STDMETHOD(HrOpenDir)(PDM_WALK_DIR *ppwd, LPCSTR szDir, LPDWORD pdw);
+    STDMETHOD(HrWalkDir)(PDM_WALK_DIR *ppwd, LPCSTR szDir, PDM_FILE_ATTRIBUTES pfa);
+    STDMETHOD(HrCloseDir)(PDM_WALK_DIR pwd);
+    STDMETHOD(HrGetDriveList)(LPSTR rgchDrives, LPDWORD pcDrives);
+    STDMETHOD(HrGetDiskFreeSpace)(LPSTR szDrive,
+                                  PULARGE_INTEGER pnFreeBytesAvailableToCaller,
+                                  PULARGE_INTEGER pnTotalNumberOfBytes,
+                                  PULARGE_INTEGER pnTotalNumberOfFreeBytes);
     STDMETHOD(HrReboot)(DWORD dwFlags, LPCSTR pszXbeName);
     STDMETHOD(HrGetXbeInfo)(LPCSTR szName, PDM_XBE pxbe);
     STDMETHOD(HrGetSystemTime)(LPSYSTEMTIME lpSysTime);
@@ -86,7 +86,7 @@ public:
 
     void operator delete(void *pv)
     {
-        if(pv)
+        if (pv)
             LocalFree(pv);
     }
 };
@@ -115,15 +115,17 @@ STDMETHODIMP CXboxConnection::QueryInterface(REFIID riid, LPVOID FAR *ppvObj)
     return E_NOINTERFACE;
 }
 
-STDMETHODIMP_(ULONG) CXboxConnection::AddRef(void)
+STDMETHODIMP_(ULONG)
+CXboxConnection::AddRef(void)
 {
     return InterlockedIncrement(&m_cRef);
 }
 
-STDMETHODIMP_(ULONG) CXboxConnection::Release(void)
+STDMETHODIMP_(ULONG)
+CXboxConnection::Release(void)
 {
     int cRef = InterlockedDecrement(&m_cRef);
-    if(0 == cRef)
+    if (0 == cRef)
         delete this;
     return cRef;
 }
@@ -139,13 +141,14 @@ STDMETHODIMP CXboxConnection::HrUseSecureConnection(LPCSTR szPasswd)
 }
 
 STDMETHODIMP CXboxConnection::HrSendCommand(LPCSTR szCommand, LPSTR szResponse,
-    LPDWORD lpdwResponseSize)
+                                            LPDWORD lpdwResponseSize)
 {
     HRESULT hr;
     PDM_CONNECTION s;
 
     hr = HrOpenSharedConnection(&s);
-    if(SUCCEEDED(hr)) {
+    if (SUCCEEDED(hr))
+    {
         hr = DmSendCommand(s, szCommand, szResponse, lpdwResponseSize);
         CloseSharedConnection(s);
     }
@@ -153,7 +156,7 @@ STDMETHODIMP CXboxConnection::HrSendCommand(LPCSTR szCommand, LPSTR szResponse,
 }
 
 STDMETHODIMP CXboxConnection::HrOpenDir(PDM_WALK_DIR *ppwd, LPCSTR szDirName,
-    LPDWORD pdw)
+                                        LPDWORD pdw)
 {
     return ::HrOpenDir(&m_sci, ppwd, szDirName, pdw);
 }
@@ -177,30 +180,32 @@ HRESULT CXboxConnection::HrReboot(DWORD dwFlags, LPCSTR pszXbeName)
 {
     PDM_CONNECTION s;
     char *szEmpty = "";
-	char *szWait;
-	char *szWarm = dwFlags & DMBOOT_WARM ? " WARM" : szEmpty;
-    
-	char sz[512];
+    char *szWait;
+    char *szWarm = dwFlags & DMBOOT_WARM ? " WARM" : szEmpty;
 
-    if(dwFlags & DMBOOT_STOP)
+    char sz[512];
+
+    if (dwFlags & DMBOOT_STOP)
         szWait = " STOP";
-    else if(dwFlags & DMBOOT_WAIT)
+    else if (dwFlags & DMBOOT_WAIT)
         szWait = " WAIT";
     else
         szWait = szEmpty;
 
-    if(!pszXbeName)
+    if (!pszXbeName)
     {
         char *szNDebug = dwFlags & DMBOOT_NODEBUG ? " NODEBUG" : szEmpty;
-	    sprintf(sz, "REBOOT%s%s%s", szWait, szWarm, szNDebug);    
-    } else
+        sprintf(sz, "REBOOT%s%s%s", szWait, szWarm, szNDebug);
+    }
+    else
     {
         char *szDebug = dwFlags & DMBOOT_NODEBUG ? szEmpty : " DEBUG";
-        sprintf(sz, "magicboot title=%s%s", pszXbeName,szDebug);
+        sprintf(sz, "magicboot title=%s%s", pszXbeName, szDebug);
     }
-    
+
     HRESULT hr = HrOpenSharedConnection(&s);
-    if(SUCCEEDED(hr)) {
+    if (SUCCEEDED(hr))
+    {
         hr = HrDoOneLineCmd(s, sz);
         CloseSharedConnection(s);
     }
@@ -213,19 +218,18 @@ HRESULT DmGetXboxConnection(LPCSTR sz, DWORD dwVersion, IXboxConnection **ppvObj
     HRESULT hr;
     struct sockaddr_in sin;
 
-    if(dwVersion != XBCONN_VERSION)
+    if (dwVersion != XBCONN_VERSION)
         return E_INVALIDARG;
 
     pxc = new CXboxConnection(sz);
-    if(!pxc)
+    if (!pxc)
         return E_OUTOFMEMORY;
     *ppvObj = pxc;
     /* Make sure we can get an IP address */
     hr = HrResolveNameIP(pxc->m_sci.szXboxName, &sin);
-    if(SUCCEEDED(hr))
+    if (SUCCEEDED(hr))
         pxc->m_sci.ulXboxIPAddr = sin.sin_addr.s_addr;
     else
         delete pxc;
     return hr;
 }
-

@@ -11,7 +11,8 @@ int __cdecl main(void)
     if (FAILED(SessionInit()))
         return 1;
 
-    while (fgets(szLine, sizeof szLine, stdin)) {
+    while (fgets(szLine, sizeof szLine, stdin))
+    {
         char *nl = strchr(szLine, '\n');
         if (nl)
             *nl = 0;
