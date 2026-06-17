@@ -17,7 +17,7 @@ The classic XDK shipped 32-bit utilities that no longer run on modern Windows. R
 | Category | Tools |
 |----------|-------|
 | Explorer | **Xbox Neighborhood** shell extension (`xbshlext.dll`) |
-| Neighborhood app | **`RXDKNeighborhood.exe`** — standalone browser (no shell registration) |
+| Neighborhood app | **`RXDKNeighborhood.exe`** — Avalonia standalone browser (`RXDKNeighborhood.sln`) |
 | File transfer | `xbcp`, `xbdir`, `xbmkdir`, `xbecopy` |
 | Build | `imagebld` (PE → signed `.xbe`) |
 | Debug | `xbox-launch`, `xbWatson`, `xboxdbg-bridge` |
@@ -42,7 +42,7 @@ The classic XDK shipped 32-bit utilities that no longer run on modern Windows. R
 
 - **64-bit** Windows 10 or Windows 11
 - An Original Xbox **development kit** on the network (for console-facing tools)
-- **Administrator** rights to install the shell extension (registered machine-wide; not required for `RXDKNeighborhood.exe`)
+- **Administrator** rights to install the shell extension (registered machine-wide; not required for the standalone Neighborhood app)
 
 ## Quick start — Xbox Neighborhood (shell extension)
 
@@ -58,13 +58,13 @@ shell:::{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}
 
 ## Quick start — RXDKNeighborhood app
 
-Run **`RXDKNeighborhood.exe`** from `out/bin/x64/Release/`. No shell extension or admin install is required — the app talks to kits directly over XBDM.
+Build or publish the Avalonia app (see [RXDKNeighborhood app](#rxdkneighborhood-app) below), then run **`RXDKNeighborhood.exe`**. No shell extension or admin install is required — the app talks to kits directly over XBDM.
 
-1. **Console → Add Xbox…** and enter a console name or IP address
+1. **Add Console** and complete the wizard (name/IP, security if needed)
 2. Select a console in the tree to browse drives
-3. Double-click folders in the list to open them; use **Navigate → Up** to go back
+3. Double-click folders in the list to open them; use **Up** to go back
 
-Console list is stored under `HKCU\Software\Microsoft\XboxSDK\RXDKNeighborhood\Consoles`.
+Console list is stored in `%AppData%\RXDKNeighborhood\consoles.json` (with one-time import from the legacy registry key on Windows).
 
 ## Screenshots
 
@@ -102,27 +102,46 @@ Built as `xbshlext.dll`. The Inno Setup post-build step produces **`XboxNeighbor
 
 ### RXDKNeighborhood app
 
-Standalone Win32 application (`RXDKNeighborhood.exe`) with the same core job — browse kits, drives, and folders — but **without Explorer shell integration**. It uses **`xbdbgs.lib`** and **`IXboxConnection`** directly.
+Modern **Avalonia** standalone browser (`RXDKNeighborhood.sln`) — browse kits, drives, and folders **without Explorer shell integration**. Uses a thin native **`xbdm.dll`** wrapper around **`xbdbgs.lib`**.
 
 | Feature | Description |
 |---------|-------------|
-| Console list | Add/remove consoles via full **Add Xbox** wizard, set default |
-| Browse | Tree of consoles and drives; list view for folder contents |
-| Context menu | Right-click on tree and list — open, launch, reboot, file ops, properties |
-| File operations | Cut, copy, paste, delete, rename, new folder (Edit menu and context menu) |
-| Drag-and-drop | Drop files from the PC onto a folder to upload; drag items out to Explorer |
-| Copy to PC | Context menu export, or drag selected files/folders to the desktop or Explorer |
-| XBE launch | Right-click **Launch** on `.xbe` files |
-| Reboot | Warm, cold, or warm-to-active-title from menus |
-| Screen capture | Save a kit screenshot to a `.bmp` file |
-| Property pages | Console (general/advanced), drive, and file/folder sheets |
-| Security | Full security property page: lock/unlock, users, permissions, password |
+| Console management | Add Xbox wizard, remove, set default, reboot, screenshot |
+| Browse | Tree of consoles, drives, and folders; file list for contents |
+| File operations | Cut, copy, paste, delete, rename, new folder, drag-and-drop |
+| Copy to PC | Export to PC, or drag files/folders to Explorer |
+| XBE launch | Launch `.xbe` files on the kit |
+| Property pages | Console, drive, and file/folder properties |
+| Security | Lock/unlock, users, permissions, admin password |
 
-**Explorer-only** (still requires `xbshlext.dll`):
+**Explorer-only** (requires `xbshlext.dll`):
 
 | Shell extension only | Notes |
 |----------------------|-------|
 | Explorer integration | Namespace in This PC, details pane columns, desktop shortcuts |
+
+**Build and run:**
+
+```powershell
+# Native XBDM wrapper + app
+msbuild src/xbdm-native/xbdm-native.vcxproj /p:Configuration=Release /p:Platform=x64
+dotnet run --project src-dotnet/RXDKNeighborhood/RXDKNeighborhood.csproj -c Release
+
+# Publish distributable folder (includes xbdm.dll)
+powershell -File scripts/publish-avalonia.ps1
+```
+
+Published output: `out/publish/RXDKNeighborhood-win-x64/`
+
+| Component | Location |
+|-----------|----------|
+| `xbdm.dll` | `out/bin/x64/Release/` |
+| Avalonia app | `src-dotnet/RXDKNeighborhood/` |
+| C# core logic | `src-dotnet/RXDKNeighborhood.Core/` |
+| P/Invoke | `src-dotnet/Rxdk.Native/` |
+| C ABI header | `src/xbdm-native/include/xbdm.h` |
+
+Requires **.NET 8 SDK** and **Visual Studio 2022** (C++) for `xbdm.dll`.
 
 ### File utilities (`xbcp`, `xbdir`, `xbmkdir`, `xbecopy`)
 
@@ -221,7 +240,6 @@ Each `.vcxproj` lives alongside its sources under `src/`; shared headers and hel
 | `xbfile` | `xbfile.lib` | Shared path/option parsing for file CLI tools |
 | `xrsa` | `xrsa.lib` | Source-built RSA/crypto for `imagebld` signing |
 | `xbshlext` | `xbshlext.dll` | Xbox Neighborhood shell extension |
-| `rxdk-neighborhood` | `RXDKNeighborhood.exe` | Standalone Neighborhood browser |
 | `xbcp`, `xbdir`, `xbmkdir`, `xbecopy` | `*.exe` | File transfer utilities |
 | `imagebld` | `imagebld.exe` | PE → XBE image builder |
 | `xbox-launch` | `xbox-launch.exe` | CLI debug launch helper |
@@ -229,3 +247,5 @@ Each `.vcxproj` lives alongside its sources under `src/`; shared headers and hel
 | `xboxdbg_bridge` | `xboxdbg-bridge.exe` | JSON debug bridge for editor integration |
 
 All executables link **`xbdbgs.lib`** statically. Everything targets **x64**, including `imagebld` and full notification support in `xbdbgs`.
+
+The standalone **`RXDKNeighborhood.exe`** is built from **`RXDKNeighborhood.sln`**, not from `RXDKTools.sln` — see [RXDKNeighborhood app](#rxdkneighborhood-app).
