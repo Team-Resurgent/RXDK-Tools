@@ -1,1 +1,6 @@
-output/
+.vs/
+out/
+**/bin/
+**/obj/
+artifacts/
+*.vcxproj.user
