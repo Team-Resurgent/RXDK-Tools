@@ -1,0 +1,57 @@
+#include "resource.h"
+#include <winres.h>
+
+IDI_MAIN ICON "..\\xbshlext\\console.ico"
+IDI_CONSOLE ICON "..\\xbshlext\\console.ico"
+IDI_CONSOLE_DEFAULT ICON "..\\xbshlext\\console-default.ico"
+IDI_VOLUME ICON "..\\xbshlext\\volume.ico"
+IDI_FOLDER ICON "..\\xbshlext\\folder.ico"
+IDI_XBE ICON "..\\xbshlext\\xbe.ico"
+IDI_REBOOT ICON "..\\xbshlext\\reboot.ico"
+IDI_CAMERA ICON "..\\xbshlext\\camera.ico"
+
+IDR_MAINMENU MENU
+BEGIN
+    POPUP "&File"
+    BEGIN
+        MENUITEM "E&xit", IDM_FILE_EXIT
+    END
+    POPUP "&Console"
+    BEGIN
+        MENUITEM "&Add Xbox...", IDM_CONSOLE_ADD
+        MENUITEM "&Remove Xbox", IDM_CONSOLE_REMOVE
+        MENUITEM "Set &Default", IDM_CONSOLE_SET_DEFAULT
+        MENUITEM SEPARATOR
+        MENUITEM "&Refresh", IDM_CONSOLE_REFRESH
+    END
+    POPUP "&Actions"
+    BEGIN
+        MENUITEM "Reboot (&Warm)", IDM_ACTION_REBOOT_WARM
+        MENUITEM "Warm to &Active Title", IDM_ACTION_REBOOT_SAME
+        MENUITEM "Reboot (&Cold)", IDM_ACTION_REBOOT_COLD
+        MENUITEM "&Screen Capture...", IDM_ACTION_SCREENSHOT
+    END
+    POPUP "&Edit"
+    BEGIN
+        MENUITEM "Cu&t", IDM_CTX_CUT
+        MENUITEM "&Copy", IDM_CTX_COPY
+        MENUITEM "&Paste", IDM_CTX_PASTE
+        MENUITEM "&Delete", IDM_CTX_DELETE
+        MENUITEM "P&roperties", IDM_CTX_PROPERTIES
+    END
+    POPUP "&Navigate"
+    BEGIN
+        MENUITEM "&Up", IDM_NAV_UP
+    END
+END
+
+IDD_ADD_CONSOLE DIALOGEX 0, 0, 260, 90
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Add Xbox"
+FONT 9, "Segoe UI"
+BEGIN
+    LTEXT "Console name or IP address:", -1, 10, 10, 240, 10
+    EDITTEXT IDC_CONSOLE_NAME, 10, 24, 240, 14, ES_AUTOHSCROLL
+    DEFPUSHBUTTON "OK", IDOK, 90, 60, 50, 14
+    PUSHBUTTON "Cancel", IDCANCEL, 150, 60, 50, 14
+END

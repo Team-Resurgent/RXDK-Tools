@@ -17,6 +17,7 @@ The classic XDK shipped 32-bit utilities that no longer run on modern Windows. R
 | Category | Tools |
 |----------|-------|
 | Explorer | **Xbox Neighborhood** shell extension (`xbshlext.dll`) |
+| Neighborhood app | **`RXDKNeighborhood.exe`** — standalone browser (no shell registration) |
 | File transfer | `xbcp`, `xbdir`, `xbmkdir`, `xbecopy` |
 | Build | `imagebld` (PE → signed `.xbe`) |
 | Debug | `xbox-launch`, `xbWatson`, `xboxdbg-bridge` |
@@ -24,10 +25,12 @@ The classic XDK shipped 32-bit utilities that no longer run on modern Windows. R
 ## Contents
 
 - [Requirements](#requirements)
-- [Quick start — Xbox Neighborhood](#quick-start--xbox-neighborhood)
+- [Quick start — Xbox Neighborhood (shell extension)](#quick-start--xbox-neighborhood-shell-extension)
+- [Quick start — RXDKNeighborhood app](#quick-start--rxdkneighborhood-app)
 - [Screenshots](#screenshots)
 - [Tools](#tools)
   - [Xbox Neighborhood](#xbox-neighborhood-xbshlextdll)
+  - [RXDKNeighborhood app](#rxdkneighborhood-app)
   - [File utilities](#file-utilities-xbcp-xbdir-xbmkdir-xbecopy)
   - [Image builder](#xbox-image-file-builder-imagebld)
   - [Launch helper](#launch-helper-xbox-launch)
@@ -39,9 +42,9 @@ The classic XDK shipped 32-bit utilities that no longer run on modern Windows. R
 
 - **64-bit** Windows 10 or Windows 11
 - An Original Xbox **development kit** on the network (for console-facing tools)
-- **Administrator** rights to install the shell extension (registered machine-wide)
+- **Administrator** rights to install the shell extension (registered machine-wide; not required for `RXDKNeighborhood.exe`)
 
-## Quick start — Xbox Neighborhood
+## Quick start — Xbox Neighborhood (shell extension)
 
 1. Download or build **`XboxNeighborhood-Setup.exe`**
 2. Run the installer **as administrator**
@@ -52,6 +55,16 @@ The installer registers the shell extension and opens Neighborhood in Explorer. 
 ```uri
 shell:::{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}
 ```
+
+## Quick start — RXDKNeighborhood app
+
+Run **`RXDKNeighborhood.exe`** from `out/bin/x64/Release/`. No shell extension or admin install is required — the app talks to kits directly over XBDM.
+
+1. **Console → Add Xbox…** and enter a console name or IP address
+2. Select a console in the tree to browse drives
+3. Double-click folders in the list to open them; use **Navigate → Up** to go back
+
+Console list is stored under `HKCU\Software\Microsoft\XboxSDK\RXDKNeighborhood\Consoles`.
 
 ## Screenshots
 
@@ -86,6 +99,30 @@ The headline feature — an **Xbox Neighborhood** entry in Windows Explorer for 
 | Capture & security | Screenshot capture and security settings from the console menu |
 
 Built as `xbshlext.dll`. The Inno Setup post-build step produces **`XboxNeighborhood-Setup.exe`**.
+
+### RXDKNeighborhood app
+
+Standalone Win32 application (`RXDKNeighborhood.exe`) with the same core job — browse kits, drives, and folders — but **without Explorer shell integration**. It uses **`xbdbgs.lib`** and **`IXboxConnection`** directly.
+
+| Feature | Description |
+|---------|-------------|
+| Console list | Add/remove consoles via full **Add Xbox** wizard, set default |
+| Browse | Tree of consoles and drives; list view for folder contents |
+| Context menu | Right-click on tree and list — open, launch, reboot, file ops, properties |
+| File operations | Cut, copy, paste, delete, rename, new folder (Edit menu and context menu) |
+| Drag-and-drop | Drop files from the PC onto a folder to upload; drag items out to Explorer |
+| Copy to PC | Context menu export, or drag selected files/folders to the desktop or Explorer |
+| XBE launch | Right-click **Launch** on `.xbe` files |
+| Reboot | Warm, cold, or warm-to-active-title from menus |
+| Screen capture | Save a kit screenshot to a `.bmp` file |
+| Property pages | Console (general/advanced), drive, and file/folder sheets |
+| Security | Full security property page: lock/unlock, users, permissions, password |
+
+**Explorer-only** (still requires `xbshlext.dll`):
+
+| Shell extension only | Notes |
+|----------------------|-------|
+| Explorer integration | Namespace in This PC, details pane columns, desktop shortcuts |
 
 ### File utilities (`xbcp`, `xbdir`, `xbmkdir`, `xbecopy`)
 
@@ -184,6 +221,7 @@ Each `.vcxproj` lives alongside its sources under `src/`; shared headers and hel
 | `xbfile` | `xbfile.lib` | Shared path/option parsing for file CLI tools |
 | `xrsa` | `xrsa.lib` | Source-built RSA/crypto for `imagebld` signing |
 | `xbshlext` | `xbshlext.dll` | Xbox Neighborhood shell extension |
+| `rxdk-neighborhood` | `RXDKNeighborhood.exe` | Standalone Neighborhood browser |
 | `xbcp`, `xbdir`, `xbmkdir`, `xbecopy` | `*.exe` | File transfer utilities |
 | `imagebld` | `imagebld.exe` | PE → XBE image builder |
 | `xbox-launch` | `xbox-launch.exe` | CLI debug launch helper |

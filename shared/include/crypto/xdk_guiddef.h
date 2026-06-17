@@ -3,11 +3,14 @@
 //  Microsoft Windows
 //  Copyright (C) Microsoft Corporation, 1998-2001. All rights reserved.
 //
-//  File:       guiddef.h
+//  File:       xdk_guiddef.h
 //
-//  Contents:   GUID definition
+//  Contents:   GUID definition (XDK crypto copy; use explicit include only)
 //
 //----------------------------------------------------------------------------
+
+#ifndef _GUIDDEF_H_
+#define _GUIDDEF_H_
 
 #ifndef GUID_DEFINED
 #define GUID_DEFINED
@@ -62,9 +65,6 @@ typedef struct _GUID
 #endif // INITGUID
 
 #define DEFINE_OLEGUID(name, l, w1, w2) DEFINE_GUID(name, l, w1, w2, 0xC0, 0, 0, 0, 0, 0, 0, 0x46)
-
-#ifndef _GUIDDEF_H_
-#define _GUIDDEF_H_
 
 #ifndef __LPGUID_DEFINED__
 #define __LPGUID_DEFINED__

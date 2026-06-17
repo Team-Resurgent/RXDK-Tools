@@ -20,7 +20,7 @@ extern "C"
 {
 #endif
 
-#include "guiddef.h"
+#include "xdk_guiddef.h"
 
 //
 // Number of bits for keys in the public key algorithms
