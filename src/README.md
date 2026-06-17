@@ -15,4 +15,4 @@ Host-tool **project sources** and `.vcxproj` files live under `src/`.
 - `xrsa/` — source-built RSA/crypto library (`xrsa.lib`)
 - `xboxdbg-bridge/` — JSON debug host for DAP (`out/bin/x64/Release/xboxdbg-bridge.exe`)
 
-Each component folder includes its `.vcxproj` and optional `.props`. Shared output paths and roots (`IncludeRoot`, `CommonRoot`) live in `XboxTools.props`. Every project also imports `XboxTools.SharedItems.props` so `shared/include` and `shared/common` appear in Solution Explorer (set `SharedCommonCompile` in a project to compile specific common sources).
+Each component folder includes its `.vcxproj` and optional `.props`. Shared output paths and roots (`IncludeRoot`, `CommonRoot`) live in `RXDKTools.props`. Every project also imports `RXDKTools.SharedItems.props` so `shared/include` and `shared/common` appear in Solution Explorer (set `SharedCommonCompile` in a project to compile specific common sources).

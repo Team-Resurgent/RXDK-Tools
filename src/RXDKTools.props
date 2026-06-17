@@ -13,5 +13,5 @@
     <ImportDirectoryBuildProps>false</ImportDirectoryBuildProps>
     <ImportDirectoryBuildTargets>false</ImportDirectoryBuildTargets>
   </PropertyGroup>
-  <Import Project="$(MSBuildThisFileDirectory)XboxTools.SharedItems.props" />
+  <Import Project="$(MSBuildThisFileDirectory)RXDKTools.SharedItems.props" />
 </Project>

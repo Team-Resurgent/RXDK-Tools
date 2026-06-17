@@ -21,7 +21,7 @@
   <PropertyGroup>
     <SharedCommonCompile>xdk_shellfolder_view.cpp;xdk_shellfolder2.cpp</SharedCommonCompile>
   </PropertyGroup>
-  <Import Project="$(MSBuildThisFileDirectory)..\XboxTools.props" />
+  <Import Project="$(MSBuildThisFileDirectory)..\RXDKTools.props" />
   <Import Project="$(MSBuildThisFileDirectory)xbshlext.props" />
   <PropertyGroup>
     <TargetName>xbshlext</TargetName>

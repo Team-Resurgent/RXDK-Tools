@@ -21,7 +21,7 @@
   <PropertyGroup>
     <SharedCommonCompile>xboxdbg_static_init.c;dm_error_shim.c;xdk_benaloh.c</SharedCommonCompile>
   </PropertyGroup>
-  <Import Project="$(MSBuildThisFileDirectory)..\XboxTools.props" />
+  <Import Project="$(MSBuildThisFileDirectory)..\RXDKTools.props" />
   <Import Project="$(MSBuildThisFileDirectory)xbdbgs.props" />
   <PropertyGroup>
     <TargetName>xbdbgs</TargetName>
