@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
@@ -6,6 +6,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Rxdk.Native\Rxdk.Native.csproj" />
+    <ProjectReference Include="..\Rxdk.Xbdm.Managed\Rxdk.Xbdm.Managed.csproj" />
   </ItemGroup>
 </Project>

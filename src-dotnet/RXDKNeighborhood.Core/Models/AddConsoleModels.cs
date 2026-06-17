@@ -1,3 +1,5 @@
+using Rxdk.Xbdm;
+
 namespace RXDKNeighborhood.Core.Models;
 
 public sealed class AddConsoleWizardState
@@ -12,5 +14,5 @@ public sealed class AddConsoleWizardState
     public bool MakeDefault { get; set; } = true;
 
     public bool NeedsSecurityStep =>
-        IsSecurityEnabled && (CurrentAccess & Rxdk.Native.XbdmConstants.PrivAll) != Rxdk.Native.XbdmConstants.PrivAll;
+        IsSecurityEnabled && (CurrentAccess & XbdmConstants.PrivAll) != XbdmConstants.PrivAll;
 }

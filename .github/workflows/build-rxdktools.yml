@@ -47,6 +47,12 @@ jobs:
         if: matrix.platform == 'windows'
         uses: microsoft/setup-msbuild@v2
 
+      - name: Setup .NET
+        if: matrix.platform == 'windows'
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
       - name: Build RXDKTools.sln
         if: matrix.platform == 'windows'
         shell: pwsh

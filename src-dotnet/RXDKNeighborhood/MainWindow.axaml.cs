@@ -9,7 +9,8 @@ using RXDKNeighborhood.Core.Models;
 using RXDKNeighborhood.Core.Services;
 using RXDKNeighborhood.Services;
 using RXDKNeighborhood.ViewModels;
-using Rxdk.Native;
+using Rxdk.Xbdm;
+using Rxdk.Xbdm.Managed;
 
 namespace RXDKNeighborhood;
 

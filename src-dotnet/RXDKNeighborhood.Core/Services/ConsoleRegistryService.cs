@@ -1,6 +1,7 @@
 using System.Text.Json;
 using RXDKNeighborhood.Core.Models;
-using Rxdk.Native;
+using Rxdk.Xbdm;
+using Rxdk.Xbdm.Managed;
 
 namespace RXDKNeighborhood.Core.Services;
 
@@ -96,7 +97,7 @@ public sealed class ConsoleRegistryService
     {
         try
         {
-            var dmDefault = Rxdk.Native.XbdmSession.GetDefaultConsoleName();
+            var dmDefault = XbdmSession.GetDefaultConsoleName();
             if (!string.IsNullOrWhiteSpace(dmDefault))
                 return dmDefault;
         }

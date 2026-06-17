@@ -1,5 +1,6 @@
 using RXDKNeighborhood.Core.Models;
-using Rxdk.Native;
+using Rxdk.Xbdm;
+using Rxdk.Xbdm.Managed;
 
 namespace RXDKNeighborhood.Core.Services;
 

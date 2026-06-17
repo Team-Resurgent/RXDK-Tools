@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
@@ -38,14 +38,4 @@
     <AvaloniaResource Include="..\..\src\xbshlext\muldoc.ico" Link="Assets\muldoc.ico" />
   </ItemGroup>
 
-  <ItemGroup>
-    <None Include="..\..\out\bin\x64\Release\xbdm.dll" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\out\bin\x64\Release\xbdm.dll')" />
-  </ItemGroup>
-
-  <Target Name="CopyXbdmToPublish" AfterTargets="Publish">
-    <Copy SourceFiles="..\..\out\bin\x64\Release\xbdm.dll"
-          DestinationFolder="$(PublishDir)"
-          SkipUnchangedFiles="true"
-          Condition="Exists('..\..\out\bin\x64\Release\xbdm.dll')" />
-  </Target>
 </Project>
