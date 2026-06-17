@@ -8,7 +8,8 @@ using Avalonia.Platform.Storage;
 using RXDKNeighborhood.Core.Models;
 using RXDKNeighborhood.Core.Services;
 using RXDKNeighborhood.Services;
-using Rxdk.Native;
+using Rxdk.Xbdm;
+using Rxdk.Xbdm.Managed;
 
 namespace RXDKNeighborhood;
 

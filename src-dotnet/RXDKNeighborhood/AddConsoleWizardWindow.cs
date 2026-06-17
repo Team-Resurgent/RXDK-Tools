@@ -5,7 +5,8 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using RXDKNeighborhood.Core.Models;
 using RXDKNeighborhood.Core.Services;
-using Rxdk.Native;
+using Rxdk.Xbdm;
+using Rxdk.Xbdm.Managed;
 
 namespace RXDKNeighborhood;
 

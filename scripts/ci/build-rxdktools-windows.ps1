@@ -86,6 +86,22 @@ if ($exes.Count -eq 0) {
 
 $exes | Copy-Item -Destination $stagingDir -Force
 
+$bridgeProject = Join-Path $repoRoot 'src-dotnet\Rxdk.XboxDbgBridge\Rxdk.XboxDbgBridge.csproj'
+if (Test-Path -LiteralPath $bridgeProject) {
+    Write-Host ''
+    Write-Host "Publishing managed xboxdbg-bridge ($Configuration|win-x64)..."
+    dotnet publish $bridgeProject `
+        -c $Configuration `
+        -r win-x64 `
+        --self-contained true `
+        -p:PublishSingleFile=true `
+        -p:IncludeNativeLibrariesForSelfExtract=true `
+        -o $stagingDir
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+    Copy-Item -Path (Join-Path $stagingDir 'xboxdbg-bridge.exe') -Destination $binDir -Force
+}
+
 Write-Host ''
 Write-Host "Staged $($exes.Count) executable(s) in $stagingDir"
 Get-ChildItem -Path $stagingDir -Filter '*.exe' -File |

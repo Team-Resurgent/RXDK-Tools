@@ -24,7 +24,7 @@ public static class XbdmConstants
 }
 
 [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
-public struct XbdmAbiInfo
+internal struct NativeAbiInfo
 {
     public uint AbiVersion;
     public uint Build;
@@ -86,7 +86,7 @@ public static class XbdmNative
     }
 
     [DllImport(LibName, CallingConvention = CallingConvention.Cdecl)]
-    public static extern int xbdm_init(ref XbdmAbiInfo info);
+    internal static extern int xbdm_init(ref NativeAbiInfo info);
 
     [DllImport(LibName, CallingConvention = CallingConvention.Cdecl)]
     public static extern void xbdm_shutdown();
