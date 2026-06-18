@@ -180,7 +180,19 @@ internal static class XbdmSciRegistry
     }
   }
 
-  internal static void DisposeAll()
+    internal static void ReleaseConsole(string consoleName)
+    {
+        lock (Gate)
+        {
+            if (!Sessions.TryGetValue(consoleName, out var sci))
+                return;
+
+            sci.Dispose();
+            Sessions.Remove(consoleName);
+        }
+    }
+
+    internal static void DisposeAll()
   {
     lock (Gate)
     {

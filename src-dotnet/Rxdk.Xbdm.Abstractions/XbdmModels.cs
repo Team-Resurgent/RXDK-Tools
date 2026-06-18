@@ -9,6 +9,8 @@ public static class XbdmConstants
     public const uint AttrDirectory = 0x10;
     public const uint AttrReadOnly = 0x01;
     public const uint AttrHidden = 0x02;
+    /// <summary>Win32 FILE_ATTRIBUTE_NORMAL — shell uses this so SETFILEATTRIBUTES sends READONLY=0.</summary>
+    public const uint AttrNormal = 0x80;
 
     public const uint PrivRead = 0x0001;
     public const uint PrivWrite = 0x0002;

@@ -24,6 +24,8 @@ public sealed class ManagedXbdmConnection : IXbdmConnection
 
     public IXbdmDebugConnection Debug => _debug;
 
+    internal void SyncConsoleClock() => XbdmTimeCorrection.SyncConsoleClock(_sci);
+
     public IReadOnlyList<char> ListDrives()
     {
         var line = _session.SendCommand("DRIVELIST");
@@ -37,6 +39,7 @@ public sealed class ManagedXbdmConnection : IXbdmConnection
     public IReadOnlyList<XbdmDirEntry> ListDirectory(string wirePath, int maxEntries = 512)
     {
         _session.SendCommand($"DIRLIST NAME=\"{wirePath}\"");
+        XbdmTimeCorrection.Ensure(_sci);
         return _session.ReadMultiresponse()
             .Take(maxEntries)
             .Select(line => XbdmProtocol.ParseDmfaLine(line, _sci))
@@ -51,6 +54,7 @@ public sealed class ManagedXbdmConnection : IXbdmConnection
         if (lines.Count == 0)
             throw XbdmException.FromHResult($"Could not get attributes for '{wirePath}'.", XbdmHResults.FileError);
 
+        XbdmTimeCorrection.Ensure(_sci);
         return XbdmProtocol.ParseDmfaLine(lines[0], _sci);
     }
 
@@ -148,44 +152,127 @@ public sealed class ManagedXbdmConnection : IXbdmConnection
         return XbdmProtocol.ParseDiskFreeSpaceLines([XbdmProtocol.StripResponsePrefix(line)]);
     }
 
-    public uint? TryResolveXboxAddress() =>
-        XboxNameResolver.TryResolveAddressUInt32(ConsoleName);
+    public uint? TryResolveXboxAddress()
+    {
+        try
+        {
+            var peer = GetPeerAddress(_session);
+            return XboxNameResolver.AddressToHostUInt32(peer);
+        }
+        catch (XbdmException)
+        {
+            return XboxNameResolver.TryResolveAddressUInt32(ConsoleName);
+        }
+    }
 
     public uint? TryGetAltAddress()
     {
         var line = _session.SendCommand("ALTADDR");
         var addr = XbdmProtocol.GetUInt(line, "addr");
-        return addr == 0 ? null : addr;
+        return addr;
     }
 
     public string GetNameOfXbox(bool resolvable)
     {
-        string name;
-        try
-        {
-            var line = _session.SendCommand("DEBUGNAME");
-            name = XbdmProtocol.StripResponsePrefix(line);
-        }
-        catch (XbdmException)
-        {
-            name = string.Empty;
-        }
-
+        var name = TryReadDebugNameAny();
         if (string.IsNullOrEmpty(name))
         {
             var peer = GetPeerAddress(_session);
             if (!XboxNameResolver.TryQueryNameAt(peer, out name))
-                throw XbdmException.FromHResult("Could not read Xbox name.", XbdmHResults.NoXboxName);
+            {
+                if (IsConsoleAddress(peer))
+                    name = peer.MapToIPv4().ToString();
+                else
+                    throw XbdmException.FromHResult("Could not read Xbox name.", XbdmHResults.NoXboxName);
+            }
         }
 
         if (resolvable)
         {
             var peer = GetPeerAddress(_session);
-            if (!XboxNameResolver.TryResolveNameToAddress(name, out var resolved) || !peer.Equals(resolved))
+            if (XboxNameResolver.TryResolveNameToAddress(name, out var resolved))
+            {
+                if (!AddressesMatch(peer, resolved))
+                    throw XbdmException.FromHResult($"Xbox name '{name}' is not resolvable to the connected console.", XbdmHResults.CannotConnect);
+            }
+            else if (!IsConsoleAddress(peer) &&
+                     !(IPAddress.TryParse(name, out var nameAsIp) && AddressesMatch(nameAsIp, peer)))
+            {
                 throw XbdmException.FromHResult($"Xbox name '{name}' is not resolvable to the connected console.", XbdmHResults.CannotConnect);
+            }
         }
 
         return name;
+    }
+
+    private bool IsConsoleAddress(IPAddress peer)
+    {
+        if (IPAddress.TryParse(_consoleName, out var configured))
+            return AddressesMatch(configured, peer);
+
+        return false;
+    }
+
+    private static bool AddressesMatch(IPAddress left, IPAddress right) =>
+        left.MapToIPv4().Equals(right.MapToIPv4());
+
+    private string TryReadDebugNameAny()
+    {
+        var name = TryReadDebugName(_session);
+        if (!string.IsNullOrEmpty(name))
+            return name;
+
+        return _sci.WithSession(TryReadDebugName);
+    }
+
+    private static string TryReadDebugName(XbdmProtocolSession session)
+    {
+        try
+        {
+            var (hr, line) = session.SendCommandRaw("DEBUGNAME");
+            if (hr == XbdmHResults.Multiresponse)
+            {
+                foreach (var responseLine in session.ReadMultiresponse())
+                {
+                    var parsed = ParseDebugNameLine(responseLine);
+                    if (!string.IsNullOrEmpty(parsed))
+                        return parsed;
+                }
+            }
+            else if (XbdmProtocol.IsCommandSuccess(hr))
+            {
+                var parsed = ParseDebugNameLine(line);
+                if (!string.IsNullOrEmpty(parsed))
+                    return parsed;
+
+                // Some kits return the name on a follow-up line after the status line.
+                var nextLine = session.ReceiveLine();
+                if (nextLine != ".")
+                {
+                    parsed = ParseDebugNameLine(nextLine);
+                    if (!string.IsNullOrEmpty(parsed))
+                        return parsed;
+                }
+            }
+        }
+        catch (XbdmException)
+        {
+        }
+
+        return string.Empty;
+    }
+
+    private static string ParseDebugNameLine(string line)
+    {
+        var fromParam = XbdmParamParser.GetSzParam(line, "name");
+        if (!string.IsNullOrEmpty(fromParam))
+            return fromParam;
+
+        var stripped = XbdmProtocol.StripResponsePrefix(line).Trim();
+        if (stripped.StartsWith("name=", StringComparison.OrdinalIgnoreCase))
+            stripped = stripped["name=".Length..].Trim();
+
+        return stripped;
     }
 
     private static IPAddress GetPeerAddress(XbdmProtocolSession session)
@@ -234,12 +321,21 @@ public sealed class ManagedXbdmConnection : IXbdmConnection
         XbdmTimeCorrection.CorrectToConsole(_sci, ref createHigh, ref createLow);
         XbdmTimeCorrection.CorrectToConsole(_sci, ref changeHigh, ref changeLow);
 
-        var readOnly = (attributes & XbdmConstants.AttrReadOnly) != 0 ? 1 : 0;
-        var hidden = (attributes & XbdmConstants.AttrHidden) != 0 ? 1 : 0;
+        // xbshlext/attrib.cpp + visit.cpp: desired readonly/hidden mask; zero -> NORMAL (0x80)
+        // so filexfer.c appends READONLY=0/HIDDEN=0 instead of omitting flags.
+        var effectiveAttributes = attributes;
+        if (effectiveAttributes == 0)
+            effectiveAttributes = XbdmConstants.AttrNormal;
+
+        var readOnly = (effectiveAttributes & XbdmConstants.AttrReadOnly) != 0 ? 1 : 0;
+        var hidden = (effectiveAttributes & XbdmConstants.AttrHidden) != 0 ? 1 : 0;
+
         var command =
             $"SETFILEATTRIBUTES NAME=\"{wirePath}\" CREATEHI=0x{createHigh:x8} CREATELO=0x{createLow:x8} " +
-            $"CHANGEHI=0x{changeHigh:x8} CHANGELO=0x{changeLow:x8} " +
-            $"READONLY={readOnly} HIDDEN={hidden}";
+            $"CHANGEHI=0x{changeHigh:x8} CHANGELO=0x{changeLow:x8}";
+
+        if (effectiveAttributes != 0)
+            command += $" READONLY={readOnly} HIDDEN={hidden}";
 
         _session.SendCommand(command);
     }
@@ -258,8 +354,11 @@ public sealed class ManagedXbdmConnection : IXbdmConnection
 
     public bool SupportsUserPrivileges()
     {
+        // Matches the original Neighborhood (xbshlext/prop.cpp): probe with a bogus user and treat
+        // only XBDM_INVALIDCMD as "not supported". Any other response means the box understands
+        // GETUSERPRIV, so the user-privilege feature is available.
         var (hr, _) = _session.SendCommandRaw("GETUSERPRIV NAME=BOGUS");
-        return hr == XbdmHResults.InvalidCmd;
+        return hr != XbdmHResults.InvalidCmd;
     }
 
     public uint GetUserAccess(string? userName = null)
@@ -341,6 +440,7 @@ public sealed class ManagedXbdmConnection : IXbdmConnection
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(password);
         _session.Dispose();
+        _sci.InvalidateSharedConnection();
         _session = XbdmProtocolSession.Connect(
             _consoleName,
             TimeSpan.FromSeconds(10),

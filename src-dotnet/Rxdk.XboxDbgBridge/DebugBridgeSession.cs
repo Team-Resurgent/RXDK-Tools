@@ -9,7 +9,14 @@ internal sealed partial class DebugBridgeSession : IDisposable
     private const int DefaultLaunchTimeoutMs = 120_000;
     private const int DefaultWaitBreakTimeoutMs = 30_000;
 
-    private readonly IXbdmClient _client = XbdmClients.Create();
+    private readonly IXbdmClient _client;
+
+    internal DebugBridgeSession()
+    {
+        BridgeBootstrap.RegisterBackend();
+        _client = XbdmClients.Create();
+    }
+
     private readonly BreakpointManager _breakpoints = new();
     private readonly ManualResetEventSlim _breakEvent = new(false);
     private readonly ManualResetEventSlim _execPendingEvent = new(false);
@@ -32,7 +39,6 @@ internal sealed partial class DebugBridgeSession : IDisposable
 
     internal void Initialize()
     {
-        BridgeBootstrap.RegisterBackend();
         _client.Initialize();
         _debug?.UseSharedConnection(true);
         BridgeWriter.Emit("{\"type\":\"event\",\"event\":\"ready\"}");
@@ -150,7 +156,25 @@ internal sealed partial class DebugBridgeSession : IDisposable
                 BridgeWriter.Log($"command '{cmd}' failed: {ex.Message}");
                 BridgeWriter.EmitResult(id, false, $"\"error\":\"{Escape(ex.Message)}\"");
             }
+            catch (Exception ex)
+            {
+                BridgeWriter.Log($"command '{cmd}' failed: {ex}");
+                // Include type + originating frame in the result itself so the caller sees the
+                // cause without relying on the (separately buffered) stderr stream.
+                BridgeWriter.EmitResult(id, false, $"\"error\":\"{Escape(DescribeException(ex))}\"");
+            }
         }
+    }
+
+    /// <summary>
+    /// Formats an exception as "Type: message @ first-stack-frame" so failures surfaced over the
+    /// stdout result channel name the originating code without relying on buffered stderr.
+    /// </summary>
+    internal static string DescribeException(Exception ex)
+    {
+        var site = ex.StackTrace?.Split('\n').FirstOrDefault()?.Trim();
+        return $"{ex.GetType().Name}: {ex.Message}" +
+            (string.IsNullOrEmpty(site) ? string.Empty : $" @ {site}");
     }
 
     private void EnsureConnection(string? consoleOverride = null)
@@ -348,7 +372,7 @@ internal sealed partial class DebugBridgeSession : IDisposable
         BridgeJson.TryGetString(root, "console", out var console);
         var timeoutMs = DefaultLaunchTimeoutMs;
         if (BridgeJson.TryGetUInt32(root, "timeout", out var timeout))
-            timeoutMs = (int)timeout;
+            timeoutMs = (int)Math.Min(timeout, int.MaxValue);
         BridgeJson.TryGetBool(root, "autoRun", out var autoRun);
         BridgeJson.TryGetBool(root, "reboot", out var reboot);
 
@@ -378,9 +402,22 @@ internal sealed partial class DebugBridgeSession : IDisposable
                 return;
             }
 
+            // The reboot above invalidates the shared connection; rebuild the persistent
+            // notification session so the title MODLOAD can fire (see session.c CmdLaunch).
+            try
+            {
+                RecycleNotificationSession();
+            }
+            catch (XbdmException)
+            {
+                BridgeWriter.EmitResult(id, false, "\"error\":\"notifyRecycle\"");
+                return;
+            }
+
+            // Clean start: no debugger connect, no stopon — DmConnectDebugger(TRUE) hangs D3D
+            // CreateDevice after InitHardware (see RXDK-VSCode session.c CmdLaunch autoRun path).
             BridgeWriter.Log("Launch autoRun: clean start (no debugger connect)");
             _debug!.SetTitle(dir, title, null);
-            _debug.StopOn(XbdmDebugConstants.DmstopCreateThread | XbdmDebugConstants.DmstopFce | XbdmDebugConstants.DmstopDebugStr, stop: false);
 
             _mainThread = 0;
             _moduleBase = 0;
@@ -493,18 +530,41 @@ internal sealed partial class DebugBridgeSession : IDisposable
 
     private void WaitBreak(JsonElement root, int id)
     {
+        EnsureNotifications();
         var timeoutMs = DefaultWaitBreakTimeoutMs;
         if (BridgeJson.TryGetUInt32(root, "timeout", out var timeout))
             timeoutMs = (int)timeout;
 
+        // A fast (per-frame) breakpoint can already have halted the title before we start waiting,
+        // so check the kit first instead of unconditionally resetting and waiting for the next hit.
+        if (TryReportActiveBreakpointStop(id))
+            return;
+
         _breakEvent.Reset();
         if (!_breakEvent.Wait(timeoutMs))
         {
+            // The hit may have raced with the reset above; reconcile against the kit before failing.
+            if (TryReportActiveBreakpointStop(id))
+                return;
+
             BridgeWriter.EmitResult(id, false, "\"error\":\"waitTimeout\"");
             return;
         }
 
         BridgeWriter.EmitResult(id, true, $"\"threadId\":{_stoppedThread},\"address\":\"0x{_stoppedAddress:x}\"");
+    }
+
+    /// <summary>
+    /// If the title is currently halted at one of our active breakpoints, emit a success result and
+    /// return true. Used to make WAITBREAK robust against breakpoints that fire before/while we wait.
+    /// </summary>
+    private bool TryReportActiveBreakpointStop(int id)
+    {
+        if (!AnyThreadStopped() || !SyncStoppedStateFromKit() || !StoppedAtActiveBreakpoint())
+            return false;
+
+        BridgeWriter.EmitResult(id, true, $"\"threadId\":{_stoppedThread},\"address\":\"0x{_stoppedAddress:x}\"");
+        return true;
     }
 
     private void Step(JsonElement root, int id)
@@ -838,7 +898,10 @@ internal sealed partial class DebugBridgeSession : IDisposable
 
     private void EnsureLaunchReboot(bool reboot, int timeoutMs)
     {
-        if (!reboot || _execState == XbdmDebugConstants.DmnExecPending)
+        // Match xboxdbg-bridge (session.c): only skip the reboot when the caller did not
+        // request one AND the kit is already waiting for a title. Otherwise always reboot,
+        // because GO fails unless the kit is in DMN_EXEC_PENDING.
+        if (!reboot && _execState == XbdmDebugConstants.DmnExecPending)
             return;
 
         _execPendingEvent.Reset();

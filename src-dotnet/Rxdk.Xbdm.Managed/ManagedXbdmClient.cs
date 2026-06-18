@@ -77,7 +77,8 @@ public sealed class ManagedXbdmClient : IXbdmClient
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(consoleName);
         options ??= BuildConnectOptions();
-        var session = XbdmProtocolSession.Connect(consoleName, TimeSpan.FromSeconds(10), options);
+        var connectTimeout = options.ConnectTimeout ?? TimeSpan.FromSeconds(10);
+        var session = XbdmProtocolSession.Connect(consoleName, connectTimeout, options);
         return new ManagedXbdmConnection(consoleName, session, options);
     }
 

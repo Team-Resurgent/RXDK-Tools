@@ -5,16 +5,15 @@ namespace Rxdk.Xbdm.Tests;
 
 /// <summary>
 /// Golden-vector checks for the managed XBC/Benaloh port used by secure auth.
-/// Vectors were captured from the managed implementation at import time;
-/// cross-check against <c>src/xboxdbg/secure.c</c> when changing crypto code.
+/// Vectors match <c>src/xboxdbg/secure.c</c> (EncryptCore updates low then high each round).
 /// </summary>
 public sealed class XbdmCryptoValidationTests
 {
-  // Captured via Rxdk.Xbdm.CryptoGen (2026-06-17).
-  private const ulong CrossGolden = 0x7950961628E6EB99UL;
-  private const ulong AuthPasswdGolden = 0xDDA39E0418767C5EUL;
-  private const ulong AuthRespGolden = 0x18EAE02C10D8E1C8UL;
-  private const ulong HashAsciiXboxGolden = 0x21957915DC3B5479UL;
+  // Golden vectors from xboxdbg/secure.c (EncryptCore low-then-high chain per round).
+  private const ulong CrossGolden = 0x9D5B81504B4ED21CUL;
+  private const ulong AuthPasswdGolden = 0x531C340A0114CF10UL;
+  private const ulong AuthRespGolden = 0xC6E2DB16953584D3UL;
+  private const ulong HashAsciiXboxGolden = 0x371C21691D4BCADBUL;
 
   [Fact]
   public void XbcCross_matches_golden_vector()

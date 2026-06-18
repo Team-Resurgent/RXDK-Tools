@@ -218,7 +218,10 @@ public partial class PropertiesWindow : Window
         _securityUnlockPanel.Children.Add(lockBtn);
 
         _securityNoManagePanel = new StackPanel { Spacing = 8, IsVisible = false };
-        _securityNoManagePanel.Children.Add(new TextBlock { Text = "Enter the administrator password to manage security." });
+        _securityNoManagePanel.Children.Add(new TextBlock
+        {
+            Text = "Enter the administrator password and click Manage to edit users or unlock the console.",
+        });
         _securePassword = new TextBox { PasswordChar = '•', PlaceholderText = "Password" };
         _securityNoManagePanel.Children.Add(_securePassword);
         var manageBtn = new Button { Content = "Manage..." };

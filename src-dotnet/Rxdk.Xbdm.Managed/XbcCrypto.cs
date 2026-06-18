@@ -52,18 +52,16 @@ internal static class XbcCrypto
     {
         for (var i = 0; i < 8; i++)
         {
-            var low = block;
-            var high = block >> 32;
+            var low = (uint)block;
+            var high = (uint)(block >> 32);
             var keyLow = (uint)key;
             var keyHigh = (uint)(key >> 32);
 
-            var newLow = (uint)low;
-            newLow ^= (uint)((high >> 5) + RoundConstants[i] + (~high << 6) + (high ^ keyLow));
+            // Match xboxdbg/secure.c XBCEncryptCore: update low, then high using the new low.
+            low ^= (uint)((high >> 5) + RoundConstants[i] + (~high << 6) + (high ^ keyLow));
+            high ^= (uint)((~low >> 5) + RoundConstants[7 - i] + (low << 6) + (low ^ keyHigh));
 
-            var newHigh = (uint)high;
-            newHigh ^= (uint)((~low >> 5) + RoundConstants[7 - i] + (low << 6) + (low ^ keyHigh));
-
-            block = ((ulong)newHigh << 32) | newLow;
+            block = ((ulong)high << 32) | low;
         }
     }
 }

@@ -94,7 +94,23 @@ internal sealed class ManagedXbdmDebugConnection : IXbdmDebugConnection
             builder.Append(" WARM");
         if ((flags & XbdmDebugConstants.DmbootNoDebug) != 0)
             builder.Append(" NODEBUG");
-        _sci.OneLineCommand(builder.ToString());
+
+        var command = builder.ToString();
+        try
+        {
+            _sci.WithSession(session =>
+            {
+                session.SendCommandRaw(command);
+            });
+        }
+        catch (XbdmException)
+        {
+            // The kit often drops the socket while rebooting.
+        }
+        finally
+        {
+            _sci.InvalidateSharedConnection();
+        }
     }
 
     public int GetMemory(nuint address, Span<byte> buffer)
@@ -146,16 +162,24 @@ internal sealed class ManagedXbdmDebugConnection : IXbdmDebugConnection
             var offset = 0;
             while (offset < data.Length)
             {
-                var chunk = Math.Min(64, data.Length - offset);
-                var builder = new StringBuilder($"SETMEM ADDR=0x{(uint)(address + (uint)offset):x8} ");
+                // Match xboxdbg DmSetMemory wire format (threadbrk.c).
+                var chunk = Math.Min(128, data.Length - offset);
+                var builder = new StringBuilder(
+                    $"setmem addr=0x{(uint)(address + (uint)offset):x8} data=");
                 for (var i = 0; i < chunk; i++)
                     builder.Append(data[offset + i].ToString("x2", CultureInfo.InvariantCulture));
+
                 var (hr, line) = session.SendCommandRaw(builder.ToString());
                 if (hr is not XbdmHResults.NoErr and not XbdmHResults.MemUnmapped)
                     throw XbdmException.FromHResult("SETMEM failed.", hr, line);
+
                 var chunkSent = ParseSetMemCount(line);
+                if (chunkSent <= 0 && hr == XbdmHResults.NoErr)
+                    chunkSent = chunk;
+
                 if (chunkSent <= 0)
                     break;
+
                 offset += chunkSent;
                 sent += chunkSent;
             }
@@ -251,6 +275,10 @@ internal sealed class ManagedXbdmDebugConnection : IXbdmDebugConnection
         _sci.WithSession(session =>
         {
             var (hr, line) = session.SendCommandRaw($"ISSTOPPED THREAD={threadId}");
+            // A running thread answers "408- not stopped" (XBDM_NOTSTOPPED). DmIsThreadStopped
+            // treats that as "no stop info", so the Try* surface returns null instead of throwing.
+            if (hr == XbdmHResults.NotStopped)
+                return null;
             if (!XbdmProtocol.IsCommandSuccess(hr))
                 throw XbdmException.FromHResult("ISSTOPPED failed.", hr, line);
             var payload = XbdmProtocol.StripResponsePrefix(line);
@@ -295,7 +323,10 @@ internal sealed class ManagedXbdmDebugConnection : IXbdmDebugConnection
     public XbdmXbeInfo GetXbeInfo(string name) =>
         _sci.WithSession(session =>
         {
-            session.SendCommand($"XBEINFO NAME=\"{name}\"");
+            var command = string.IsNullOrEmpty(name)
+                ? "XBEINFO RUNNING"
+                : $"XBEINFO NAME=\"{name}\"";
+            session.SendCommand(command);
             var lines = session.ReadMultiresponse();
             var path = string.Empty;
             uint timestamp = 0, checksum = 0, stack = 0;
@@ -336,9 +367,9 @@ internal sealed class ManagedXbdmDebugConnection : IXbdmDebugConnection
     public IReadOnlyList<XbdmSectionLoadNotification> WalkModuleSections(string moduleName) =>
         _sci.WithSession(session =>
         {
-            var (hr, _) = session.SendCommandRaw($"SECTIONS NAME=\"{moduleName}\"");
+            var (hr, _) = session.SendCommandRaw($"MODSECTIONS NAME=\"{moduleName}\"");
             if (hr != XbdmHResults.Multiresponse)
-                throw XbdmException.FromHResult("SECTIONS failed.", hr);
+                throw XbdmException.FromHResult("MODSECTIONS failed.", hr);
 
             var sections = new List<XbdmSectionLoadNotification>();
             while (true)
@@ -361,7 +392,7 @@ internal sealed class ManagedXbdmDebugConnection : IXbdmDebugConnection
     public string GetModuleLongName(string shortName) =>
         _sci.WithSession(session =>
         {
-            var line = session.SendCommand($"LONGNAME NAME=\"{shortName}\"");
+            var line = session.SendCommand($"MODLONG NAME=\"{shortName}\"");
             return XbdmParamParser.GetSzParam(line, "name") ?? XbdmProtocol.StripResponsePrefix(line);
         });
 
@@ -503,21 +534,18 @@ internal sealed class ManagedXbdmDebugConnection : IXbdmDebugConnection
     public byte[] VertexShaderSnapshot(uint first, uint last, uint flags, uint marker) =>
         ReceiveFixedBinarySnapshot($"VSSnap first={first} last={last} flags={flags} marker={marker}", 32768);
 
-    public byte[] MonitorFrameBuffer() =>
-        _sci.WithSession(session =>
+    public byte[] MonitorFrameBuffer()
+    {
+        try
         {
-            var (hr, line) = session.SendCommandRaw("screenshot");
-            if (hr != XbdmHResults.Binresponse)
-                throw XbdmException.FromHResult("screenshot failed.", hr, line);
-
-            var infoLine = session.ReceiveLine();
-            if (!XbdmParamParser.TryGetDwParam(infoLine, "framebuffersize", out var frameBufferSize))
-                throw XbdmException.FromHResult("screenshot metadata was incomplete.", XbdmHResults.FileError, infoLine);
-
-            var buffer = new byte[frameBufferSize];
-            session.ReceiveBinary(buffer);
-            return buffer;
-        });
+            return _sci.WithSession(XbdmScreenshot.ReadFramebuffer);
+        }
+        finally
+        {
+            // DmMonitor closes the shared connection after capture to release the GPU lock.
+            _sci.InvalidateSharedConnection();
+        }
+    }
 
     private byte[] ReceiveFixedBinarySnapshot(string command, int size) =>
         _sci.WithSession(session =>
@@ -547,6 +575,14 @@ internal sealed class ManagedXbdmDebugConnection : IXbdmDebugConnection
 
     private static int ParseSetMemCount(string line)
     {
+        // xboxdbg: sscanf(sz + 9, "%d", &cbSent) on "202- set N ..."
+        if (line.Length > 9 &&
+            int.TryParse(line.AsSpan(9), out var fromOffset) &&
+            fromOffset > 0)
+        {
+            return fromOffset;
+        }
+
         var marker = "set ";
         var index = line.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
         if (index < 0)

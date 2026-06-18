@@ -70,7 +70,7 @@ internal sealed class BreakpointManager
         var bpType = debug.GetBreakpointType(address);
         if (bpType == XbdmDebugConstants.DmbreakExecute)
             debug.SetDataBreakpoint(address, XbdmDebugConstants.DmbreakNone, 1);
-        else
+        else if (bpType != XbdmDebugConstants.DmbreakNone)
             debug.RemoveBreakpoint(address);
         _active.RemoveAll(bp => bp.Address == address);
     }

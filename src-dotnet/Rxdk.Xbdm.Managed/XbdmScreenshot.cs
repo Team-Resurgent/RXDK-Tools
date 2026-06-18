@@ -49,6 +49,19 @@ internal static class XbdmScreenshot
         };
     }
 
+    internal static byte[] ReadFramebuffer(XbdmProtocolSession session)
+    {
+        var (hr, line) = session.SendCommandRaw("screenshot");
+        if (hr != XbdmHResults.Binresponse)
+            throw XbdmException.FromHResult("screenshot failed.", hr, line);
+
+        var infoLine = session.ReceiveLine();
+        var info = ParseInfoLine(infoLine);
+        var buffer = new byte[info.FrameBufferSize];
+        session.ReceiveBinary(buffer);
+        return buffer;
+    }
+
     internal static void WriteBmp(string localBmpPath, Info info, XbdmProtocolSession session)
     {
         var frameBuffer = new byte[info.FrameBufferSize];

@@ -308,10 +308,30 @@ internal sealed class XbdmProtocolSession : IDisposable
     public (int HResult, string Line) SendCommandRaw(string command)
     {
         var payload = Encoding.ASCII.GetBytes(command + "\r\n");
-        _stream.Write(payload, 0, payload.Length);
+        try
+        {
+            _stream.Write(payload, 0, payload.Length);
+            _stream.Flush();
+        }
+        catch (IOException ex)
+        {
+            throw XbdmException.FromHResult(ex.Message, XbdmHResults.ConnectionLost);
+        }
 
-        var line = ReceiveLine();
+        var line = ReceiveStatusLine();
         return (XbdmProtocol.HResultFromStatusLine(line), line);
+    }
+
+    private string ReceiveStatusLine()
+    {
+        for (var attempt = 0; attempt < 8; attempt++)
+        {
+            var line = ReceiveLine();
+            if (line.Length >= 3)
+                return line;
+        }
+
+        throw XbdmException.FromHResult("Invalid XBDM status line.", XbdmHResults.CannotConnect);
     }
 
     public string SendCommand(string command)
@@ -326,7 +346,17 @@ internal sealed class XbdmProtocolSession : IDisposable
         return line;
     }
 
-    public void SendBinary(ReadOnlySpan<byte> data) => _stream.Write(data);
+    public void SendBinary(ReadOnlySpan<byte> data)
+    {
+        try
+        {
+            _stream.Write(data);
+        }
+        catch (IOException ex)
+        {
+            throw XbdmException.FromHResult(ex.Message, XbdmHResults.ConnectionLost);
+        }
+    }
 
     public void ReceiveBinary(Span<byte> buffer)
     {
@@ -476,8 +506,13 @@ internal static class XboxNameResolver
     public static bool TryQueryNameAt(IPAddress consoleAddress, out string name)
     {
         name = string.Empty;
-        if (consoleAddress.AddressFamily != AddressFamily.InterNetwork)
+        if (consoleAddress.AddressFamily is not AddressFamily.InterNetwork
+            and not AddressFamily.InterNetworkV6)
+        {
             return false;
+        }
+
+        consoleAddress = consoleAddress.MapToIPv4();
 
         using var socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
         var packet = new byte[] { 3, 0 };
@@ -522,16 +557,23 @@ internal static class XboxNameResolver
         try
         {
             var address = ResolveAddress(consoleName);
-            if (address.AddressFamily != AddressFamily.InterNetwork)
-                return null;
-
-            var bytes = address.GetAddressBytes();
-            return BitConverter.ToUInt32(bytes, 0);
+            return AddressToHostUInt32(address);
         }
         catch (XbdmException)
         {
             return null;
         }
+    }
+
+    /// <summary>Matches native ResolveXboxName: ntohl(sin.sin_addr.s_addr).</summary>
+    public static uint? AddressToHostUInt32(IPAddress address)
+    {
+        address = address.MapToIPv4();
+        if (address.AddressFamily != AddressFamily.InterNetwork)
+            return null;
+
+        var sAddr = BitConverter.ToUInt32(address.GetAddressBytes(), 0);
+        return (uint)IPAddress.NetworkToHostOrder((int)sAddr);
     }
 
     private static bool TryUdpNameQuery(string name, out IPAddress address)
@@ -564,11 +606,19 @@ internal static class XboxNameResolver
                 try
                 {
                     var received = socket.ReceiveFrom(response, ref remote);
-                    if (received >= 2 && response[0] == 1)
+                    if (received < 2 || response[0] != 2)
+                        continue;
+
+                    var length = response[1];
+                    if (length > 0 && received >= 2 + length)
                     {
-                        address = ((IPEndPoint)remote).Address;
-                        return true;
+                        var responseName = Encoding.ASCII.GetString(response, 2, length);
+                        if (!responseName.Equals(name, StringComparison.OrdinalIgnoreCase))
+                            continue;
                     }
+
+                    address = ((IPEndPoint)remote).Address.MapToIPv4();
+                    return true;
                 }
                 catch (SocketException)
                 {

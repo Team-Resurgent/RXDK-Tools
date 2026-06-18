@@ -1,4 +1,5 @@
 using System.Net.Sockets;
+using System.Security;
 using System.Security.Cryptography;
 using Microsoft.Win32;
 using Rxdk.Xbdm;
@@ -9,6 +10,7 @@ public sealed class XbdmConnectOptions
 {
     public string? AdminPassword { get; init; }
     public bool Authenticate { get; init; } = true;
+    public TimeSpan? ConnectTimeout { get; init; }
 }
 
 internal static class XbdmSecurity
@@ -167,11 +169,20 @@ internal static class XbdmSecurity
         seed = 0;
         if (OperatingSystem.IsWindows())
         {
-            using var key = Registry.LocalMachine.OpenSubKey(@"Software\Microsoft\XboxSDK");
-            if (key?.GetValue("SecuritySeed") is byte[] bytes && bytes.Length >= 8)
+            try
             {
-                seed = BitConverter.ToUInt64(bytes, 0);
-                return true;
+                using var key = Registry.LocalMachine.OpenSubKey(@"Software\Microsoft\XboxSDK");
+                if (key?.GetValue("SecuritySeed") is byte[] bytes && bytes.Length >= 8)
+                {
+                    seed = BitConverter.ToUInt64(bytes, 0);
+                    return true;
+                }
+            }
+            catch (UnauthorizedAccessException)
+            {
+            }
+            catch (SecurityException)
+            {
             }
         }
 
@@ -202,16 +213,24 @@ internal static class XbdmSecurity
     private static void SaveSecuritySeed(ulong seed)
     {
         var bytes = BitConverter.GetBytes(seed);
-        if (OperatingSystem.IsWindows())
-        {
-            using var key = Registry.LocalMachine.CreateSubKey(@"Software\Microsoft\XboxSDK");
-            key.SetValue("SecuritySeed", bytes, RegistryValueKind.Binary);
-            return;
-        }
-
         var path = SecuritySeedPath();
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         File.WriteAllBytes(path, bytes);
+
+        if (OperatingSystem.IsWindows())
+        {
+            try
+            {
+                using var key = Registry.LocalMachine.CreateSubKey(@"Software\Microsoft\XboxSDK");
+                key.SetValue("SecuritySeed", bytes, RegistryValueKind.Binary);
+            }
+            catch (UnauthorizedAccessException)
+            {
+            }
+            catch (SecurityException)
+            {
+            }
+        }
     }
 
     private static string SecuritySeedPath()

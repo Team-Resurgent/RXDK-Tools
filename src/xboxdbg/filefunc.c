@@ -38,7 +38,8 @@ HRESULT XBAPI(ResolveXboxName)(LPDWORD lpdwAddr)
         EnterCriticalSection(&PSCI->csSharedConn);
         cb = sizeof sin;
         if (PSCI->pdconShared && 0 == getpeername(PSCI->pdconShared->s,
-                                                  (struct sockaddr *)&sin, &cb))
+                                                  (struct sockaddr *)&sin, &cb) &&
+            sin.sin_addr.s_addr != 0)
             hr = XBDM_NOERR;
         LeaveCriticalSection(&PSCI->csSharedConn);
     }

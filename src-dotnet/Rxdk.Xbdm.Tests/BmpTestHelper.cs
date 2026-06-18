@@ -4,7 +4,7 @@ namespace Rxdk.Xbdm.Tests;
 
 internal static class BmpTestHelper
 {
-    internal readonly record struct Info(int Width, int Height, ushort BitCount, int PixelDataSize);
+    internal readonly record struct Info(int Width, int Height, ushort BitCount, int PixelDataSize, uint PixelHash);
 
     internal static Info ReadInfo(string path)
     {
@@ -23,6 +23,24 @@ internal static class BmpTestHelper
         var bitCount = BinaryPrimitives.ReadUInt16LittleEndian(infoHeader[14..]);
         var pixelDataSize = (int)(stream.Length - pixelOffset);
 
-        return new Info(width, Math.Abs(height), bitCount, pixelDataSize);
+        var pixelBuffer = new byte[pixelDataSize];
+        stream.Position = pixelOffset;
+        stream.ReadExactly(pixelBuffer);
+        var hash = Crc32(pixelBuffer);
+
+        return new Info(width, Math.Abs(height), bitCount, pixelDataSize, hash);
+    }
+
+    private static uint Crc32(ReadOnlySpan<byte> data)
+    {
+        uint crc = 0xFFFFFFFF;
+        foreach (var b in data)
+        {
+            crc ^= b;
+            for (var i = 0; i < 8; i++)
+                crc = (crc >> 1) ^ (0xEDB88320u & ~((crc & 1) - 1));
+        }
+
+        return ~crc;
     }
 }
