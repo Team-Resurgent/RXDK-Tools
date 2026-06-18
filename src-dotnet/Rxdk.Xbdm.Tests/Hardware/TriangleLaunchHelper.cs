@@ -1,6 +1,6 @@
 using Rxdk.Xbdm;
 
-namespace Rxdk.Xbdm.Tests.Parity;
+namespace Rxdk.Xbdm.Tests.Hardware;
 
 /// <summary>
 /// Clean ("autoRun") TriangleXDK launch: SetTitle + Go with no debugger connect, no initial
@@ -38,7 +38,7 @@ internal sealed class TriangleLaunchHelper : IDisposable
         _debug.SetTitle(wireDir, title, null);
         _debug.Go();
 
-        var running = XbdmParityWait.Until(
+        var running = XbdmKitWait.Until(
             () => _breakEvent.IsSet,
             timeout,
             progressLabel: "Waiting for TriangleXDK to start");
@@ -47,7 +47,7 @@ internal sealed class TriangleLaunchHelper : IDisposable
         if (!running)
             return false;
 
-        module = _debug.WalkLoadedModules().FirstOrDefault(XbdmParityWait.IsTriangleModule);
+        module = _debug.WalkLoadedModules().FirstOrDefault(XbdmKitWait.IsTriangleModule);
         return module is not null;
     }
 

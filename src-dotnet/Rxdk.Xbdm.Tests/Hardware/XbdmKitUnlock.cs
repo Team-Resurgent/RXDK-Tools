@@ -1,10 +1,10 @@
 using Rxdk.Xbdm;
 using Rxdk.Xbdm.Managed;
 
-namespace Rxdk.Xbdm.Tests.Parity;
+namespace Rxdk.Xbdm.Tests.Hardware;
 
 /// <summary>
-/// Recovery helper when a parity security test leaves the kit locked.
+/// Recovery helper when a kit security test leaves the kit locked.
 /// </summary>
 internal static class XbdmKitUnlock
 {
@@ -57,7 +57,7 @@ internal static class XbdmKitUnlock
             }
 
             Console.Error.WriteLine(
-                "Could not unlock the kit. If parity saved a seed under AppData, original Neighborhood " +
+                "Could not unlock the kit. If a security test saved a seed under AppData, original Neighborhood " +
                 "may need that same machine connection — or reboot the Xbox and retry unlock.");
             return 1;
         }
@@ -67,7 +67,7 @@ internal static class XbdmKitUnlock
         }
     }
 
-    internal static void TryAuthenticateManage(XbdmParitySession session, string adminPassword)
+    internal static void TryAuthenticateManage(XbdmKitSession session, string adminPassword)
     {
         if (!session.Managed.IsSecurityEnabled())
             return;

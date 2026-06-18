@@ -6,7 +6,7 @@
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
     <OutputType>Exe</OutputType>
-    <StartupObject>Rxdk.Xbdm.Tests.ParityDirectProgram</StartupObject>
+    <StartupObject>Rxdk.Xbdm.Tests.KitTestProgram</StartupObject>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
@@ -17,7 +17,6 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Rxdk.Native\Rxdk.Native.csproj" />
     <ProjectReference Include="..\Rxdk.Xbdm.Managed\Rxdk.Xbdm.Managed.csproj" />
     <ProjectReference Include="..\Rxdk.Xbdm.Abstractions\Rxdk.Xbdm.Abstractions.csproj" />
   </ItemGroup>
@@ -28,10 +27,6 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
-    <Content Include="..\..\out\bin\x64\Release\xbdm.dll" Condition="Exists('..\..\out\bin\x64\Release\xbdm.dll')">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Link>xbdm.dll</Link>
-    </Content>
     <Content Include="..\Rxdk.XboxDbgBridge\bin\$(Configuration)\net8.0\xboxdbg-bridge.dll" Condition="Exists('..\Rxdk.XboxDbgBridge\bin\$(Configuration)\net8.0\xboxdbg-bridge.dll')">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>xboxdbg-bridge.dll</Link>

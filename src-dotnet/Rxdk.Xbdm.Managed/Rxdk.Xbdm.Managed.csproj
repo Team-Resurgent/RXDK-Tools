@@ -13,6 +13,5 @@
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="Rxdk.Xbdm.Tests" />
-    <InternalsVisibleTo Include="Rxdk.Native" />
   </ItemGroup>
 </Project>

@@ -1,4 +1,4 @@
-# Unlock an Xbox dev kit left locked by parity security tests.
+# Unlock an Xbox dev kit left locked by kit security tests.
 #
 # Examples:
 #   .\scripts\unlock-xbox-kit.ps1 -Console myxbox

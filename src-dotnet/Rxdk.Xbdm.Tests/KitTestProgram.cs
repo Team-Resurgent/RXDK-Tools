@@ -1,11 +1,11 @@
-using Rxdk.Xbdm.Tests.Parity;
+using Rxdk.Xbdm.Tests.Hardware;
 
 namespace Rxdk.Xbdm.Tests;
 
 /// <summary>
 /// Direct console entry for scripts — avoids VSTest/xUnit double-printing progress lines.
 /// </summary>
-internal static class ParityDirectProgram
+internal static class KitTestProgram
 {
     public static int Main(string[] args)
     {
@@ -27,7 +27,9 @@ internal static class ParityDirectProgram
             return XbdmKitUnlock.Run(console, password);
         }
 
-        if (args.Length == 0 || !string.Equals(args[0], "--parity", StringComparison.OrdinalIgnoreCase))
+        if (args.Length == 0 ||
+            (!string.Equals(args[0], "--kit", StringComparison.OrdinalIgnoreCase) &&
+             !string.Equals(args[0], "--parity", StringComparison.OrdinalIgnoreCase)))
             return 0;
 
         return Run();
@@ -37,13 +39,13 @@ internal static class ParityDirectProgram
     {
         if (!XbdmTestEnvironment.TryGetConsole(out var console))
         {
-            Console.Error.WriteLine("Set RXDK_TEST_CONSOLE to run hardware parity.");
+            Console.Error.WriteLine("Set RXDK_TEST_CONSOLE to run kit hardware tests.");
             return 2;
         }
 
-        var summary = XbdmParityChecks.RunAll(console);
-        var reportPath = XbdmParityReport.WriteToDefaultPath(summary);
-        var failures = summary.Results.Where(r => r.Status == ParityStatus.Failed).ToArray();
+        var summary = XbdmKitChecks.RunAll(console);
+        var reportPath = KitTestReport.WriteToDefaultPath(summary);
+        var failures = summary.Results.Where(r => r.Status == KitCheckStatus.Failed).ToArray();
 
         Console.WriteLine();
         Console.WriteLine($"Report: {reportPath}");
@@ -53,9 +55,9 @@ internal static class ParityDirectProgram
             Console.Error.WriteLine(failure.ToString());
 
         if (summary.Results.Count == 1 &&
-            summary.Results[0] is { Category: "Session", Name: "Open", Status: ParityStatus.Skipped })
+            summary.Results[0] is { Category: "Session", Name: "Open", Status: KitCheckStatus.Skipped })
         {
-            Console.Error.WriteLine($"Could not run parity checks: {summary.Results[0].Notes}");
+            Console.Error.WriteLine($"Could not run kit tests: {summary.Results[0].Notes}");
             return 2;
         }
 

@@ -102,7 +102,7 @@ Built as `xbshlext.dll`. The Inno Setup post-build step produces **`XboxNeighbor
 
 ### RXDKNeighborhood app
 
-Modern **Avalonia** standalone browser (`RXDKNeighborhood.sln`) — browse kits, drives, and folders **without Explorer shell integration**. Uses a thin native **`xbdm.dll`** wrapper around **`xbdbgs.lib`**.
+Modern **Avalonia** standalone browser (`RXDKNeighborhood.sln`) — browse kits, drives, and folders **without Explorer shell integration**. Uses the managed XBDM protocol stack in `Rxdk.Xbdm.Managed`.
 
 | Feature | Description |
 |---------|-------------|
@@ -123,11 +123,9 @@ Modern **Avalonia** standalone browser (`RXDKNeighborhood.sln`) — browse kits,
 **Build and run:**
 
 ```powershell
-# Native XBDM wrapper + app
-msbuild src/xbdm-native/xbdm-native.vcxproj /p:Configuration=Release /p:Platform=x64
 dotnet run --project src-dotnet/RXDKNeighborhood/RXDKNeighborhood.csproj -c Release
 
-# Publish distributable folder (includes xbdm.dll)
+# Publish distributable folder
 powershell -File scripts/publish-avalonia.ps1
 ```
 
@@ -135,13 +133,11 @@ Published output: `out/publish/RXDKNeighborhood-win-x64/`
 
 | Component | Location |
 |-----------|----------|
-| `xbdm.dll` | `out/bin/x64/Release/` |
 | Avalonia app | `src-dotnet/RXDKNeighborhood/` |
 | C# core logic | `src-dotnet/RXDKNeighborhood.Core/` |
-| P/Invoke | `src-dotnet/Rxdk.Native/` |
-| C ABI header | `src/xbdm-native/include/xbdm.h` |
+| Managed XBDM client | `src-dotnet/Rxdk.Xbdm.Managed/` |
 
-Requires **.NET 8 SDK** and **Visual Studio 2022** (C++) for `xbdm.dll`.
+Requires **.NET 8 SDK**.
 
 ### File utilities (`xbcp`, `xbdir`, `xbmkdir`, `xbecopy`)
 
