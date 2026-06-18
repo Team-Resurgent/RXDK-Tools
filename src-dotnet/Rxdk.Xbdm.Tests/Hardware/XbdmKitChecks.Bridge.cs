@@ -1,22 +1,22 @@
 using System.Diagnostics;
 using System.Text.Json;
 
-namespace Rxdk.Xbdm.Tests.Parity;
+namespace Rxdk.Xbdm.Tests.Hardware;
 
-internal static partial class XbdmParityChecks
+internal static partial class XbdmKitChecks
 {
     private const string BridgeCategory = "Bridge";
 
-    public static IReadOnlyList<ParityCheckResult> RunBridgeChecks(string console, XbdmParitySession session)
+    public static IReadOnlyList<KitCheckResult> RunBridgeChecks(string console, XbdmKitSession session)
     {
         if (!AllowBridgeTests())
         {
             return
             [
-                ParityCompare.Skip(
+                KitCheck.Skip(
                     BridgeCategory,
                     "Bridge suite",
-                    "Set RXDK_PARITY_ALLOW_BRIDGE=1 or RXDK_PARITY_ALLOW_EXEC=1."),
+                    "Set RXDK_KIT_ALLOW_BRIDGE=1 or RXDK_KIT_ALLOW_EXEC=1."),
             ];
         }
 
@@ -25,49 +25,49 @@ internal static partial class XbdmParityChecks
         {
             return
             [
-                ParityCompare.Skip(
+                KitCheck.Skip(
                     BridgeCategory,
                     "Bridge suite",
                     "xboxdbg-bridge not found. Build Rxdk.XboxDbgBridge or set RXDK_BRIDGE_EXE."),
             ];
         }
 
-        var results = new List<ParityCheckResult>();
+        var results = new List<KitCheckResult>();
 
         string? execWireDir = null;
         if (AllowExecTests())
         {
-            var localXbe = Path.Combine(XbdmParitySession.TestFilesDirectory(), "TriangleXDK.xbe");
+            var localXbe = Path.Combine(XbdmKitSession.TestFilesDirectory(), "TriangleXDK.xbe");
             if (File.Exists(localXbe))
             {
-                execWireDir = ExecWireDirectory(session.Native);
+                execWireDir = ExecWireDirectory(session.Managed);
                 var wireXbe = $"{execWireDir}\\TriangleXDK.xbe";
-                XbdmParitySession.EnsureTriangleXbeOnKit(session.Native, localXbe, wireXbe);
+                XbdmKitSession.EnsureTriangleXbeOnKit(session.Managed, localXbe, wireXbe);
             }
         }
 
         session.ReleaseKitConnections();
-        ParityProgress.Phase("Bridge: parity session released (bridge owns kit connection)");
+        KitTestProgress.Phase("Bridge: kit test session released (bridge owns kit connection)");
 
         try
         {
-            using var client = BridgeParityClient.Start(bridgeLaunch, console);
+            using var client = BridgeTestClient.Start(bridgeLaunch, console);
             results.Add(SafeBridgeCheck("ping", () => client.Ping()));
 
             var launched = false;
             if (execWireDir is not null)
             {
-                ParityProgress.Phase("Bridge: launching TriangleXDK");
+                KitTestProgress.Phase("Bridge: launching TriangleXDK");
                 var launchResult = SafeBridgeCheck(
                     "launch",
                     () => client.Launch(execWireDir, "TriangleXDK.xbe", autoRun: true));
                 results.Add(launchResult);
-                launched = launchResult.Status == ParityStatus.Passed;
+                launched = launchResult.Status == KitCheckStatus.Passed;
                 if (launched)
                 {
                     // autoRun already issued GO, so the title is spinning. Let it run for one visible
                     // segment before the breakpoint freezes it.
-                    XbdmParityWait.DwellWithProgress("Bridge: TriangleXDK running", XbdmParityWait.VisibleSegment);
+                    XbdmKitWait.DwellWithProgress("Bridge: TriangleXDK running", XbdmKitWait.VisibleSegment);
                 }
             }
 
@@ -78,18 +78,18 @@ internal static partial class XbdmParityChecks
             }
             else
             {
-                results.Add(ParityCompare.Skip(
+                results.Add(KitCheck.Skip(
                     BridgeCategory,
                     "attach",
                     "TriangleXDK launch failed; debugger attach requires a running title."));
-                results.Add(ParityCompare.Skip(
+                results.Add(KitCheck.Skip(
                     BridgeCategory,
                     "diag",
                     "TriangleXDK launch failed; debugger attach requires a running title."));
             }
 
             // Symbols must load before any file/line breakpoint can resolve.
-            var testFiles = XbdmParitySession.TestFilesDirectory();
+            var testFiles = XbdmKitSession.TestFilesDirectory();
             var exePath = Path.Combine(testFiles, "TriangleXDK.exe");
             var pdbPath = Path.Combine(testFiles, "TriangleXDK.pdb");
             var symbolsLoaded = false;
@@ -97,12 +97,12 @@ internal static partial class XbdmParityChecks
             {
                 var loadResult = SafeBridgeCheck("loadsymbols", () => client.LoadSymbols(exePath, pdbPath));
                 results.Add(loadResult);
-                symbolsLoaded = loadResult.Status == ParityStatus.Passed;
+                symbolsLoaded = loadResult.Status == KitCheckStatus.Passed;
                 if (launched)
                     results.Add(SafeBridgeCheck("resolveline", () => client.ResolveLine("TriangleXDK.cpp", 206)));
                 else
                 {
-                    results.Add(ParityCompare.Skip(
+                    results.Add(KitCheck.Skip(
                         BridgeCategory,
                         "resolveline",
                         "TriangleXDK launch failed; line resolution requires a running title."));
@@ -110,10 +110,10 @@ internal static partial class XbdmParityChecks
             }
             else
             {
-                results.Add(ParityCompare.Skip(
+                results.Add(KitCheck.Skip(
                     BridgeCategory,
                     "LoadSymbols+ResolveLine",
-                    "Set RXDK_PARITY_ALLOW_EXEC=1 with TriangleXDK.exe and TriangleXDK.pdb in TestFiles."));
+                    "Set RXDK_KIT_ALLOW_EXEC=1 with TriangleXDK.exe and TriangleXDK.pdb in TestFiles."));
             }
 
             // Breakpoint freeze/resume: after the title has spun for one segment, drop a breakpoint
@@ -124,16 +124,16 @@ internal static partial class XbdmParityChecks
             {
                 var bpResult = SafeBridgeCheck("setbreakpoint", () => client.SetBreakpoint("TriangleXDK.cpp", 173));
                 results.Add(bpResult);
-                if (bpResult.Status == ParityStatus.Passed)
+                if (bpResult.Status == KitCheckStatus.Passed)
                 {
                     results.Add(SafeBridgeCheck("waitbreak", () => client.WaitBreak(TimeSpan.FromSeconds(30))));
                     // The title is now halted at Render() — the triangle is frozen mid-spin. Hold it
                     // for one segment so the freeze is visible, then remove the breakpoint and resume.
-                    XbdmParityWait.DwellWithProgress("Bridge: TriangleXDK frozen at breakpoint", XbdmParityWait.VisibleSegment);
+                    XbdmKitWait.DwellWithProgress("Bridge: TriangleXDK frozen at breakpoint", XbdmKitWait.VisibleSegment);
                     results.Add(SafeBridgeCheck("removebreakpoint", () => client.RemoveBreakpoint()));
                     results.Add(SafeBridgeCheck("go", () => client.Go()));
                     // Resumed: spin again for a segment so the resume is visible.
-                    XbdmParityWait.DwellWithProgress("Bridge: TriangleXDK resumed", XbdmParityWait.VisibleSegment);
+                    XbdmKitWait.DwellWithProgress("Bridge: TriangleXDK resumed", XbdmKitWait.VisibleSegment);
                 }
             }
             else
@@ -141,26 +141,26 @@ internal static partial class XbdmParityChecks
                 var reason = launched
                     ? "Symbols not loaded; breakpoint requires file/line resolution."
                     : "TriangleXDK launch failed; breakpoint requires a running title.";
-                results.Add(ParityCompare.Skip(BridgeCategory, "setbreakpoint", reason));
-                results.Add(ParityCompare.Skip(BridgeCategory, "waitbreak", reason));
-                results.Add(ParityCompare.Skip(BridgeCategory, "removebreakpoint", reason));
-                results.Add(ParityCompare.Skip(BridgeCategory, "go", reason));
+                results.Add(KitCheck.Skip(BridgeCategory, "setbreakpoint", reason));
+                results.Add(KitCheck.Skip(BridgeCategory, "waitbreak", reason));
+                results.Add(KitCheck.Skip(BridgeCategory, "removebreakpoint", reason));
+                results.Add(KitCheck.Skip(BridgeCategory, "go", reason));
             }
         }
         catch (Exception ex)
         {
-            results.Add(ParityCompare.Fail(BridgeCategory, "Bridge suite", ex.Message));
+            results.Add(KitCheck.Fail(BridgeCategory, "Bridge suite", ex.Message));
         }
         finally
         {
-            XbdmParitySession.WaitForKit(console, "Waiting for dashboard after bridge");
+            XbdmKitSession.WaitForKit(console, "Waiting for dashboard after bridge");
             session.ReconnectKit();
         }
 
         return results;
     }
 
-    private static ParityCheckResult SafeBridgeCheck(string name, Func<ParityCheckResult> check)
+    private static KitCheckResult SafeBridgeCheck(string name, Func<KitCheckResult> check)
     {
         try
         {
@@ -174,7 +174,7 @@ internal static partial class XbdmParityChecks
             var site = inner.StackTrace?.Split('\n').FirstOrDefault()?.Trim();
             var message = $"{inner.GetType().Name}: {inner.Message}" +
                 (string.IsNullOrEmpty(site) ? string.Empty : $" @ {site}");
-            return ParityCompare.Fail(BridgeCategory, name, message);
+            return KitCheck.Fail(BridgeCategory, name, message);
         }
     }
 
@@ -231,7 +231,7 @@ internal static partial class XbdmParityChecks
         return null;
     }
 
-    private sealed class BridgeParityClient : IDisposable
+    private sealed class BridgeTestClient : IDisposable
     {
         private readonly Process _process;
         private readonly StreamWriter _stdin;
@@ -240,7 +240,7 @@ internal static partial class XbdmParityChecks
         private readonly System.Collections.Concurrent.ConcurrentQueue<string> _stderr = new();
         private int _nextId = 1;
 
-        private BridgeParityClient(Process process, StreamWriter stdin, StreamReader stdout)
+        private BridgeTestClient(Process process, StreamWriter stdin, StreamReader stdout)
         {
             _process = process;
             _stdin = stdin;
@@ -264,7 +264,7 @@ internal static partial class XbdmParityChecks
             return " | bridge-stderr: " + string.Join(" ⏎ ", tail);
         }
 
-        internal static BridgeParityClient Start(BridgeLaunch launch, string console)
+        internal static BridgeTestClient Start(BridgeLaunch launch, string console)
         {
             var startInfo = new ProcessStartInfo
             {
@@ -288,7 +288,7 @@ internal static partial class XbdmParityChecks
 
             var stdin = process.StandardInput;
             var stdout = process.StandardOutput;
-            var client = new BridgeParityClient(process, stdin, stdout);
+            var client = new BridgeTestClient(process, stdin, stdout);
 
             // One dedicated reader per stream. StreamReader is NOT thread-safe, so the bridge's
             // stdout must be drained by a single long-lived thread; spawning a fresh ReadLine task
@@ -326,21 +326,21 @@ internal static partial class XbdmParityChecks
             return client;
         }
 
-        internal ParityCheckResult Ping() =>
+        internal KitCheckResult Ping() =>
             Send("ping", null, BridgeCategory, "ping", r =>
                 r.TryGetProperty("pong", out var pong) && pong.ValueKind == JsonValueKind.True);
 
-        internal ParityCheckResult Attach() =>
+        internal KitCheckResult Attach() =>
             Send("attach", null, BridgeCategory, "attach", _ => true);
 
-        internal ParityCheckResult Launch(string dir, string title, bool autoRun = false)
+        internal KitCheckResult Launch(string dir, string title, bool autoRun = false)
         {
-            var launchTimeout = XbdmParityWait.LaunchTimeout + TimeSpan.FromSeconds(30);
+            var launchTimeout = XbdmKitWait.LaunchTimeout + TimeSpan.FromSeconds(30);
             var fields = new Dictionary<string, object>
             {
                 ["dir"] = dir,
                 ["title"] = title,
-                ["timeout"] = (int)Math.Min(XbdmParityWait.LaunchTimeout.TotalMilliseconds, int.MaxValue),
+                ["timeout"] = (int)Math.Min(XbdmKitWait.LaunchTimeout.TotalMilliseconds, int.MaxValue),
             };
             if (autoRun)
             {
@@ -360,10 +360,10 @@ internal static partial class XbdmParityChecks
                 "Bridge: waiting for TriangleXDK");
         }
 
-        internal ParityCheckResult Go() =>
+        internal KitCheckResult Go() =>
             Send("go", null, BridgeCategory, "go", _ => true);
 
-        internal ParityCheckResult SetBreakpoint(string file, int line) =>
+        internal KitCheckResult SetBreakpoint(string file, int line) =>
             Send(
                 "setbreakpoint",
                 new Dictionary<string, object> { ["file"] = file, ["line"] = line },
@@ -371,7 +371,7 @@ internal static partial class XbdmParityChecks
                 "setbreakpoint",
                 r => r.TryGetProperty("address", out _));
 
-        internal ParityCheckResult WaitBreak(TimeSpan timeout) =>
+        internal KitCheckResult WaitBreak(TimeSpan timeout) =>
             Send(
                 "waitbreak",
                 new Dictionary<string, object>
@@ -384,13 +384,13 @@ internal static partial class XbdmParityChecks
                 timeout + TimeSpan.FromSeconds(10),
                 "Bridge: waiting for breakpoint");
 
-        internal ParityCheckResult RemoveBreakpoint() =>
+        internal KitCheckResult RemoveBreakpoint() =>
             Send("clearbreakpoints", null, BridgeCategory, "removebreakpoint", _ => true);
 
-        internal ParityCheckResult Diag() =>
+        internal KitCheckResult Diag() =>
             Send("diag", null, BridgeCategory, "diag", r => r.TryGetProperty("threads", out _));
 
-        internal ParityCheckResult LoadSymbols(string exePath, string pdbPath) =>
+        internal KitCheckResult LoadSymbols(string exePath, string pdbPath) =>
             Send(
                 "loadsymbols",
                 new Dictionary<string, object> { ["exe"] = exePath, ["pdb"] = pdbPath },
@@ -398,7 +398,7 @@ internal static partial class XbdmParityChecks
                 "loadsymbols",
                 _ => true);
 
-        internal ParityCheckResult ResolveLine(string file, int line) =>
+        internal KitCheckResult ResolveLine(string file, int line) =>
             Send(
                 "resolveline",
                 new Dictionary<string, object> { ["file"] = file, ["line"] = line },
@@ -406,7 +406,7 @@ internal static partial class XbdmParityChecks
                 "resolveline",
                 r => r.TryGetProperty("address", out _));
 
-        private ParityCheckResult Send(
+        private KitCheckResult Send(
             string cmd,
             Dictionary<string, object>? fields,
             string category,
@@ -424,25 +424,23 @@ internal static partial class XbdmParityChecks
             var result = ReadResult(id, waitTimeout, progressLabel);
             if (!result.Success)
             {
-                return ParityCompare.Fail(
+                return KitCheck.Fail(
                     category,
                     name,
                     (result.Error ?? "bridge returned success=false") + StderrTail(),
-                    cmd,
-                    result.Raw);
+                    $"{cmd} {result.Raw}");
             }
 
             if (!validate(result.Payload))
             {
-                return ParityCompare.Fail(
+                return KitCheck.Fail(
                     category,
                     name,
                     "Unexpected bridge payload." + StderrTail(),
-                    cmd,
-                    result.Raw);
+                    $"{cmd} {result.Raw}");
             }
 
-            return ParityCompare.Pass(category, name, cmd);
+            return KitCheck.Pass(category, name, cmd);
         }
 
         private static JsonDocument BuildCommand(int id, string cmd, Dictionary<string, object>? fields)
@@ -517,7 +515,7 @@ internal static partial class XbdmParityChecks
                 if (progressLabel is not null && DateTime.UtcNow >= nextLog)
                 {
                     var remaining = Math.Max(0, (int)(deadline - DateTime.UtcNow).TotalSeconds);
-                    ParityProgress.Phase($"{progressLabel}… {remaining}s remaining");
+                    KitTestProgress.Phase($"{progressLabel}… {remaining}s remaining");
                     nextLog = DateTime.UtcNow.AddSeconds(5);
                 }
 

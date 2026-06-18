@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using Rxdk.Xbdm;
+using Rxdk.Xbdm.Managed;
 
 namespace Rxdk.XboxDbgBridge;
 
@@ -9,12 +10,12 @@ internal sealed partial class DebugBridgeSession : IDisposable
     private const int DefaultLaunchTimeoutMs = 120_000;
     private const int DefaultWaitBreakTimeoutMs = 30_000;
 
-    private readonly IXbdmClient _client;
+    private readonly ManagedXbdmClient _client;
 
     internal DebugBridgeSession()
     {
         BridgeBootstrap.RegisterBackend();
-        _client = XbdmClients.Create();
+        _client = (ManagedXbdmClient)XbdmClients.Create();
     }
 
     private readonly BreakpointManager _breakpoints = new();

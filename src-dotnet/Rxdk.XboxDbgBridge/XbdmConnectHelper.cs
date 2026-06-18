@@ -5,30 +5,12 @@ namespace Rxdk.XboxDbgBridge;
 
 internal static class XbdmConnectHelper
 {
-    internal static IXbdmConnection Connect(IXbdmClient client, string console)
+    internal static IXbdmConnection Connect(ManagedXbdmClient client, string console)
     {
         var password = Environment.GetEnvironmentVariable("RXDK_XBDM_PASSWORD")
             ?? Environment.GetEnvironmentVariable("RXDK_TEST_PASSWORD");
-        if (client is ManagedXbdmClient managed)
-        {
-            return string.IsNullOrWhiteSpace(password)
-                ? managed.Connect(console)
-                : managed.Connect(console, new XbdmConnectOptions { AdminPassword = password });
-        }
-
-        var connection = client.Connect(console);
-        if (!string.IsNullOrWhiteSpace(password))
-        {
-            connection.UseSharedConnection(true);
-            try
-            {
-                connection.UseSecureConnection(password);
-            }
-            finally
-            {
-                connection.UseSharedConnection(false);
-            }
-        }
-        return connection;
+        return string.IsNullOrWhiteSpace(password)
+            ? client.Connect(console)
+            : client.Connect(console, new XbdmConnectOptions { AdminPassword = password });
     }
 }

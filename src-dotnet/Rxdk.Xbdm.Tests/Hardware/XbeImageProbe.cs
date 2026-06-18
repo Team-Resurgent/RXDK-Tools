@@ -1,4 +1,4 @@
-namespace Rxdk.Xbdm.Tests.Parity;
+namespace Rxdk.Xbdm.Tests.Hardware;
 
 /// <summary>
 /// Finds a writable probe offset in an on-disk XBE without calling SECTIONS on the kit

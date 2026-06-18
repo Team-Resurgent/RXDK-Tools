@@ -1,8 +1,8 @@
 namespace Rxdk.Xbdm;
 
 /// <summary>
-/// Client for the xbdm C ABI (<c>xbdm.h</c>). Implementations may use native
-/// <c>xbdm.dll</c> or a pure managed XBDM protocol stack.
+/// Client for XBDM kit access. The Avalonia app and bridge use the managed protocol stack
+/// in <c>Rxdk.Xbdm.Managed</c>.
 /// </summary>
 public interface IXbdmClient : IDisposable
 {
