@@ -58,8 +58,21 @@ internal static partial class XbdmParityChecks
             ParityProgress.Phase("Security: tightening test user privileges");
             session.Managed.SetUserAccess(testUser, XbdmConstants.PrivInitial);
             results.Add(CompareUserAccessManaged(session, testUser, XbdmConstants.PrivInitial, "SetUserAccess"));
-            session.ReconnectNative(password);
-            results.Add(CompareListUsersParity(session, SecurityCategory, "ListUsers(locked)"));
+
+            ParityProgress.Phase("Security: native USERLIST read-back (admin auth, kit exclusive)");
+            var managedUsers = session.Managed.ListUsers().OrderBy(u => u.UserName).ToArray();
+            var listUsersResult = new ParityCheckResult[1];
+            session.RunNativeExclusive(() =>
+            {
+                session.ReconnectNative(password, configureDebug: false);
+                listUsersResult[0] = CompareListUsersParity(
+                    session,
+                    SecurityCategory,
+                    "ListUsers(locked)",
+                    managedUsers);
+            });
+            session.EnsureNativeDebugConfigured();
+            results.Add(listUsersResult[0]);
 
             XbdmParityWait.PauseForUser(
                 $"Security: verify users — {computerName}=read+write+manage, {testUser}=read+write only",

@@ -422,7 +422,8 @@ internal static partial class XbdmParityChecks
     internal static ParityCheckResult CompareListUsersParity(
         XbdmParitySession session,
         string category,
-        string step)
+        string step,
+        IReadOnlyList<XbdmUser>? managedSnapshot = null)
     {
         if (!session.Native.SupportsUserPrivileges())
             return ParityCompare.Skip(category, step, "User privileges not supported.");
@@ -436,7 +437,9 @@ internal static partial class XbdmParityChecks
         }
 
         var native = session.Native.ListUsers().OrderBy(u => u.UserName).ToArray();
-        var managed = session.Managed.ListUsers().OrderBy(u => u.UserName).ToArray();
+        var managed = managedSnapshot is not null
+            ? managedSnapshot.OrderBy(u => u.UserName).ToArray()
+            : session.Managed.ListUsers().OrderBy(u => u.UserName).ToArray();
         if (native.Length != managed.Length)
         {
             return ParityCompare.Fail(

@@ -186,16 +186,53 @@ internal sealed class XbdmParitySession : IDisposable
     }
 
     /// <summary>
-    /// Reconnect native xbdm.dll after a managed-exclusive stretch. When the kit is locked,
-    /// pass the admin password so debug/file reads authenticate before opening the debug proxy.
+    /// Drop the managed socket so native xbdm.dll can own the kit (single XBDM session).
+    /// Managed is reconnected with PC-user auth afterward.
     /// </summary>
-    public void ReconnectNative(string? securePassword = null)
+    public void RunNativeExclusive(Action action)
+    {
+        _managed?.Dispose();
+        _managed = null;
+        XbdmSciRegistry.ReleaseConsole(ConsoleName);
+
+        try
+        {
+            action();
+        }
+        finally
+        {
+            ReconnectManagedForSecurity();
+        }
+    }
+
+    /// <summary>
+    /// Reconnect native xbdm.dll after a managed-exclusive stretch. When the kit is locked,
+    /// pass the admin password and run inside <see cref="RunNativeExclusive"/> so xbdm.dll can
+    /// open the shared secure session (USERLIST requires manage; PC-user auth alone is denied).
+    /// </summary>
+    public void ReconnectNative(string? securePassword = null, bool configureDebug = true)
     {
         _native?.Dispose();
         _native = Connect(_nativeClient, ConsoleName);
-        if (!string.IsNullOrEmpty(securePassword) && _native.IsSecurityEnabled())
-            _native.UseSecureConnection(securePassword);
-        ConfigureParityTimeouts(_native.Debug);
+        if (_managed is null &&
+            !string.IsNullOrEmpty(securePassword) &&
+            _native.IsSecurityEnabled())
+        {
+            UseNativeSecureConnection(_native, securePassword);
+        }
+
+        if (configureDebug)
+            EnsureNativeDebugConfigured();
+    }
+
+    /// <summary>
+    /// Lazily opens the managed debug proxy used by <see cref="NativeDebug"/> (skipped during
+    /// native-exclusive locked-kit file reads to avoid stealing the kit session).
+    /// </summary>
+    public void EnsureNativeDebugConfigured()
+    {
+        if (_native is not null)
+            ConfigureParityTimeouts(_native.Debug);
     }
 
     /// <summary>
@@ -348,8 +385,22 @@ internal sealed class XbdmParitySession : IDisposable
 
         var connection = client.Connect(console);
         if (!string.IsNullOrWhiteSpace(password))
-            connection.UseSecureConnection(password);
+        {
+            UseNativeSecureConnection(connection, password);
+            connection.UseSharedConnection(false);
+        }
+
         return connection;
+    }
+
+    /// <summary>
+    /// xbdm.dll opens the admin secure session on the shared SCI; <c>fAllowSharing</c> must be set first.
+    /// Callers disable sharing when secure operations are finished.
+    /// </summary>
+    private static void UseNativeSecureConnection(IXbdmConnection connection, string password)
+    {
+        connection.UseSharedConnection(true);
+        connection.UseSecureConnection(password);
     }
 
     private static void ConfigureParityTimeouts(IXbdmDebugConnection debug)
