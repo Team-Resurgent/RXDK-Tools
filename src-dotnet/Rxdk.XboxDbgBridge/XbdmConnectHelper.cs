@@ -18,7 +18,17 @@ internal static class XbdmConnectHelper
 
         var connection = client.Connect(console);
         if (!string.IsNullOrWhiteSpace(password))
-            connection.UseSecureConnection(password);
+        {
+            connection.UseSharedConnection(true);
+            try
+            {
+                connection.UseSecureConnection(password);
+            }
+            finally
+            {
+                connection.UseSharedConnection(false);
+            }
+        }
         return connection;
     }
 }
