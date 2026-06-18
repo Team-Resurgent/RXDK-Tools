@@ -19,7 +19,7 @@ internal static class XbdmTimeCorrection
             ApplyClockSkew(sci, local, remote);
             sci.GotTimeCorrection = true;
         }
-        catch (XbdmException ex) when (ex.HResult == XbdmHResults.ClockNotSet)
+        catch (XbdmException ex) when (ex.HResultCode == XbdmHResults.ClockNotSet)
         {
             TrySetSystemTime(sci);
             try
@@ -29,7 +29,7 @@ internal static class XbdmTimeCorrection
                 ApplyClockSkew(sci, local, remote);
                 sci.GotTimeCorrection = true;
             }
-            catch (XbdmException retry) when (retry.HResult == XbdmHResults.ClockNotSet)
+            catch (XbdmException retry) when (retry.HResultCode == XbdmHResults.ClockNotSet)
             {
                 sci.GotTimeCorrection = true;
                 sci.BadSysTime = true;
@@ -47,6 +47,21 @@ internal static class XbdmTimeCorrection
         Correct(sci, ref high, ref low, toRemote: true);
     }
 
+    /// <summary>Set the kit clock to local UTC and clear cached skew so both stacks relearn correction.</summary>
+    internal static void SyncConsoleClock(XbdmSci sci)
+    {
+        TrySetSystemTime(sci);
+        ResetCachedSkew(sci);
+    }
+
+    internal static void ResetCachedSkew(XbdmSci sci)
+    {
+        sci.GotTimeCorrection = false;
+        sci.BadSysTime = false;
+        sci.AddDiff = false;
+        sci.TimeDiff = 0;
+    }
+
     private static void Correct(XbdmSci sci, ref uint high, ref uint low, bool toRemote)
     {
         if (high == 0 && low == 0)
@@ -61,7 +76,8 @@ internal static class XbdmTimeCorrection
         }
 
         var fileTime = ((ulong)high << 32) | low;
-        var add = sci.AddDiff == toRemote;
+        // Match filexfer.c CorrectTime: fAdd = !fAddDiff == !fTo
+        var add = toRemote ? sci.AddDiff : !sci.AddDiff;
         if (add)
             fileTime += sci.TimeDiff;
         else

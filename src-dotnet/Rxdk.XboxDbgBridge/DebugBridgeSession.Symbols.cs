@@ -30,11 +30,15 @@ internal sealed partial class DebugBridgeSession
         try
         {
             _symbols.Load(exe, pdb, string.IsNullOrEmpty(map) ? null : map);
+            // SymbolService.Load() calls Unload(), which clears ModuleBase. Restore the kit
+            // relocation base so subsequent file/line resolution maps into the running title
+            // instead of returning raw PDB (link-base) addresses.
+            OnModuleBaseSet();
             BridgeWriter.EmitResult(id, true);
         }
         catch (Exception ex)
         {
-            BridgeWriter.EmitResult(id, false, $"\"error\":\"{Escape(ex.Message)}\"");
+            BridgeWriter.EmitResult(id, false, $"\"error\":\"{Escape(DescribeException(ex))}\"");
         }
     }
 

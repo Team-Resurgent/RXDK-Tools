@@ -273,22 +273,43 @@ public sealed class PropertiesService
 
         if ((state.CurrentAccess & XbdmConstants.PrivManage) != 0)
         {
-            state.ManageMode = true;
-            foreach (var user in conn.ListUsers())
-            {
-                state.Users.Add(new SecurityUserEntry
-                {
-                    UserName = user.UserName,
-                    OriginalAccess = user.AccessPrivileges,
-                    NewAccess = user.AccessPrivileges,
-                });
-            }
+            EnterManageMode(conn, state);
+            return state;
+        }
 
-            if (state.Users.Count > 0)
-                state.SelectedUserName = state.Users[0].UserName;
+        // PC-user manage without GETUSERPRIV ME (some locked sessions only expose USERLIST).
+        try
+        {
+            var users = conn.ListUsers();
+            if (users.Count > 0)
+                EnterManageMode(conn, state, users);
+        }
+        catch
+        {
         }
 
         return state;
+    }
+
+    private static void EnterManageMode(
+        XbdmConnection conn,
+        SecurityEditorState state,
+        IReadOnlyList<XbdmUser>? users = null)
+    {
+        state.ManageMode = true;
+        users ??= conn.ListUsers();
+        foreach (var user in users)
+        {
+            state.Users.Add(new SecurityUserEntry
+            {
+                UserName = user.UserName,
+                OriginalAccess = user.AccessPrivileges,
+                NewAccess = user.AccessPrivileges,
+            });
+        }
+
+        if (state.Users.Count > 0)
+            state.SelectedUserName = state.Users[0].UserName;
     }
 }
 

@@ -352,7 +352,13 @@ extern "C" int xbdm_set_file_attributes(XbdmConnection *conn, const char *wire_p
     if (FAILED(hr))
         return HrToApi(hr);
 
-    fa.Attributes = attributes;
+    // xbshlext/attrib.cpp + visit.cpp: merge readonly/hidden, then map zero to NORMAL so
+    // filexfer.c emits READONLY=0/HIDDEN=0 (Attributes=0 omits flags and leaves readonly set).
+    fa.Attributes &= ~(FILE_ATTRIBUTE_READONLY | FILE_ATTRIBUTE_HIDDEN);
+    fa.Attributes |= (attributes & (FILE_ATTRIBUTE_READONLY | FILE_ATTRIBUTE_HIDDEN));
+    if (fa.Attributes == 0)
+        fa.Attributes = FILE_ATTRIBUTE_NORMAL;
+
     return HrToApi(conn->conn->HrSetFileAttributes(wire_path, &fa));
 }
 
@@ -381,8 +387,11 @@ extern "C" int xbdm_security_supports_user_priv(XbdmConnection *conn, int *suppo
     if (!conn || !conn->conn || !supported)
         return HrToApi(E_INVALIDARG);
 
+    // Matches the original Neighborhood (xbshlext/prop.cpp): only XBDM_INVALIDCMD means the box
+    // does not understand GETUSERPRIV (no user-privilege support). Any other response means the
+    // command exists, so the feature is supported.
     hr = conn->conn->HrSendCommand("GETUSERPRIV NAME=BOGUS", buffer, &size);
-    *supported = (hr == XBDM_INVALIDCMD) ? 1 : 0;
+    *supported = (hr != XBDM_INVALIDCMD) ? 1 : 0;
     return HrToApi(S_OK);
 }
 

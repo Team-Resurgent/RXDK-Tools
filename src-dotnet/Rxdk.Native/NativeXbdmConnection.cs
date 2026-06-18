@@ -1,4 +1,5 @@
 using Rxdk.Xbdm;
+using Rxdk.Xbdm.Managed;
 using XbdmDirEntryModel = Rxdk.Xbdm.XbdmDirEntry;
 using XbdmUserModel = Rxdk.Xbdm.XbdmUser;
 using XbdmConst = Rxdk.Xbdm.XbdmConstants;
@@ -98,9 +99,10 @@ internal sealed class NativeXbdmConnection : IXbdmConnection
 
     public uint? TryResolveXboxAddress()
     {
-        if (XbdmNative.xbdm_resolve_xbox_address(_handle, out var address) != 0)
-            return null;
-        return address;
+        if (XbdmNative.xbdm_resolve_xbox_address(_handle, out var address) == 0 && address != 0)
+            return address;
+
+        return XboxNameResolver.TryResolveAddressUInt32(ConsoleName);
     }
 
     public uint? TryGetAltAddress()

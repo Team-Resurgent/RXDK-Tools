@@ -29,5 +29,75 @@ public static class XbdmHResults
     public const int MemUnmapped = unchecked((int)0x82DB0004);
     public const int MemSetIncomplete = unchecked((int)0x82DB0107);
     public const int ClockNotSet = unchecked((int)0x82DB0006);
+    public const int NotStopped = unchecked((int)0x82DB0008);
+    public const int NotDebuggable = unchecked((int)0x82DB0010);
     public const int Dedicated = unchecked((int)0x02DB0005);
+
+    private static readonly IReadOnlyDictionary<int, string> Descriptions = new Dictionary<int, string>
+    {
+        [NoErr] = "NoErr — command succeeded",
+        [Connected] = "Connected — session established",
+        [Multiresponse] = "Multiresponse — multi-line response follows",
+        [Binresponse] = "Binresponse — binary payload follows",
+        [ReadyForBin] = "ReadyForBin — ready for binary transfer",
+        [Dedicated] = "Dedicated — dedicated connection mode",
+        [Error(0)] = "Undefined — unspecified XBDM error",
+        [Error(1)] = "MaxConnect — too many connections",
+        [Error(2)] = "NoSuchFile — file or launch path not found",
+        [Error(3)] = "NoModule — module not loaded",
+        [MemUnmapped] = "MemUnmapped — address not mapped",
+        [Error(5)] = "NoThread — thread not found",
+        [ClockNotSet] = "ClockNotSet — console clock not set",
+        [InvalidCmd] = "InvalidCmd — command not supported in current state",
+        [NotStopped] = "NotStopped — title must be stopped",
+        [Error(9)] = "MustCopy — copy required instead of move",
+        [AlreadyExists] = "AlreadyExists — object already exists",
+        [Error(11)] = "DirNotEmpty — directory not empty",
+        [Error(12)] = "BadFilename — invalid file name",
+        [Error(13)] = "CannotCreate — cannot create file or directory",
+        [Error(14)] = "CannotAccess — access denied",
+        [Error(15)] = "DeviceFull — storage device full",
+        [NotDebuggable] = "NotDebuggable — debugger cannot attach",
+        [Error(17)] = "BadCountType — invalid performance counter type",
+        [Error(18)] = "CountUnavailable — performance counter unavailable",
+        [NotLocked] = "NotLocked — security disabled; operation requires lock mode",
+        [KeyExchange] = "KeyExchange — secure key exchange required",
+        [Error(22)] = "MustBeDedicated — command requires dedicated connection",
+        [CannotConnect] = "CannotConnect — could not connect to console",
+        [ConnectionLost] = "ConnectionLost — connection lost",
+        [FileError] = "FileError — file I/O or protocol error",
+        [EndOfList] = "EndOfList — end of enumeration",
+        [BufferTooSmall] = "BufferTooSmall — caller buffer too small",
+        [Error(0x106)] = "NotXbeFile — not a valid XBE file",
+        [MemSetIncomplete] = "MemSetIncomplete — memory write incomplete",
+        [NoXboxName] = "NoXboxName — no default Xbox name configured",
+        [Error(0x109)] = "NoErrorString — no error text available",
+    };
+
+    /// <summary>Human-readable name and hint for parity logs and UI.</summary>
+    public static string Describe(int hresult) =>
+        Descriptions.TryGetValue(hresult, out var text) ? text : DescribeUnknown(hresult);
+
+    /// <summary>HRESULT plus description, optionally with exception detail.</summary>
+    public static string Format(int hresult, string? detail = null)
+    {
+        var text = $"0x{hresult:x8} ({Describe(hresult)})";
+        if (!string.IsNullOrWhiteSpace(detail))
+            text += $" — {detail.Trim()}";
+        return text;
+    }
+
+    private static string DescribeUnknown(int hresult)
+    {
+        if (((hresult >> 16) & 0x1FFF) != Facility)
+            return $"HRESULT 0x{hresult:x8}";
+
+        var code = hresult & 0xFFFF;
+        if ((hresult & 0x80000000) != 0 && code >= 100)
+            return $"Protocol/status error {code} — kit returned non-success status line";
+
+        return code >= 0x8000
+            ? $"XBDM success code {code & 0x7FFF}"
+            : $"XBDM error {code}";
+    }
 }
