@@ -1,10 +1,14 @@
 using System.Runtime.InteropServices;
 using Rxdk.XbShellExt.Diagnostics;
 using Rxdk.XbShellExt.Interop;
-using Rxdk.Xbdm;
-using Rxdk.Xbdm.Managed;
+
 namespace Rxdk.XbShellExt.Shell;
 
+/// <summary>
+/// Serves CFSTR_FILECONTENTS by reading a temp file downloaded from the console.
+/// Downloads are serialized through <see cref="XboxDragTransferSession"/> so Explorer
+/// never opens more than one XBDM connection at a time during paste.
+/// </summary>
 [ComVisible(true)]
 [ClassInterface(ClassInterfaceType.None)]
 internal sealed class XbdmReceiveComStream : INativeComStream, IDisposable
@@ -13,36 +17,29 @@ internal sealed class XbdmReceiveComStream : INativeComStream, IDisposable
     private const int SeekCur = 1;
     private const int SeekEnd = 2;
 
-    private readonly XbdmConnection _connection;
-    private readonly string _wirePath;
+    private readonly XboxDragEntry _entry;
     private readonly XboxDragTransferSession.StreamLease _lease;
-    private readonly SemaphoreSlim _getFileGate;
     private readonly XboxDragTransferSession _session;
-    private XbdmFileReceiver? _receiver;
+    private FileStream? _fileStream;
     private readonly ulong _expectedSize;
-    private bool _gateHeld;
     private bool _disposed;
     private bool _failed;
-    private bool _replayCompleted;
+    private bool _downloadStarted;
     private int _readFailureHr = HResults.ReadFault;
 
     public XbdmReceiveComStream(
-        XbdmConnection connection,
         XboxDragEntry entry,
         XboxDragTransferSession.StreamLease lease,
-        SemaphoreSlim getFileGate,
         XboxDragTransferSession session)
     {
-        _connection = connection;
-        _wirePath = entry.WirePath;
+        _entry = entry;
         _expectedSize = entry.Size;
         _lease = lease;
-        _getFileGate = getFileGate;
         _session = session;
         session.RegisterStream(this);
     }
 
-    internal string WirePath => _wirePath;
+    internal string WirePath => _entry.WirePath;
 
     internal void Abort()
     {
@@ -50,13 +47,8 @@ internal sealed class XbdmReceiveComStream : INativeComStream, IDisposable
             return;
 
         _failed = true;
-        var position = _receiver?.Position ?? 0UL;
-        var total = _receiver?.TotalSize ?? 0UL;
-        _receiver?.Dispose();
-        _receiver = null;
-        ReleaseGetFileGate();
-        ManagedTrace.Line(
-            $"TransferAbort path='{_wirePath}' position={position}/{total}");
+        CloseFile();
+        ManagedTrace.Line($"TransferAbort path='{_entry.WirePath}'");
     }
 
     internal void FailCancelled()
@@ -65,26 +57,11 @@ internal sealed class XbdmReceiveComStream : INativeComStream, IDisposable
             return;
 
         _failed = true;
-        _receiver?.Dispose();
-        _receiver = null;
-        ReleaseGetFileGate();
-        ManagedTrace.Line($"TransferCancel path='{_wirePath}'");
+        CloseFile();
+        ManagedTrace.Line($"TransferCancel path='{_entry.WirePath}'");
     }
 
     ~XbdmReceiveComStream() => Dispose();
-
-    internal bool TryStart()
-    {
-        try
-        {
-            return EnsureReceiver();
-        }
-        catch
-        {
-            _failed = true;
-            return false;
-        }
-    }
 
     public int Read(IntPtr pv, int cb, IntPtr pcbRead)
     {
@@ -92,12 +69,6 @@ internal sealed class XbdmReceiveComStream : INativeComStream, IDisposable
         {
             WriteCount(pcbRead, 0);
             return _session.IsCancelRequested ? HResults.Abort : HResults.Fail;
-        }
-
-        if (_replayCompleted)
-        {
-            WriteCount(pcbRead, 0);
-            return HResults.False;
         }
 
         if (_failed)
@@ -116,65 +87,45 @@ internal sealed class XbdmReceiveComStream : INativeComStream, IDisposable
         {
             _lease.ThrowIfCancelled();
 
-            if (!EnsureReceiver())
+            if (!EnsureFileOpen())
             {
                 _failed = true;
                 WriteCount(pcbRead, 0);
                 return _readFailureHr;
             }
 
-            if (_replayCompleted)
-            {
-                WriteCount(pcbRead, 0);
-                return HResults.False;
-            }
-
             var buffer = new byte[cb];
-            var totalRead = 0;
-            while (totalRead < cb)
-            {
-                _lease.ThrowIfCancelled();
-                var chunk = Math.Min(cb - totalRead, 65536);
-                var chunkRead = _receiver!.Read(buffer.AsSpan(totalRead, chunk));
-                if (_session.IsCancelRequested)
-                    throw new OperationCanceledException();
-
-                if (chunkRead <= 0)
-                    break;
-
-                totalRead += chunkRead;
-                _lease.ReportCurrentFileProgress(_receiver.Position, _receiver.TotalSize);
-                ManagedTrace.Line(
-                    $"TransferRead path='{_wirePath}' read={chunkRead} position={_receiver.Position}/{_expectedSize}");
-
-                if (_receiver.IsComplete)
-                    break;
-            }
-
+            var totalRead = _fileStream!.Read(buffer, 0, cb);
             if (totalRead > 0)
+            {
                 Marshal.Copy(buffer, 0, pv, totalRead);
+                _lease.ReportCurrentFileProgress((ulong)_fileStream.Position, _expectedSize);
+                ManagedTrace.Line(
+                    $"TransferRead path='{_entry.WirePath}' read={totalRead} position={_fileStream.Position}/{_expectedSize}");
+            }
 
             if (totalRead == 0)
             {
-                if (_receiver!.IsComplete)
+                if (_fileStream.Position >= (long)_expectedSize || _fileStream.Length <= _fileStream.Position)
                 {
-                    _session.RecordCompletedWirePath(_wirePath, this);
+                    _session.RecordCompletedWirePath(_entry.WirePath, this);
                     _lease.MarkCompleted();
                 }
                 else
                 {
                     _failed = true;
-                    ComErrorInfo.SetMessage($"The transfer ended early for '{_wirePath}'.");
+                    ComErrorInfo.SetMessage($"The transfer ended early for '{_entry.WirePath}'.");
                     WriteCount(pcbRead, 0);
                     return HResults.ReadFault;
                 }
 
+                WriteCount(pcbRead, 0);
                 return HResults.False;
             }
 
-            if (_receiver.IsComplete)
+            if (_fileStream.Position >= _fileStream.Length)
             {
-                _session.RecordCompletedWirePath(_wirePath, this);
+                _session.RecordCompletedWirePath(_entry.WirePath, this);
                 _lease.MarkCompleted();
             }
 
@@ -204,7 +155,7 @@ internal sealed class XbdmReceiveComStream : INativeComStream, IDisposable
     }
 
     private static int MapReadFailure(Exception ex) =>
-        ex is XbdmException xbdm && xbdm.HResultCode == XbdmHResults.CannotAccess
+        ex is Rxdk.Xbdm.XbdmException xbdm && xbdm.HResultCode == Rxdk.Xbdm.XbdmHResults.CannotAccess
             ? HResults.AccessDenied
             : HResults.ReadFault;
 
@@ -216,7 +167,7 @@ internal sealed class XbdmReceiveComStream : INativeComStream, IDisposable
 
     public int Seek(long dlibMove, int dwOrigin, IntPtr plibNewPosition)
     {
-        if (_disposed || _failed || _receiver == null)
+        if (_disposed || _failed)
         {
             if (plibNewPosition != IntPtr.Zero)
                 Marshal.WriteInt64(plibNewPosition, 0);
@@ -225,33 +176,20 @@ internal sealed class XbdmReceiveComStream : INativeComStream, IDisposable
 
         try
         {
-            var target = dwOrigin switch
+            if (!EnsureFileOpen())
+                return HResults.Fail;
+
+            var origin = dwOrigin switch
             {
-                SeekSet => (ulong)dlibMove,
-                SeekCur => _receiver.Position + (ulong)dlibMove,
-                SeekEnd => _receiver.TotalSize + (ulong)dlibMove,
+                SeekSet => SeekOrigin.Begin,
+                SeekCur => SeekOrigin.Current,
+                SeekEnd => SeekOrigin.End,
                 _ => throw new ArgumentOutOfRangeException(nameof(dwOrigin)),
             };
 
-            if (target > _receiver.TotalSize)
-            {
-                _failed = true;
-                return HResults.Fail;
-            }
-
-            if (target < _receiver.Position)
-            {
-                ResetReceiver();
-                if (target > 0 && _receiver != null)
-                    _receiver.Skip(target);
-            }
-            else if (target > _receiver.Position)
-            {
-                _receiver.Skip(target - _receiver.Position);
-            }
-
-            if (plibNewPosition != IntPtr.Zero && _receiver != null)
-                Marshal.WriteInt64(plibNewPosition, (long)_receiver.Position);
+            var newPos = _fileStream!.Seek(dlibMove, origin);
+            if (plibNewPosition != IntPtr.Zero)
+                Marshal.WriteInt64(plibNewPosition, newPos);
 
             return HResults.Ok;
         }
@@ -318,7 +256,9 @@ internal sealed class XbdmReceiveComStream : INativeComStream, IDisposable
 
             WriteCount(pcbRead, ClampCount(totalRead));
             WriteCount(pcbWritten, ClampCount(totalWritten));
-            return totalRead > 0 || (_receiver?.IsComplete ?? false) ? HResults.Ok : HResults.False;
+            return totalRead > 0 || (_fileStream?.Position ?? 0) >= (long)_expectedSize
+                ? HResults.Ok
+                : HResults.False;
         }
         catch (OperationCanceledException)
         {
@@ -359,9 +299,10 @@ internal sealed class XbdmReceiveComStream : INativeComStream, IDisposable
             return HResults.Fail;
         }
 
-        var reportedSize = _expectedSize > 0
-            ? _expectedSize
-            : (_receiver?.TotalSize ?? 0UL);
+        var reportedSize = _expectedSize;
+        if (_fileStream != null)
+            reportedSize = (ulong)Math.Max(_fileStream.Length, (long)_expectedSize);
+
         pstatstg = new NativeStatStg
         {
             type = 2,
@@ -383,112 +324,67 @@ internal sealed class XbdmReceiveComStream : INativeComStream, IDisposable
         if (_disposed)
             return;
 
-        if (_receiver != null)
+        if (_fileStream != null)
         {
             ManagedTrace.Line(
-                $"TransferDone path='{_wirePath}' catalogSize={_expectedSize} getFileSize={_receiver.TotalSize} " +
-                $"bytesRead={_receiver.Position} complete={_receiver.IsComplete}");
+                $"TransferDone path='{_entry.WirePath}' catalogSize={_expectedSize} " +
+                $"bytesRead={_fileStream.Position} length={_fileStream.Length}");
         }
 
         _disposed = true;
-        _receiver?.Dispose();
-        _receiver = null;
-        ReleaseGetFileGate();
+        CloseFile();
         _lease.Dispose();
         _session.NotifyComStreamReleased();
         GC.SuppressFinalize(this);
     }
 
-    private bool EnsureReceiver()
+    private bool EnsureFileOpen()
     {
-        if (_replayCompleted)
+        if (_fileStream != null)
             return true;
 
-        if (_receiver != null)
-            return true;
-
-        if (_session.IsWirePathCompleted(_wirePath))
+        if (_session.IsWirePathCompleted(_entry.WirePath))
         {
-            _replayCompleted = true;
-            ManagedTrace.Line($"TransferReplay path='{_wirePath}' size={_expectedSize}");
-            return true;
+            try
+            {
+                var tempPath = _session.GetCachedTempPath(_entry.WirePath);
+                if (tempPath == null)
+                    return false;
+
+                _fileStream = File.OpenRead(tempPath);
+                ManagedTrace.Line($"TransferReplay path='{_entry.WirePath}' temp='{tempPath}'");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _readFailureHr = MapReadFailure(ex);
+                _lease.ReportTransferFailure(ex.Message);
+                return false;
+            }
         }
 
+        if (_downloadStarted)
+            return _fileStream != null;
+
+        _downloadStarted = true;
         try
         {
-            OpenReceiver();
-            return _receiver != null || _replayCompleted;
+            var tempPath = _session.EnsureDownloadedToTemp(_entry, _lease);
+            _fileStream = File.OpenRead(tempPath);
+            return true;
         }
         catch (Exception ex)
         {
-            _failed = true;
             _readFailureHr = MapReadFailure(ex);
             _lease.ReportTransferFailure(ex.Message);
             return false;
         }
     }
 
-    private void OpenReceiver()
+    private void CloseFile()
     {
-        WaitForGetFileGate();
-        try
-        {
-            if (_session.IsCancelRequested)
-            {
-                _failed = true;
-                ReleaseGetFileGate();
-                throw new OperationCanceledException();
-            }
-
-            if (_session.IsWirePathCompleted(_wirePath))
-            {
-                _replayCompleted = true;
-                ReleaseGetFileGate();
-                ManagedTrace.Line($"TransferReplay path='{_wirePath}' size={_expectedSize}");
-                return;
-            }
-
-            _receiver = _connection.OpenFileReceiver(_wirePath);
-            _receiver.Start();
-            ManagedTrace.Line(
-                $"TransferOpen path='{_wirePath}' catalogSize={_expectedSize} getFileSize={_receiver.TotalSize}");
-        }
-        catch (Exception ex)
-        {
-            ReleaseGetFileGate();
-            ManagedTrace.Line($"TransferOpen failed path='{_wirePath}' error={ex.Message}");
-            throw;
-        }
-    }
-
-    private void WaitForGetFileGate()
-    {
-        while (true)
-        {
-            _lease.ThrowIfCancelled();
-            if (_getFileGate.Wait(TimeSpan.FromMilliseconds(100)))
-            {
-                _gateHeld = true;
-                return;
-            }
-        }
-    }
-
-    private void ReleaseGetFileGate()
-    {
-        if (!_gateHeld)
-            return;
-
-        _getFileGate.Release();
-        _gateHeld = false;
-    }
-
-    private void ResetReceiver()
-    {
-        _receiver?.Dispose();
-        _receiver = null;
-        ReleaseGetFileGate();
-        OpenReceiver();
+        _fileStream?.Dispose();
+        _fileStream = null;
     }
 
     private static void WriteCount(IntPtr ptr, int value)

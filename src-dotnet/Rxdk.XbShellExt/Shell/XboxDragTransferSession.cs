@@ -9,8 +9,7 @@ namespace Rxdk.XbShellExt.Shell;
 
 internal sealed class XboxDragTransferSession : IDisposable
 {
-    private readonly XbdmConnection _connection;
-    private readonly SemaphoreSlim _getFileGate = new(1, 1);
+    private readonly string _consoleName;
     private readonly int _fileCount;
     private readonly ulong _totalBytes;
     private ulong _completedBytes;
@@ -31,40 +30,39 @@ internal sealed class XboxDragTransferSession : IDisposable
     private readonly ManualResetEventSlim _progressReady = new(false);
     private string? _currentRelativePath;
     private readonly object _streamRegistryLock = new();
+    private readonly object _tempCacheLock = new();
     private readonly List<WeakReference<XbdmReceiveComStream>> _liveStreams = new();
     private readonly HashSet<string> _completedWirePaths = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, string> _tempFilesByWirePath = new(StringComparer.OrdinalIgnoreCase);
+    private readonly List<string> _tempDirs = new();
+    private readonly SemaphoreSlim _getFileGate = new(1, 1);
 
     public static (XboxDragTransferSession Session, IReadOnlyList<XboxDragEntry> Catalog) Start(FileSelection selection)
     {
         ArgumentNullException.ThrowIfNull(selection);
         IReadOnlyList<XboxDragEntry> catalog;
         using (var catalogConnection = XbdmSession.Connect(selection.ConsoleName))
-        {
             catalog = XboxDragCatalog.Build(catalogConnection, selection);
-        }
 
-        // Catalog enumeration hammers the connection with DIRLIST/GETFILEATTRIBUTES.
-        // Use a fresh connection for GETFILE transfers so the session starts clean.
-        var transferConnection = XbdmSession.Connect(selection.ConsoleName);
-        try
-        {
-            var session = new XboxDragTransferSession(catalog, transferConnection);
-            ShellTransferActivity.Begin();
-            return (session, catalog);
-        }
-        catch
-        {
-            transferConnection.Dispose();
-            throw;
-        }
+        var session = CreateFromCatalog(catalog, selection.ConsoleName);
+        return (session, catalog);
     }
 
-    private XboxDragTransferSession(IReadOnlyList<XboxDragEntry> catalog, XbdmConnection connection)
+    public static XboxDragTransferSession CreateFromCatalog(
+        IReadOnlyList<XboxDragEntry> catalog,
+        string consoleName)
+    {
+        var session = new XboxDragTransferSession(catalog, consoleName);
+        ShellTransferActivity.Begin();
+        return session;
+    }
+
+    private XboxDragTransferSession(IReadOnlyList<XboxDragEntry> catalog, string consoleName)
     {
         var files = catalog.Where(entry => !entry.IsDirectory).ToList();
         _fileCount = files.Count;
         _totalBytes = files.Aggregate(0UL, (sum, entry) => sum + entry.Size);
-        _connection = connection;
+        _consoleName = consoleName;
     }
 
     public INativeComStream? OpenStream(XboxDragEntry entry)
@@ -78,12 +76,85 @@ internal sealed class XboxDragTransferSession : IDisposable
 
         AbortStreamsForPath(entry.WirePath);
 
-        // Defer until Explorer opens the first content stream (after replace prompts).
         EnsureProgressShown();
         var lease = BeginFile(entry.RelativePath, entry.WirePath, entry.Size);
-        var stream = new XbdmReceiveComStream(_connection, entry, lease, _getFileGate, this);
+
+        // One XBDM connection at a time: download to temp, then serve reads locally.
+        var stream = new XbdmReceiveComStream(entry, lease, this);
         NotifyComStreamHeld();
         return stream;
+    }
+
+    internal string? GetCachedTempPath(string wirePath)
+    {
+        lock (_tempCacheLock)
+            return _tempFilesByWirePath.TryGetValue(wirePath, out var path) ? path : null;
+    }
+
+    internal string EnsureDownloadedToTemp(XboxDragEntry entry, StreamLease lease)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ThrowIfCancelled();
+
+        lock (_tempCacheLock)
+        {
+            if (_tempFilesByWirePath.TryGetValue(entry.WirePath, out var cached))
+                return cached;
+        }
+
+        _getFileGate.Wait();
+        try
+        {
+            ThrowIfCancelled();
+
+            lock (_tempCacheLock)
+            {
+                if (_tempFilesByWirePath.TryGetValue(entry.WirePath, out var cachedAgain))
+                    return cachedAgain;
+            }
+
+            SetCurrentFile(entry.RelativePath);
+            var tempDir = Path.Combine(Path.GetTempPath(), "XbShellExt", "drag", Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempDir);
+
+            var fileName = Path.GetFileName(entry.RelativePath.Replace('/', Path.DirectorySeparatorChar));
+            if (string.IsNullOrEmpty(fileName))
+                fileName = "file.bin";
+
+            var tempPath = Path.Combine(tempDir, fileName);
+            ManagedTrace.Line($"TransferDownload start path='{entry.WirePath}' temp='{tempPath}'");
+
+            using (var connection = XbdmSession.Connect(_consoleName))
+            using (var receiver = connection.OpenFileReceiver(entry.WirePath))
+            {
+                receiver.Start();
+                var buffer = new byte[65536];
+                using (var outStream = File.Create(tempPath))
+                {
+                    int read;
+                    while ((read = receiver.Read(buffer)) > 0)
+                    {
+                        ThrowIfCancelled();
+                        outStream.Write(buffer, 0, read);
+                        lease.ReportCurrentFileProgress((ulong)outStream.Length, receiver.TotalSize);
+                    }
+                }
+            }
+
+            lock (_tempCacheLock)
+            {
+                _tempFilesByWirePath[entry.WirePath] = tempPath;
+                _tempDirs.Add(tempDir);
+            }
+
+            ManagedTrace.Line(
+                $"TransferDownload done path='{entry.WirePath}' temp='{tempPath}' size={entry.Size}");
+            return tempPath;
+        }
+        finally
+        {
+            _getFileGate.Release();
+        }
     }
 
     internal void NotifyComStreamHeld() => Interlocked.Increment(ref _comStreamHolds);
@@ -548,8 +619,30 @@ internal sealed class XboxDragTransferSession : IDisposable
         if (Interlocked.CompareExchange(ref _backendDisposed, 1, 0) != 0)
             return;
 
-        _connection.Dispose();
-        _getFileGate.Dispose();
+        CleanupTempFiles();
+    }
+
+    private void CleanupTempFiles()
+    {
+        List<string> dirs;
+        lock (_tempCacheLock)
+        {
+            dirs = _tempDirs.ToList();
+            _tempDirs.Clear();
+            _tempFilesByWirePath.Clear();
+        }
+
+        foreach (var dir in dirs)
+        {
+            try
+            {
+                if (Directory.Exists(dir))
+                    Directory.Delete(dir, recursive: true);
+            }
+            catch
+            {
+            }
+        }
     }
 
     private void OnProgressFormClosed()
