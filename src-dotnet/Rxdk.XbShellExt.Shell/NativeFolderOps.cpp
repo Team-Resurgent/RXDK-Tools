@@ -243,6 +243,29 @@ namespace NativeFolderOps
         return kFileAttributes;
     }
 
+    bool CanCreateNewFolderInFolder(LPCITEMIDLIST folderPidl)
+    {
+        const auto path = GetNamespaceRelativePath(folderPidl);
+        if (path.empty())
+            return false;
+
+        const size_t slash = path.find('\\');
+        if (slash == std::string::npos)
+        {
+            // Volume root when the pidl omits the console segment (e.g. "C").
+            return path.size() == 1 && isalpha(static_cast<unsigned char>(path[0]));
+        }
+
+        const std::string head = path.substr(0, slash);
+        if (ConsoleNameExists(head.c_str()))
+            return true; // console\C or console\C\folder
+
+        if (head.size() == 1 && isalpha(static_cast<unsigned char>(head[0])))
+            return true; // C\folder without console prefix
+
+        return true;
+    }
+
     HRESULT SetStrRetWide(STRRET* pName, const std::wstring& wide)
     {
         pName->uType = STRRET_WSTR;

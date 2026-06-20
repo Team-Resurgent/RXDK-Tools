@@ -747,11 +747,17 @@ namespace
             };
 
             const bool pasteAvailable = CanPasteFromClipboard();
+            const bool backgroundFolderView =
+                m_target == TargetKind::Background &&
+                NativeFolderOps::CanCreateNewFolderInFolder(m_folderPidl);
 
-            RH(appendItem(L"&Open", CommandId::Open, m_target != TargetKind::Xbe));
+            if (!backgroundFolderView)
+            {
+                RH(appendItem(L"&Open", CommandId::Open, m_target != TargetKind::Xbe));
 
-            if (ShouldOfferBrowseTarget(m_target))
-                RH(appendItem(L"E&xplore", CommandId::Explore));
+                if (ShouldOfferBrowseTarget(m_target))
+                    RH(appendItem(L"E&xplore", CommandId::Explore));
+            }
 
             switch (m_target)
             {
@@ -766,8 +772,8 @@ namespace
                 RH(appendItem(L"&Security", CommandId::Security));
                 if (!NativeFolderOps::IsDefaultConsole(m_selectionSegment.c_str()))
                     RH(appendItem(L"Set as de&fault Xbox", CommandId::SetDefault));
-                RH(appendItem(L"&Delete", CommandId::RemoveConsole));
                 RH(appendSeparator());
+                RH(appendItem(L"&Delete", CommandId::RemoveConsole));
                 RH(appendItem(L"&Properties", CommandId::Properties));
                 break;
 
@@ -781,11 +787,10 @@ namespace
                 RH(appendItem(L"Cu&t", CommandId::Cut));
                 RH(appendItem(L"&Copy", CommandId::Copy));
                 RH(appendItem(L"&Paste", CommandId::Paste, false, !pasteAvailable));
-                RH(appendItem(L"&Delete", CommandId::Delete));
                 RH(appendSeparator());
+                RH(appendItem(L"&Delete", CommandId::Delete));
                 if (canRename)
                     RH(appendItem(L"&Rename", CommandId::Rename));
-                RH(appendItem(L"&New Folder", CommandId::NewFolder));
                 RH(appendSeparator());
                 RH(appendItem(L"&Properties", CommandId::Properties));
                 break;
@@ -796,7 +801,6 @@ namespace
                 RH(appendItem(L"&Copy", CommandId::Copy));
                 RH(appendSeparator());
                 RH(appendItem(L"&Delete", CommandId::Delete));
-                RH(appendSeparator());
                 if (canRename)
                     RH(appendItem(L"&Rename", CommandId::Rename));
                 RH(appendSeparator());
@@ -811,7 +815,6 @@ namespace
                 RH(appendItem(L"&Copy", CommandId::Copy));
                 RH(appendSeparator());
                 RH(appendItem(L"&Delete", CommandId::Delete));
-                RH(appendSeparator());
                 if (canRename)
                     RH(appendItem(L"&Rename", CommandId::Rename));
                 RH(appendSeparator());
@@ -819,7 +822,7 @@ namespace
                 break;
 
             case TargetKind::Background:
-                if (m_location == LocationKind::Volume || m_location == LocationKind::Directory)
+                if (backgroundFolderView)
                 {
                     RH(appendItem(L"&Paste", CommandId::Paste, false, !pasteAvailable));
                     RH(appendItem(L"&New Folder", CommandId::NewFolder));
