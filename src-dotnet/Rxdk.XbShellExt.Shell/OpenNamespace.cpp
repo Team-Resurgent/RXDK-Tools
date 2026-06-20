@@ -86,13 +86,47 @@ namespace
             }
         }
 
+        wchar_t shellPath[512] = {};
+        if (relativePathAnsi == nullptr || relativePathAnsi[0] == '\0')
+        {
+            StringCchCopyW(shellPath, ARRAYSIZE(shellPath), L"shell:::{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}");
+        }
+        else
+        {
+            wchar_t relativeWide[384] = {};
+            MultiByteToWideChar(CP_ACP, 0, relativePathAnsi, -1, relativeWide, ARRAYSIZE(relativeWide));
+            StringCchPrintfW(
+                shellPath,
+                ARRAYSIZE(shellPath),
+                L"shell:::{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}\\%s",
+                relativeWide);
+        }
+
+        ShellTraceLine("ShellExecute shell:::");
+        const HINSTANCE shellResult = ShellExecuteW(
+            nullptr,
+            nullptr,
+            shellPath,
+            nullptr,
+            nullptr,
+            SW_SHOWNORMAL);
+
+        if (reinterpret_cast<INT_PTR>(shellResult) > 32)
+        {
+            ShellTraceLine("ShellExecute (shell:::) succeeded");
+            return S_OK;
+        }
+
+        const HRESULT hrShellPath = HRESULT_FROM_WIN32(GetLastError());
+        ShellTraceHr("ShellExecute shell:::", hrShellPath);
+
         wchar_t args[512] = {};
         if (relativePathAnsi == nullptr || relativePathAnsi[0] == '\0')
         {
             StringCchPrintfW(
                 args,
                 ARRAYSIZE(args),
-                L"/e,/root,::{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}");
+                L"/e,\"/root,::{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}\"");
         }
         else
         {
@@ -101,7 +135,7 @@ namespace
             StringCchPrintfW(
                 args,
                 ARRAYSIZE(args),
-                L"/e,/root,::{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}\\%s",
+                L"/e,\"/root,::{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}\\%s\"",
                 relativeWide);
         }
 
@@ -119,42 +153,8 @@ namespace
             return S_OK;
         }
 
-        const HRESULT hrShell = HRESULT_FROM_WIN32(GetLastError());
-        ShellTraceHr("ShellExecute explorer.exe /e", hrShell);
-
-        wchar_t shellPath[512] = {};
-        if (relativePathAnsi == nullptr || relativePathAnsi[0] == '\0')
-        {
-            StringCchCopyW(shellPath, ARRAYSIZE(shellPath), L"shell:::{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}");
-        }
-        else
-        {
-            wchar_t relativeWide[384] = {};
-            MultiByteToWideChar(CP_ACP, 0, relativePathAnsi, -1, relativeWide, ARRAYSIZE(relativeWide));
-            StringCchPrintfW(
-                shellPath,
-                ARRAYSIZE(shellPath),
-                L"shell:::{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}\\%s",
-                relativeWide);
-        }
-
-        ShellTraceLine(".. fallback shell:::");
-        const HINSTANCE fallback = ShellExecuteW(
-            nullptr,
-            nullptr,
-            shellPath,
-            nullptr,
-            nullptr,
-            SW_SHOWNORMAL);
-
-        if (reinterpret_cast<INT_PTR>(fallback) > 32)
-        {
-            ShellTraceLine("ShellExecute (shell:::) succeeded");
-            return S_OK;
-        }
-
         const HRESULT hr = HRESULT_FROM_WIN32(GetLastError());
-        ShellTraceHr("ShellExecute shell:::", hr);
+        ShellTraceHr("ShellExecute explorer.exe /e", hr);
         return hr;
     }
 

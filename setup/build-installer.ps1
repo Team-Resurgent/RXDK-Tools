@@ -87,10 +87,35 @@ $installDir = Join-Path $RepoRoot 'out\bin\x64\Release'
 New-Item -ItemType Directory -Force -Path $installDir | Out-Null
 
 $shellExtProject = Join-Path $RepoRoot 'src-dotnet\Rxdk.XbShellExt\Rxdk.XbShellExt.csproj'
+$shellProxyProject = Join-Path $RepoRoot 'src-dotnet\Rxdk.XbShellExt.Shell\Rxdk.XbShellExt.Shell.vcxproj'
+
 Write-Host "Building Rxdk.XbShellExt (Release|win-x64)..." -ForegroundColor Cyan
 dotnet build $shellExtProject -c Release -r win-x64
 if ($LASTEXITCODE -ne 0) {
     throw 'dotnet build failed for Rxdk.XbShellExt'
+}
+
+function Resolve-MSBuildPath {
+    $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+    if (-not (Test-Path -LiteralPath $vswhere)) {
+        throw 'vswhere.exe not found. Install Visual Studio with the Desktop development with C++ workload.'
+    }
+
+    $msbuild = & $vswhere -latest -requires Microsoft.Component.MSBuild -find 'MSBuild\**\Bin\MSBuild.exe' |
+        Select-Object -First 1
+
+    if ([string]::IsNullOrWhiteSpace($msbuild) -or -not (Test-Path -LiteralPath $msbuild)) {
+        throw 'MSBuild.exe not found. Install Visual Studio with the Desktop development with C++ workload.'
+    }
+
+    return $msbuild
+}
+
+Write-Host 'Building Rxdk.XbShellExt.Shell (Release|x64)...' -ForegroundColor Cyan
+$msbuild = Resolve-MSBuildPath
+& $msbuild $shellProxyProject /p:Configuration=Release /p:Platform=x64 /v:m
+if ($LASTEXITCODE -ne 0) {
+    throw 'msbuild failed for Rxdk.XbShellExt.Shell'
 }
 
 $buildOut = Join-Path $RepoRoot 'src-dotnet\Rxdk.XbShellExt\bin\Release\net8.0-windows\win-x64'
@@ -98,12 +123,53 @@ if (-not (Test-Path -LiteralPath $buildOut)) {
     throw "Missing build output: $buildOut"
 }
 
-Get-ChildItem -LiteralPath $buildOut -File | Copy-Item -Destination $installDir -Force
+$managedFiles = @(
+    'Rxdk.XbShellExt.comhost.dll',
+    'Rxdk.XbShellExt.dll',
+    'Rxdk.XbShellExt.UI.dll',
+    'RXDKNeighborhood.Core.dll',
+    'Rxdk.Xbdm.KitServices.dll',
+    'Rxdk.Xbdm.Managed.dll',
+    'Rxdk.Xbdm.Abstractions.dll',
+    'Rxdk.XbShellExt.deps.json',
+    'Rxdk.XbShellExt.runtimeconfig.json'
+)
+foreach ($name in $managedFiles) {
+    $source = Join-Path $buildOut $name
+    if (-not (Test-Path -LiteralPath $source)) {
+        throw "Missing managed build output: $source"
+    }
+    Copy-Item -LiteralPath $source -Destination (Join-Path $installDir $name) -Force
+}
+
+$shellProxyOut = Join-Path $RepoRoot 'out\bin\x64\Release\Rxdk.XbShellExt.Shell.dll'
+$shellProxyDest = Join-Path $installDir 'Rxdk.XbShellExt.Shell.dll'
+if (-not (Test-Path -LiteralPath $shellProxyOut)) {
+    throw "Missing native shell proxy build output: $shellProxyOut"
+}
+if ($shellProxyOut -ne $shellProxyDest) {
+    Copy-Item -LiteralPath $shellProxyOut -Destination $shellProxyDest -Force
+}
+
 Copy-Item -LiteralPath (Join-Path $RepoRoot 'assets\shell\console.ico') -Destination (Join-Path $installDir 'console.ico') -Force
 
-$comHost = Join-Path $installDir 'Rxdk.XbShellExt.comhost.dll'
-if (-not (Test-Path -LiteralPath $comHost)) {
-    throw "Missing $comHost after staging managed shell extension build"
+$requiredStaged = @(
+    'Rxdk.XbShellExt.Shell.dll',
+    'Rxdk.XbShellExt.comhost.dll',
+    'Rxdk.XbShellExt.dll',
+    'Rxdk.XbShellExt.UI.dll',
+    'RXDKNeighborhood.Core.dll',
+    'Rxdk.Xbdm.KitServices.dll',
+    'Rxdk.Xbdm.Managed.dll',
+    'Rxdk.Xbdm.Abstractions.dll',
+    'Rxdk.XbShellExt.runtimeconfig.json',
+    'console.ico'
+)
+foreach ($name in $requiredStaged) {
+    $path = Join-Path $installDir $name
+    if (-not (Test-Path -LiteralPath $path)) {
+        throw "Missing staged installer payload: $path"
+    }
 }
 
 foreach ($required in @('Icon.ico', 'WizardImage.bmp', 'WizardSmallImage.bmp')) {

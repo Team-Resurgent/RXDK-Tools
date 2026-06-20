@@ -20,12 +20,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="..\..\assets\shell\xwmark.bmp" Link="xwmark.bmp">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\..\assets\shell\xheader.bmp" Link="xheader.bmp">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
     <EmbeddedResource Include="..\..\assets\shell\xwmark.bmp" Link="Assets\xwmark.bmp" />
     <EmbeddedResource Include="..\..\assets\shell\xheader.bmp" Link="Assets\xheader.bmp" />
   </ItemGroup>
