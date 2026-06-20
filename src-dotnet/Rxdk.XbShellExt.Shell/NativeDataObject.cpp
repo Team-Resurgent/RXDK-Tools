@@ -151,14 +151,21 @@ namespace
 
             if (cidl > 0 && apidl)
             {
+                // Reserve up front so the vector never reallocates while we add
+                // elements. CComHeapPtr owns its pidl and transfers ownership when
+                // copied; copying/moving it through the vector (e.g. push_back of a
+                // local) leaves two owners and double-frees on destruction (heap
+                // corruption). Default-construct in place and fill via AttachShellPidl
+                // so the CComHeapPtr is never copied.
                 m_childPidls.reserve(cidl);
                 for (UINT i = 0; i < cidl; ++i)
                 {
                     if (!apidl[i])
                         return E_INVALIDARG;
-                    CComHeapPtr<ITEMIDLIST> child;
-                    AttachShellPidl(child, apidl[i]);
-                    m_childPidls.push_back(child);
+                    m_childPidls.emplace_back();
+                    AttachShellPidl(m_childPidls.back(), apidl[i]);
+                    if (!m_childPidls.back())
+                        return E_OUTOFMEMORY;
                 }
             }
 

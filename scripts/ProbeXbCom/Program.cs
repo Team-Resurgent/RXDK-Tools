@@ -93,9 +93,97 @@ if (ProbeNative.TryParseNamespace(out var nsPidl) >= 0 && nsPidl != 0)
 var riid = view2;
 var hrView = ProbeNative.CreateViewObject(comFolder, ref riid, out var viewPtr);
 Console.WriteLine($"CreateViewObject(IShellView2): {F(hrView)} ptr=0x{viewPtr:X}");
+if (viewPtr != 0) Marshal.Release(viewPtr);
+
+// Reproduce folder navigation: root(CC44) -> bind "myxbox" -> bind "C" ->
+// enumerate + exercise per-child UI objects the way DefView does, looped.
+var consoleSegment = Environment.GetEnvironmentVariable("XB_PROBE_CONSOLE") ?? "myxbox";
+var driveSegment = Environment.GetEnvironmentVariable("XB_PROBE_DRIVE") ?? "C";
+var iterations = int.TryParse(Environment.GetEnvironmentVariable("XB_PROBE_ITERS"), out var it) ? it : 10;
+var ops = (Environment.GetEnvironmentVariable("XB_PROBE_OPS") ?? "view,attrs,icon,menu,dataobj")
+    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+bool DoView() => ops.Contains("view");
+bool DoAttrs() => ops.Contains("attrs");
+bool DoIcon() => ops.Contains("icon");
+bool DoMenu() => ops.Contains("menu");
+bool DoDataObj() => ops.Contains("dataobj");
+Console.WriteLine($"ops enabled: {string.Join(',', ops)}");
+var iidCtxMenu = new Guid(ComGuids.ContextMenu);
+var iidExtractIcon = new Guid(ComGuids.ExtractIcon);
+var iidDataObj = new Guid(ComGuids.DataObject);
+var viewGuidA = new Guid("64961751-0835-43C0-8FFE-D57686530E64");
+var viewGuidB = new Guid("8279FEB8-5CA4-45C4-BE27-770DCDEA1DEB");
+
+for (var iter = 0; iter < iterations; iter++)
+{
+    Console.WriteLine($"--- navigate {consoleSegment}\\{driveSegment} (iter {iter}) ---");
+
+    var consolePidl = ProbeNative.CreateSimplePidl(consoleSegment);
+    var hrBindConsole = ProbeNative.BindToObject(comFolder, consolePidl, iidSf, out var consoleSf);
+    ProbeNative.CoTaskMemFree(consolePidl);
+    if (hrBindConsole < 0 || consoleSf == 0) { Console.WriteLine($"  bind {consoleSegment} failed {F(hrBindConsole)}"); break; }
+
+    var drivePidl = ProbeNative.CreateSimplePidl(driveSegment);
+    var hrBindDrive = ProbeNative.BindToObject(consoleSf, drivePidl, iidSf, out var driveSf);
+    ProbeNative.CoTaskMemFree(drivePidl);
+    if (hrBindDrive < 0 || driveSf == 0) { Console.WriteLine($"  bind {driveSegment} failed {F(hrBindDrive)}"); Marshal.Release(consoleSf); break; }
+
+    if (DoView())
+    {
+        var gA = viewGuidA; ProbeNative.CreateViewObject(driveSf, ref gA, out var vA); if (vA != 0) Marshal.Release(vA);
+        var gB = viewGuidB; ProbeNative.CreateViewObject(driveSf, ref gB, out var vB); if (vB != 0) Marshal.Release(vB);
+    }
+
+    const uint shcontf = 0x20 | 0x40; // SHCONTF_FOLDERS | SHCONTF_NONFOLDERS
+    var children = new List<nint>();
+    if (ProbeNative.EnumObjects(driveSf, shcontf, out var enumIdl) >= 0 && enumIdl != 0)
+    {
+        while (ProbeNative.EnumNext(enumIdl, out var childPidl) == 0 && childPidl != 0)
+        {
+            children.Add(childPidl);
+            if (children.Count > 5000) break;
+        }
+        Marshal.Release(enumIdl);
+    }
+
+    foreach (var child in children)
+    {
+        if (DoAttrs())
+        {
+            uint attrs = 0xFFFFFFFF;
+            ProbeNative.GetAttributesOf(driveSf, child, ref attrs);
+        }
+
+        if (DoIcon() && ProbeNative.GetUIObjectOf(driveSf, child, iidExtractIcon, out var icon) >= 0 && icon != 0)
+            Marshal.Release(icon);
+
+        if (DoMenu() && ProbeNative.GetUIObjectOf(driveSf, child, iidCtxMenu, out var menu) >= 0 && menu != 0)
+        {
+            var hmenu = ProbeNative.CreatePopupMenu();
+            ProbeNative.QueryContextMenu(menu, hmenu, 0, 1, 0x7FFF, 0);
+            if (hmenu != 0) ProbeNative.DestroyMenu(hmenu);
+            Marshal.Release(menu);
+        }
+
+        if (DoDataObj() && ProbeNative.GetUIObjectOf(driveSf, child, iidDataObj, out var dobj) >= 0 && dobj != 0)
+            Marshal.Release(dobj);
+    }
+
+    foreach (var child in children) ProbeNative.CoTaskMemFree(child);
+
+    var iidDriveView = view2;
+    if (ProbeNative.CreateViewObject(driveSf, ref iidDriveView, out var driveView) >= 0 && driveView != 0)
+        Marshal.Release(driveView);
+
+    Console.WriteLine($"  iter {iter}: enumerated {children.Count} child item(s), exercised UI objects");
+
+    Marshal.Release(driveSf);
+    Marshal.Release(consoleSf);
+}
+
+Console.WriteLine("navigation probe completed without crash");
 
 Marshal.Release(comFolder);
-if (viewPtr != 0) Marshal.Release(viewPtr);
 
 return (hrDirect >= 0 && directView != 0) || (hrView >= 0 && viewPtr != 0) ? 0 : 1;
 
@@ -103,6 +191,8 @@ internal static class ProbeNative
 {
     [DllImport("ole32.dll")] private static extern int CoInitializeEx(nint r, int f);
     [DllImport("ole32.dll")] private static extern int CoCreateInstance(ref Guid clsid, nint outer, uint ctx, ref Guid iid, out nint ppv);
+    [DllImport("ole32.dll")] private static extern nint CoTaskMemAlloc(nuint cb);
+    [DllImport("ole32.dll")] public static extern void CoTaskMemFree(nint p);
     [DllImport("shell32.dll", CharSet = CharSet.Unicode)] private static extern int SHParseDisplayName(string pszName, nint pbc, out nint ppidl, uint sfgaoIn, out uint psfgaoOut);
     [DllImport("shell32.dll")] public static extern void ILFree(nint pidl);
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode)] private static extern nint LoadLibrary(string name);
@@ -116,6 +206,15 @@ internal static class ProbeNative
 
     [UnmanagedFunctionPointer(CallingConvention.StdCall)] private delegate int InitializeFn(nint self, nint pidl);
     [UnmanagedFunctionPointer(CallingConvention.StdCall)] private delegate int CreateViewObjectFn(nint self, nint hwndOwner, nint riid, out nint ppv);
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)] private delegate int BindToObjectFn(nint self, nint pidl, nint pbc, ref Guid riid, out nint ppv);
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)] private delegate int EnumObjectsFn(nint self, nint hwnd, uint flags, out nint ppenum);
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)] private delegate int EnumNextFn(nint self, uint celt, out nint rgelt, out uint fetched);
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)] private delegate int GetUIObjectOfFn(nint self, nint hwnd, uint cidl, nint apidl, ref Guid riid, nint rgf, out nint ppv);
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)] private delegate int GetAttributesOfFn(nint self, uint cidl, nint apidl, ref uint rgf);
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)] private delegate int QueryContextMenuFn(nint self, nint hmenu, uint indexMenu, uint idCmdFirst, uint idCmdLast, uint flags);
+
+    [DllImport("user32.dll")] public static extern nint CreatePopupMenu();
+    [DllImport("user32.dll")] public static extern int DestroyMenu(nint hMenu);
     [UnmanagedFunctionPointer(CallingConvention.StdCall)] private delegate int CreateShellFolderViewDelegate(ref SfvCreate pcsfv, out nint ppsv);
     [UnmanagedFunctionPointer(CallingConvention.StdCall)] private delegate int CreateShellFolderViewExDelegate(ref Csfv pcsfv, out nint ppsv);
 
@@ -221,6 +320,77 @@ internal static class ProbeNative
         if (proc == 0) return unchecked((int)0x80004005);
         var del = Marshal.GetDelegateForFunctionPointer<CreateShellFolderViewExDelegate>(proc);
         return del(ref csfv, out view);
+    }
+
+    public static nint CreateSimplePidl(string segment)
+    {
+        var bytes = System.Text.Encoding.ASCII.GetBytes(segment + '\0');
+        var cb = (ushort)(sizeof(ushort) + bytes.Length);
+        var total = cb + sizeof(ushort);
+        var pidl = CoTaskMemAlloc((nuint)total);
+        if (pidl == 0) throw new OutOfMemoryException();
+        Marshal.WriteInt16(pidl, (short)cb);
+        Marshal.Copy(bytes, 0, pidl + sizeof(ushort), bytes.Length);
+        Marshal.WriteInt16(pidl + cb, 0);
+        return pidl;
+    }
+
+    public static int BindToObject(nint shellFolder, nint pidl, Guid riid, out nint ppv)
+    {
+        ppv = 0;
+        var vtable = Marshal.ReadIntPtr(shellFolder);
+        var fn = Marshal.GetDelegateForFunctionPointer<BindToObjectFn>(Marshal.ReadIntPtr(vtable, IntPtr.Size * 5));
+        return fn(shellFolder, pidl, 0, ref riid, out ppv);
+    }
+
+    public static int EnumObjects(nint shellFolder, uint flags, out nint ppenum)
+    {
+        ppenum = 0;
+        var vtable = Marshal.ReadIntPtr(shellFolder);
+        var fn = Marshal.GetDelegateForFunctionPointer<EnumObjectsFn>(Marshal.ReadIntPtr(vtable, IntPtr.Size * 4));
+        return fn(shellFolder, 0, flags, out ppenum);
+    }
+
+    public static int EnumNext(nint enumIdList, out nint pidl)
+    {
+        pidl = 0;
+        var vtable = Marshal.ReadIntPtr(enumIdList);
+        var fn = Marshal.GetDelegateForFunctionPointer<EnumNextFn>(Marshal.ReadIntPtr(vtable, IntPtr.Size * 3));
+        return fn(enumIdList, 1, out pidl, out _);
+    }
+
+    public static int GetUIObjectOf(nint shellFolder, nint childPidl, Guid riid, out nint ppv)
+    {
+        ppv = 0;
+        var arr = CoTaskMemAlloc((nuint)IntPtr.Size);
+        Marshal.WriteIntPtr(arr, childPidl);
+        try
+        {
+            var vtable = Marshal.ReadIntPtr(shellFolder);
+            var fn = Marshal.GetDelegateForFunctionPointer<GetUIObjectOfFn>(Marshal.ReadIntPtr(vtable, IntPtr.Size * 10));
+            return fn(shellFolder, 0, 1, arr, ref riid, 0, out ppv);
+        }
+        finally { CoTaskMemFree(arr); }
+    }
+
+    public static int GetAttributesOf(nint shellFolder, nint childPidl, ref uint rgf)
+    {
+        var arr = CoTaskMemAlloc((nuint)IntPtr.Size);
+        Marshal.WriteIntPtr(arr, childPidl);
+        try
+        {
+            var vtable = Marshal.ReadIntPtr(shellFolder);
+            var fn = Marshal.GetDelegateForFunctionPointer<GetAttributesOfFn>(Marshal.ReadIntPtr(vtable, IntPtr.Size * 9));
+            return fn(shellFolder, 1, arr, ref rgf);
+        }
+        finally { CoTaskMemFree(arr); }
+    }
+
+    public static int QueryContextMenu(nint contextMenu, nint hmenu, uint indexMenu, uint idCmdFirst, uint idCmdLast, uint flags)
+    {
+        var vtable = Marshal.ReadIntPtr(contextMenu);
+        var fn = Marshal.GetDelegateForFunctionPointer<QueryContextMenuFn>(Marshal.ReadIntPtr(vtable, IntPtr.Size * 3));
+        return fn(contextMenu, hmenu, indexMenu, idCmdFirst, idCmdLast, flags);
     }
 
     public static int CreateViewObject(nint shellFolder, ref Guid riid, out nint ppv)
