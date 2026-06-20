@@ -28,6 +28,7 @@ public sealed class XboxFolder : IShellFolder, IShellFolder2, IPersistFolder, IP
     private Dictionary<string, XboxShellItem>? _childCache;
     private IReadOnlyList<nint>? _dragPidls;
     private IReadOnlyList<XboxDragEntry>? _dragCatalog;
+    private string? _dragConsoleName;
     private XboxDragTransferSession? _dragTransferSession;
 
     internal string FullPath => _fullPath;
@@ -656,7 +657,7 @@ public sealed class XboxFolder : IShellFolder, IShellFolder2, IPersistFolder, IP
 
             // Explorer may request the descriptor more than once during paste. Reuse the
             // live transfer session instead of disposing and opening another XBDM connection.
-            if (_dragCatalog != null && _dragTransferSession != null && _dragPidls != null &&
+            if (_dragCatalog != null && _dragPidls != null &&
                 DragSelectionMatches(_fullPath, _dragPidls, pidls))
             {
                 phGlobal = XboxDragFormats.CreateFileGroupDescriptor(_dragCatalog);
@@ -666,8 +667,13 @@ public sealed class XboxFolder : IShellFolder, IShellFolder2, IPersistFolder, IP
 
             _dragTransferSession?.PrepareForReplacement();
 
-            (_dragTransferSession, _dragCatalog) = XboxDragTransferSession.Start(selection);
+            using (var catalogConnection = XbdmSession.Connect(selection.ConsoleName))
+                _dragCatalog = XboxDragCatalog.Build(catalogConnection, selection);
+
+            _dragConsoleName = selection.ConsoleName;
+            _dragTransferSession = null;
             _dragPidls = pidls;
+            XboxDragStateCache.Publish(_fullPath, pidls, _dragCatalog, _dragConsoleName);
             phGlobal = XboxDragFormats.CreateFileGroupDescriptor(_dragCatalog);
             ManagedTrace.Line($"GetDragFileGroupDescriptor items={_dragCatalog.Count} firstSize={(_dragCatalog.Count > 0 ? _dragCatalog[0].Size : 0)}");
             return phGlobal == 0 ? HResults.OutOfMemory : HResults.Ok;
@@ -685,8 +691,24 @@ public sealed class XboxFolder : IShellFolder, IShellFolder2, IPersistFolder, IP
         ppStream = 0;
         try
         {
-            if (_dragCatalog == null || _dragPidls == null || _dragTransferSession == null)
-                return HResults.NotImpl;
+            if (_dragCatalog == null &&
+                XboxDragStateCache.TryRestore(_fullPath, out var cached) &&
+                cached != null)
+            {
+                _dragCatalog = cached.Catalog;
+                _dragConsoleName ??= cached.ConsoleName;
+                _dragTransferSession ??= cached.Session;
+            }
+
+            if (_dragCatalog == null)
+            {
+                ManagedTrace.Line($"GetDragFileContentsStream: no drag catalog for '{_fullPath}'");
+                return OleConstants.DvEFormatetc;
+            }
+
+            EnsureDragTransferSession();
+            if (_dragTransferSession == null)
+                return HResults.NoObject;
 
             if (index < 0 || index >= _dragCatalog.Count)
                 return HResults.InvalidArg;
@@ -737,10 +759,23 @@ public sealed class XboxFolder : IShellFolder, IShellFolder2, IPersistFolder, IP
 
     private void ClearDragTransferState()
     {
-        _dragTransferSession?.NotifyOwnerReleased();
+        var session = _dragTransferSession;
         _dragTransferSession = null;
+        session?.NotifyOwnerReleased();
+        if (session != null)
+            XboxDragStateCache.ClearSession(session);
         _dragCatalog = null;
+        _dragConsoleName = null;
         _dragPidls = null;
+    }
+
+    private void EnsureDragTransferSession()
+    {
+        if (_dragTransferSession != null || _dragCatalog == null || string.IsNullOrEmpty(_dragConsoleName))
+            return;
+
+        _dragTransferSession = XboxDragTransferSession.CreateFromCatalog(_dragCatalog, _dragConsoleName);
+        XboxDragStateCache.AttachSession(_dragTransferSession);
     }
 
     private static bool DragSelectionMatches(string folderPath, IReadOnlyList<nint> previous, IReadOnlyList<nint> current)

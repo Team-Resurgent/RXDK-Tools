@@ -206,6 +206,29 @@ namespace
             return m_hDescriptor ? S_OK : E_OUTOFMEMORY;
         }
 
+        bool HasAnyFileContents() const
+        {
+            if (!m_hDescriptor)
+                return false;
+
+            const auto* group = static_cast<const FILEGROUPDESCRIPTORW*>(GlobalLock(m_hDescriptor));
+            if (!group)
+                return false;
+
+            bool hasFile = false;
+            for (UINT i = 0; i < group->cItems; ++i)
+            {
+                if ((group->fgd[i].dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0)
+                {
+                    hasFile = true;
+                    break;
+                }
+            }
+
+            GlobalUnlock(m_hDescriptor);
+            return hasFile;
+        }
+
         bool IsValidFileContentsIndex(LONG index) const
         {
             if (index < 0 || !m_hDescriptor)
@@ -321,15 +344,16 @@ namespace
 
             if (pFormatetc->cfFormat == cfFileContents)
             {
-                if (!(pFormatetc->tymed & TYMED_ISTREAM))
+                if (!(pFormatetc->tymed & (TYMED_ISTREAM | TYMED_HGLOBAL)))
                     return DV_E_TYMED;
-                if (pFormatetc->lindex < 0)
-                    return DV_E_LINDEX;
 
                 CComPtr<IXboxShellExtUi> ui;
                 const HRESULT hr = EnsureDescriptor(ui);
                 if (FAILED(hr))
                     return hr;
+
+                if (pFormatetc->lindex < 0)
+                    return HasAnyFileContents() ? S_OK : DV_E_LINDEX;
 
                 return IsValidFileContentsIndex(pFormatetc->lindex) ? S_OK : DV_E_LINDEX;
             }
@@ -337,7 +361,14 @@ namespace
             return DV_E_FORMATETC;
         }
 
-        STDMETHOD(GetCanonicalFormatEtc)(FORMATETC*, FORMATETC*) { return E_NOTIMPL; }
+        STDMETHOD(GetCanonicalFormatEtc)(FORMATETC* pFormatetcIn, FORMATETC* pFormatetcOut)
+        {
+            if (!pFormatetcIn || !pFormatetcOut)
+                return E_POINTER;
+            // Legacy Xbox Neighborhood returns DATA_S_SAMEFORMATETC. E_NOTIMPL here
+            // makes Explorer abort folder copy to desktop with "Not implemented".
+            return DATA_S_SAMEFORMATETC;
+        }
 
         STDMETHOD(SetData)(FORMATETC* pFormatetc, STGMEDIUM* pMedium, BOOL fRelease)
         {
@@ -380,7 +411,7 @@ namespace
 
             const FORMATETC formats[] = {
                 { cfFileDescW, nullptr, DVASPECT_CONTENT, -1, TYMED_HGLOBAL },
-                { cfFileContents, nullptr, DVASPECT_CONTENT, -1, TYMED_ISTREAM },
+                { cfFileContents, nullptr, DVASPECT_CONTENT, -1, TYMED_ISTREAM | TYMED_HGLOBAL },
                 { cfXbox, nullptr, DVASPECT_CONTENT, -1, TYMED_HGLOBAL },
                 { cfPreferred, nullptr, DVASPECT_CONTENT, -1, TYMED_HGLOBAL },
             };
