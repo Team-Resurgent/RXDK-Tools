@@ -66,7 +66,7 @@ try {
 
     Write-Host 'Removing shell extension registry keys...'
 
-    Clear-XbShellExtRegistry
+    Clear-XbShellExtRegistry -ClearUserData
 
 
 

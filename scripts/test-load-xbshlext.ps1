@@ -55,10 +55,6 @@ $targets = if ($OnlyComHost) {
 }
 else {
     @(
-        'Rxdk.Xbdm.Abstractions.dll',
-        'Rxdk.Xbdm.Managed.dll',
-        'Rxdk.Xbdm.KitServices.dll',
-        'RXDKNeighborhood.Core.dll',
         'Rxdk.XbShellExt.dll',
         'Rxdk.XbShellExt.comhost.dll'
     )

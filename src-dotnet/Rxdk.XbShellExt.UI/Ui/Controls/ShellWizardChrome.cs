@@ -69,37 +69,20 @@ public sealed partial class ShellWizardChrome : UserControl
 
     private void LoadWizardImages()
     {
-        bannerPicture.Image = LoadBitmap("xwmark.bmp");
-        headerLogo.Image = LoadBitmap("xheader.bmp");
+        bannerPicture.Image = LoadEmbeddedBitmap("Rxdk.XbShellExt.Assets.xwmark.bmp");
+        headerLogo.Image = LoadEmbeddedBitmap("Rxdk.XbShellExt.Assets.xheader.bmp");
     }
 
-    private static Image? LoadBitmap(string fileName)
+    private static Image? LoadEmbeddedBitmap(string resourceName)
     {
         try
         {
-            var assembly = Assembly.GetExecutingAssembly();
-            var resourceName = assembly.GetManifestResourceNames()
-                .FirstOrDefault(name => name.EndsWith('.' + fileName, StringComparison.OrdinalIgnoreCase));
-            if (resourceName != null)
-            {
-                using var stream = assembly.GetManifestResourceStream(resourceName);
-                if (stream != null)
-                    return Image.FromStream(stream);
-            }
-
-            var dir = Path.GetDirectoryName(assembly.Location);
-            if (!string.IsNullOrEmpty(dir))
-            {
-                var path = Path.Combine(dir, fileName);
-                if (File.Exists(path))
-                    return Image.FromFile(path);
-            }
+            using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(resourceName);
+            return stream != null ? Image.FromStream(stream) : null;
         }
         catch
         {
             return null;
         }
-
-        return null;
     }
 }

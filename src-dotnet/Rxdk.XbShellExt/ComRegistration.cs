@@ -1,5 +1,3 @@
-using System.Reflection;
-
 using Microsoft.Win32;
 
 using Rxdk.XbShellExt.Com;
@@ -64,7 +62,7 @@ public static class ComRegistration
 
     {
 
-        var assemblyDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
+        var assemblyDir = AppContext.BaseDirectory;
 
         var comHost = Path.Combine(assemblyDir, "Rxdk.XbShellExt.comhost.dll");
 
@@ -74,7 +72,7 @@ public static class ComRegistration
 
 
 
-        return Assembly.GetExecutingAssembly().Location;
+        return Path.Combine(AppContext.BaseDirectory, "Rxdk.XbShellExt.dll");
 
     }
 

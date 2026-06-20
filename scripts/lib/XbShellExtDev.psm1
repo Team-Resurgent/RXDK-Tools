@@ -562,7 +562,7 @@ function Repair-XbShellExtManagedRegistry {
     Set-ItemProperty -LiteralPath $inprocKey -Name 'ThreadingModel' -Value 'Apartment'
 }
 
-function Clear-XbShellExtRegistry {
+function Clear-XbShellExtRegistration {
     $publicClsid = 'DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44'
     $managedClsid = 'DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC45'
 
@@ -580,7 +580,18 @@ function Clear-XbShellExtRegistry {
     Remove-Item -LiteralPath "Registry::HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Desktop\NameSpace\{$publicClsid}" -Recurse -Force -ErrorAction SilentlyContinue
     Remove-Item -LiteralPath "Registry::HKEY_CURRENT_USER\Software\Classes\CLSID\{$publicClsid}" -Recurse -Force -ErrorAction SilentlyContinue
     Remove-ItemProperty -LiteralPath 'Registry::HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\HideDesktopIcons\NewStartPanel' -Name "{$publicClsid}" -ErrorAction SilentlyContinue
-    Remove-Item -LiteralPath 'Registry::HKEY_CURRENT_USER\Software\Microsoft\XboxSDK\xbshlext' -Recurse -Force -ErrorAction SilentlyContinue
+}
+
+function Clear-XbShellExtRegistry {
+    param(
+        [switch]$ClearUserData
+    )
+
+    Clear-XbShellExtRegistration
+
+    if ($ClearUserData) {
+        Remove-Item -LiteralPath 'Registry::HKEY_CURRENT_USER\Software\Microsoft\XboxSDK\xbshlext' -Recurse -Force -ErrorAction SilentlyContinue
+    }
 }
 
 function Enable-ExplorerNavPaneShowAllFolders {
@@ -767,6 +778,7 @@ Export-ModuleMember -Function @(
     'Repair-XbShellExtNavPaneUserState',
     'Repair-XbShellExtManagedRegistry',
     'Enable-ExplorerNavPaneShowAllFolders',
+    'Clear-XbShellExtRegistration',
     'Clear-XbShellExtRegistry',
     'Open-XbShellExtNamespace',
     'Test-ProgramFilesPath',
