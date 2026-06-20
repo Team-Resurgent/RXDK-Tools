@@ -58,6 +58,7 @@ namespace NativeFolderOps
     HRESULT CompareSimplePidls(LPCITEMIDLIST pidl1, LPCITEMIDLIST pidl2);
     std::string GetNamespaceRelativePath(LPCITEMIDLIST pidl);
     ULONG GetChildAttributes(LPCSTR segment);
+    bool CanCreateNewFolderInFolder(LPCITEMIDLIST folderPidl);
     HRESULT GetDisplayName(LPCITEMIDLIST pidl, DWORD uFlags, STRRET* pName);
     HRESULT GetDetailsOf(LPCITEMIDLIST pidl, UINT iColumn, SHELLDETAILS* psd);
     HRESULT EnumRootObjects(DWORD grfFlags, std::vector<LPITEMIDLIST>& pidls);
