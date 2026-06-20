@@ -68,9 +68,9 @@ public sealed class ManagedXbdmConnection : IXbdmConnection
         if (size > uint.MaxValue)
             throw XbdmException.FromHResult("File is too large for XBDM transfer.", XbdmHResults.FileError);
 
-        var (hr, _) = _session.SendCommandRaw($"SENDFILE NAME=\"{wirePath}\" LENGTH=0x{(uint)size:x}");
+        var (hr, line) = _session.SendCommandRaw($"SENDFILE NAME=\"{wirePath}\" LENGTH=0x{(uint)size:x}");
         if (!XbdmProtocol.IsCommandSuccess(hr))
-            throw XbdmException.FromHResult($"Could not send '{localPath}'.", hr);
+            throw XbdmException.FromHResult($"Could not send '{localPath}' to '{wirePath}'.", hr, line);
 
         var buffer = new byte[8192];
         using (var stream = fileInfo.OpenRead())
@@ -85,11 +85,9 @@ public sealed class ManagedXbdmConnection : IXbdmConnection
 
     public void ReceiveFile(string wirePath, string localPath)
     {
-        var (hr, _) = _session.SendCommandRaw($"GETFILE NAME=\"{wirePath}\"");
-        if (!XbdmProtocol.IsCommandSuccess(hr))
-            throw XbdmException.FromHResult($"Could not receive '{wirePath}'.", hr);
+        using var receiver = OpenFileReceiver(wirePath);
+        receiver.Start();
 
-        var size = _session.ReceiveUInt32();
         var directory = Path.GetDirectoryName(localPath);
         if (!string.IsNullOrEmpty(directory))
             Directory.CreateDirectory(directory);
@@ -98,14 +96,9 @@ public sealed class ManagedXbdmConnection : IXbdmConnection
         try
         {
             using var stream = File.Create(localPath);
-            var remaining = size;
-            while (remaining > 0)
-            {
-                var chunk = (int)Math.Min(remaining, buffer.Length);
-                _session.ReceiveBinary(buffer.AsSpan(0, chunk));
-                stream.Write(buffer, 0, chunk);
-                remaining -= (uint)chunk;
-            }
+            int read;
+            while ((read = receiver.Read(buffer)) > 0)
+                stream.Write(buffer, 0, read);
         }
         catch
         {
@@ -114,6 +107,8 @@ public sealed class ManagedXbdmConnection : IXbdmConnection
             throw;
         }
     }
+
+    public XbdmFileReceiver OpenFileReceiver(string wirePath) => new(_session, wirePath);
 
     public void Delete(string wirePath, bool isDirectory)
     {
@@ -451,6 +446,12 @@ public sealed class ManagedXbdmConnection : IXbdmConnection
     {
         _sci.UseSharedConnection(enable);
     }
+
+    /// <summary>Used by the shell extension native bridge.</summary>
+    public (int HResult, string Line) TrySendCommandRaw(string command) => _session.SendCommandRaw(command);
+
+    /// <summary>Used by the shell extension native bridge.</summary>
+    public string SendCommandLine(string command) => _session.SendCommand(command);
 
     public void Dispose()
     {

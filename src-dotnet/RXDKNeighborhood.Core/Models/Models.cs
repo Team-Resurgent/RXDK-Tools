@@ -1,60 +1,28 @@
 namespace RXDKNeighborhood.Core.Models;
 
-public sealed class ConsoleInfo
-{
-    public required string Name { get; init; }
-    public DateTimeOffset Added { get; init; }
-}
+public class ConsoleInfo : Rxdk.Xbdm.KitServices.Models.ConsoleInfo;
 
-public sealed class ConsoleRegistryData
-{
-    public string? DefaultConsole { get; set; }
-    public List<ConsoleInfo> Consoles { get; set; } = new();
-}
+public class ConsoleRegistryData : Rxdk.Xbdm.KitServices.Models.ConsoleRegistryData;
 
-public sealed class FileEntryModel
-{
-    public required string Name { get; init; }
-    public required string Type { get; init; }
-    public ulong Size { get; init; }
-    public DateTimeOffset? Modified { get; init; }
-    public bool IsDirectory { get; init; }
-}
+public class FileEntryModel : Rxdk.Xbdm.KitServices.Models.FileEntryModel;
 
 public enum FileClipboardOperation
 {
-    None,
-    Cut,
-    Copy,
+    None = Rxdk.Xbdm.KitServices.Models.FileClipboardOperation.None,
+    Cut = Rxdk.Xbdm.KitServices.Models.FileClipboardOperation.Cut,
+    Copy = Rxdk.Xbdm.KitServices.Models.FileClipboardOperation.Copy,
 }
 
-public sealed class FileSelection
-{
-    public required string ConsoleName { get; init; }
-    public required string FolderDisplayPath { get; init; }
-    public required IReadOnlyList<FileSelectionItem> Items { get; init; }
-}
+public class FileSelection : Rxdk.Xbdm.KitServices.Models.FileSelection;
 
-public sealed class FileSelectionItem
-{
-    public required string Name { get; init; }
-    public required string WirePath { get; init; }
-    public bool IsDirectory { get; init; }
-}
+public class FileSelectionItem : Rxdk.Xbdm.KitServices.Models.FileSelectionItem;
 
 public enum NavigationNodeKind
 {
-    Root,
-    Console,
-    Drive,
-    Folder
+    Root = Rxdk.Xbdm.KitServices.Models.NavigationNodeKind.Root,
+    Console = Rxdk.Xbdm.KitServices.Models.NavigationNodeKind.Console,
+    Drive = Rxdk.Xbdm.KitServices.Models.NavigationNodeKind.Drive,
+    Folder = Rxdk.Xbdm.KitServices.Models.NavigationNodeKind.Folder,
 }
 
-public sealed class NavigationNode
-{
-    public required NavigationNodeKind Kind { get; init; }
-    public required string DisplayPath { get; init; }
-    public required string ConsoleName { get; init; }
-    public required string Title { get; init; }
-    public List<NavigationNode> Children { get; init; } = new();
-}
+public class NavigationNode : Rxdk.Xbdm.KitServices.Models.NavigationNode;

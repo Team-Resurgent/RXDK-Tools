@@ -11,7 +11,6 @@ Host-tool **project sources** and `.vcxproj` files live under `src/`.
 | `xbfile/` | Shared file helpers |
 | `xbcp/`, `xbdir/`, `xbecopy/`, `xbmkdir/` | CLI file tools |
 | `xbox-launch/` | Launch helper |
-| `xbshlext/` | Shell extension → `out/bin/x64/Release/xbshlext.dll` |
 | `xbWatson/` | Break notification UI |
 | `imagebld/` | Xbox Image File Builder (`imagebld.exe`; XBE signing via `xcbase.c` / `umkm.h`) |
 | `xrsa/` | Source-built RSA/crypto library (`xrsa.lib`) |

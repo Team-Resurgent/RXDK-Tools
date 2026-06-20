@@ -1,0 +1,213 @@
+using Rxdk.XbShellExt.Diagnostics;
+using Rxdk.XbShellExt.Interop;
+using Rxdk.XbShellExt.Ui;
+using Rxdk.Xbdm.KitServices.Services;
+using Rxdk.Xbdm.KitServices.Stores;
+using Rxdk.Xbdm.Managed;
+
+namespace Rxdk.XbShellExt.Shell;
+
+internal static class ShellCommandService
+{
+    private static FileClipboardService Clipboard => ShellClipboardOperations.SharedClipboard;
+    private static FileOperationsService FileOps => ShellClipboardOperations.SharedFileOps;
+
+    public static void Execute(nint hwnd, string folderPath, nint folderPidl, nint childPidl, ShellContextCommand command)
+    {
+        ManagedTrace.Line($"ShellCommandService.Execute folder='{folderPath}' command={command}");
+        try
+        {
+            var selectionPath = ShellSelectionBuilder.GetSelectionPath(folderPath, childPidl);
+            var host = new ShellFileOperationHost(hwnd);
+
+            switch (command)
+            {
+                case ShellContextCommand.Cut:
+                    ExecuteCut(folderPath, childPidl, host);
+                    break;
+                case ShellContextCommand.Copy:
+                    ExecuteCopy(folderPath, childPidl, host);
+                    break;
+                case ShellContextCommand.Paste:
+                    ExecutePaste(folderPath, childPidl, host);
+                    break;
+                case ShellContextCommand.Delete:
+                    ExecuteDelete(folderPath, childPidl, host);
+                    break;
+                case ShellContextCommand.Rename:
+                    ExecuteRename(folderPath, childPidl, host);
+                    break;
+                case ShellContextCommand.NewFolder:
+                    ExecuteNewFolder(folderPath, host);
+                    break;
+                case ShellContextCommand.Launch:
+                    ExecuteLaunch(folderPath, childPidl, host);
+                    break;
+                case ShellContextCommand.SetDefaultConsole:
+                    ExecuteSetDefault(selectionPath ?? folderPath, host);
+                    break;
+                case ShellContextCommand.RemoveConsole:
+                    ExecuteRemoveConsole(selectionPath ?? folderPath, host);
+                    break;
+                case ShellContextCommand.RebootWarm:
+                    ExecuteReboot(selectionPath ?? folderPath, cold: false, sameTitle: false, host);
+                    break;
+                case ShellContextCommand.RebootSameTitle:
+                    ExecuteReboot(selectionPath ?? folderPath, cold: false, sameTitle: true, host);
+                    break;
+                case ShellContextCommand.RebootCold:
+                    ExecuteReboot(selectionPath ?? folderPath, cold: true, sameTitle: false, host);
+                    break;
+                case ShellContextCommand.CaptureScreenshot:
+                    ExecuteCapture(selectionPath ?? folderPath, hwnd, host);
+                    break;
+            }
+
+            if (ShouldRefreshFolder(command))
+                NotifyFolderRefresh(folderPidl, folderPath);
+        }
+        catch (Exception ex)
+        {
+            ManagedTrace.Line($"ShellCommandService.Execute threw {ex.GetType().Name}: {ex.Message}");
+            ShellUiHost.ShowError(hwnd, ex.Message);
+        }
+    }
+
+    private static bool ShouldRefreshFolder(ShellContextCommand command) => command switch
+    {
+        ShellContextCommand.Paste => true,
+        ShellContextCommand.Delete => true,
+        ShellContextCommand.Rename => true,
+        ShellContextCommand.NewFolder => true,
+        _ => false,
+    };
+
+    private static void ExecuteCut(string folderPath, nint childPidl, ShellFileOperationHost host)
+    {
+        var selection = ShellSelectionBuilder.BuildFileSelection(folderPath, childPidl);
+        if (selection == null)
+            return;
+
+        ShellClipboardOperations.SetCutCopy(selection, cut: true);
+    }
+
+    private static void ExecuteCopy(string folderPath, nint childPidl, ShellFileOperationHost host)
+    {
+        var selection = ShellSelectionBuilder.BuildFileSelection(folderPath, childPidl);
+        if (selection == null)
+            return;
+
+        ShellClipboardOperations.SetCutCopy(selection, cut: false);
+    }
+
+    private static void ExecutePaste(string folderPath, nint childPidl, ShellFileOperationHost host)
+    {
+        if (!ShellClipboardOperations.TryPaste(folderPath, childPidl, host))
+            host.ShowError("There is nothing to paste.");
+    }
+
+    private static void ExecuteDelete(string folderPath, nint childPidl, ShellFileOperationHost host)
+    {
+        var selection = ShellSelectionBuilder.BuildFileSelection(folderPath, childPidl);
+        if (selection == null)
+            return;
+
+        FileOps.DeleteAsync(selection, host).GetAwaiter().GetResult();
+    }
+
+    private static void ExecuteRename(string folderPath, nint childPidl, ShellFileOperationHost host)
+    {
+        var selection = ShellSelectionBuilder.BuildFileSelection(folderPath, childPidl);
+        if (selection == null || selection.Items.Count != 1)
+        {
+            host.ShowInfo("Select exactly one item to rename.");
+            return;
+        }
+
+        var currentName = selection.Items[0].Name.TrimEnd(':');
+        var newName = host.PromptRenameAsync(currentName).GetAwaiter().GetResult();
+        if (string.IsNullOrWhiteSpace(newName) || string.Equals(newName, currentName, StringComparison.OrdinalIgnoreCase))
+            return;
+
+        FileOps.Rename(selection, newName);
+    }
+
+    private static void ExecuteNewFolder(string folderPath, ShellFileOperationHost host)
+    {
+        var consoleName = WirePathService.GetConsoleNameFromDisplayPath(folderPath);
+        FileOps.CreateNewFolder(consoleName, folderPath);
+    }
+
+    private static void ExecuteLaunch(string folderPath, nint childPidl, ShellFileOperationHost host)
+    {
+        var selection = ShellSelectionBuilder.BuildFileSelection(folderPath, childPidl);
+        if (selection == null)
+            return;
+
+        FileOps.LaunchXbe(selection);
+        host.ShowInfo("Launch command sent.");
+    }
+
+    private static void ExecuteSetDefault(string consolePath, ShellFileOperationHost host)
+    {
+        if (string.IsNullOrWhiteSpace(consolePath) || consolePath.Contains('\\'))
+            throw new InvalidOperationException("Select a console to set as default.");
+
+        new ShellExtensionConsoleStore().SetDefaultConsole(consolePath);
+        host.ShowInfo($"'{consolePath}' is now the default console.");
+    }
+
+    private static void ExecuteRemoveConsole(string consolePath, ShellFileOperationHost host)
+    {
+        if (string.IsNullOrWhiteSpace(consolePath) || consolePath.Contains('\\'))
+            throw new InvalidOperationException("Select a console to remove.");
+
+        new ShellExtensionConsoleStore().RemoveConsole(consolePath);
+        host.ShowInfo($"Removed console '{consolePath}'.");
+    }
+
+    private static void ExecuteReboot(string consolePath, bool cold, bool sameTitle, ShellFileOperationHost host)
+    {
+        if (string.IsNullOrWhiteSpace(consolePath) || consolePath.Contains('\\'))
+            throw new InvalidOperationException("Select a console to reboot.");
+
+        string? launch = null;
+        if (sameTitle)
+        {
+            using var conn = XbdmSession.Connect(consolePath);
+            launch = conn.GetXbeLaunchPath();
+        }
+
+        FileOps.Reboot(consolePath, cold, launch);
+        host.ShowInfo("Reboot command sent.");
+    }
+
+    private static void ExecuteCapture(string consolePath, nint hwnd, ShellFileOperationHost host)
+    {
+        if (string.IsNullOrWhiteSpace(consolePath) || consolePath.Contains('\\'))
+            throw new InvalidOperationException("Select a console to capture.");
+
+        using var dialog = new SaveFileDialog
+        {
+            Title = "Save screenshot",
+            Filter = "Bitmap (*.bmp)|*.bmp",
+            FileName = $"{consolePath}-screenshot.bmp",
+            DefaultExt = "bmp",
+        };
+
+        if (dialog.ShowDialog(System.Windows.Forms.NativeWindow.FromHandle(hwnd)) != DialogResult.OK)
+            return;
+
+        using var conn = XbdmSession.Connect(consolePath);
+        conn.CaptureScreenshot(dialog.FileName);
+        host.ShowInfo("Screenshot saved.");
+    }
+
+    private static void NotifyFolderRefresh(nint folderPidl, string folderPath)
+    {
+        if (folderPidl != 0)
+            ShellFolderNotify.RefreshFolder(folderPidl);
+        else
+            ShellFolderNotify.RefreshDisplayFolder(folderPath);
+    }
+}

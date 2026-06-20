@@ -21,7 +21,7 @@ OutputBaseFilename=XboxNeighborhood-Setup
 SetupIconFile=Icon.ico
 WizardImageFile=WizardImage.bmp
 WizardSmallImageFile=WizardSmallImage.bmp
-UninstallDisplayIcon={app}\xbshlext.dll,13
+UninstallDisplayIcon={app}\console.ico
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
@@ -36,11 +36,20 @@ MinVersion=10.0
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Files]
-Source: "..\out\bin\x64\Release\xbshlext.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\out\bin\x64\Release\Rxdk.XbShellExt.comhost.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\out\bin\x64\Release\Rxdk.XbShellExt.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\out\bin\x64\Release\Rxdk.XbShellExt.deps.json"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
+Source: "..\out\bin\x64\Release\Rxdk.XbShellExt.runtimeconfig.json"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
+Source: "..\out\bin\x64\Release\RXDKNeighborhood.Core.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\out\bin\x64\Release\Rxdk.Xbdm.KitServices.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\out\bin\x64\Release\Rxdk.Xbdm.Managed.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\out\bin\x64\Release\Rxdk.Xbdm.Abstractions.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\out\bin\x64\Release\console.ico"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\out\bin\x64\Release\*.deps.json"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 
 [Icons]
-Name: "{group}\{#MyAppName}"; Filename: "{win}\explorer.exe"; Parameters: "shell:::{{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}}"; IconFilename: "{app}\xbshlext.dll"; IconIndex: 13
-Name: "{commondesktop}\{#MyAppName}"; Filename: "{win}\explorer.exe"; Parameters: "shell:::{{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}}"; IconFilename: "{app}\xbshlext.dll"; IconIndex: 13
+Name: "{group}\{#MyAppName}"; Filename: "{win}\explorer.exe"; Parameters: "shell:::{{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}}"; IconFilename: "{app}\console.ico"
+Name: "{commondesktop}\{#MyAppName}"; Filename: "{win}\explorer.exe"; Parameters: "shell:::{{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}}"; IconFilename: "{app}\console.ico"
 
 [Code]
 var
@@ -254,7 +263,9 @@ begin
   if InstallPath = '' then
     Exit;
 
-  Result := InstallPath + '\xbshlext.dll';
+  Result := InstallPath + '\Rxdk.XbShellExt.comhost.dll';
+  if not FileExists(Result) then
+    Result := InstallPath + '\xbshlext.dll';
   if not FileExists(Result) then
     Result := '';
 end;
@@ -365,7 +376,9 @@ begin
 
   RequireAdminInstallMode;
 
-  DllPath := ExpandConstant('{app}\xbshlext.dll');
+  DllPath := ExpandConstant('{app}\Rxdk.XbShellExt.comhost.dll');
+  if not FileExists(DllPath) then
+    DllPath := ExpandConstant('{app}\xbshlext.dll');
   ResultCode := RunRegsvr32(DllPath, False);
   if ResultCode <> 0 then
     RaiseException(Regsvr32ErrorMessage('regsvr32', ResultCode));
@@ -382,7 +395,9 @@ begin
 
   RequireAdminInstallMode;
 
-  DllPath := ExpandConstant('{app}\xbshlext.dll');
+  DllPath := ExpandConstant('{app}\Rxdk.XbShellExt.comhost.dll');
+  if not FileExists(DllPath) then
+    DllPath := ExpandConstant('{app}\xbshlext.dll');
   UnregisterShellExtension(DllPath);
   RemoveXboxNeighborhoodShortcuts;
   EnsureExplorerRunning;

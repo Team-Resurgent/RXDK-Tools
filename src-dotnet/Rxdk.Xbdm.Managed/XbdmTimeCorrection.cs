@@ -31,10 +31,19 @@ internal static class XbdmTimeCorrection
             }
             catch (XbdmException retry) when (retry.HResultCode == XbdmHResults.ClockNotSet)
             {
-                sci.GotTimeCorrection = true;
-                sci.BadSysTime = true;
+                MarkBadSysTime(sci);
             }
         }
+        catch (XbdmException)
+        {
+            MarkBadSysTime(sci);
+        }
+    }
+
+    private static void MarkBadSysTime(XbdmSci sci)
+    {
+        sci.GotTimeCorrection = true;
+        sci.BadSysTime = true;
     }
 
     internal static void CorrectFromConsole(XbdmSci sci, ref uint high, ref uint low)

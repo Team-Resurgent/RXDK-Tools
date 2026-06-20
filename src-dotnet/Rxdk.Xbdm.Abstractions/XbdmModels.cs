@@ -25,11 +25,40 @@ public static class XbdmConstants
 
 public sealed record XbdmAbiInfo(uint AbiVersion, uint Build);
 
-public sealed record XbdmDirEntry(
-    string Name,
-    ulong Size,
-    uint Attributes,
-    long ChangeTimeUnix,
-    long? CreationTimeUnix = null);
+public sealed record XbdmDirEntry
+{
+    public string Name { get; set; } = "";
+    public ulong Size { get; set; }
+    public uint Attributes { get; set; }
+    public long ChangeTimeUnix { get; set; }
+    public long? CreationTimeUnix { get; set; }
 
-public sealed record XbdmUser(string UserName, uint AccessPrivileges);
+    public XbdmDirEntry()
+    {
+    }
+
+    public XbdmDirEntry(string name, ulong size, uint attributes, long changeTimeUnix, long? creationTimeUnix = null)
+    {
+        Name = name;
+        Size = size;
+        Attributes = attributes;
+        ChangeTimeUnix = changeTimeUnix;
+        CreationTimeUnix = creationTimeUnix;
+    }
+}
+
+public sealed record XbdmUser
+{
+    public string UserName { get; set; } = "";
+    public uint AccessPrivileges { get; set; }
+
+    public XbdmUser()
+    {
+    }
+
+    public XbdmUser(string userName, uint accessPrivileges)
+    {
+        UserName = userName;
+        AccessPrivileges = accessPrivileges;
+    }
+}

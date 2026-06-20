@@ -83,6 +83,14 @@ public sealed class XbdmConnection : IDisposable
 
     public void SendFile(string localPath, string wirePath) => _inner.SendFile(localPath, wirePath);
     public void ReceiveFile(string wirePath, string localPath) => _inner.ReceiveFile(wirePath, localPath);
+
+    public XbdmFileReceiver OpenFileReceiver(string wirePath)
+    {
+        if (_inner is ManagedXbdmConnection managed)
+            return managed.OpenFileReceiver(wirePath);
+
+        throw new NotSupportedException("Streaming receive requires the managed XBDM connection.");
+    }
     public void Delete(string wirePath, bool isDirectory) => _inner.Delete(wirePath, isDirectory);
     public void Rename(string fromWire, string toWire) => _inner.Rename(fromWire, toWire);
     public void CreateDirectory(string wirePath) => _inner.CreateDirectory(wirePath);
@@ -113,6 +121,20 @@ public sealed class XbdmConnection : IDisposable
     public void SetAdminPassword(string password) => _inner.SetAdminPassword(password);
     public void UseSecureConnection(string password) => _inner.UseSecureConnection(password);
     public void UseSharedConnection(bool enable) => _inner.UseSharedConnection(enable);
+
+    public (int HResult, string Line) TrySendCommandRaw(string command)
+    {
+        if (_inner is ManagedXbdmConnection managed)
+            return managed.TrySendCommandRaw(command);
+        throw new NotSupportedException("Raw commands require the managed XBDM connection.");
+    }
+
+    public string SendCommandLine(string command)
+    {
+        if (_inner is ManagedXbdmConnection managed)
+            return managed.SendCommandLine(command);
+        throw new NotSupportedException("Raw commands require the managed XBDM connection.");
+    }
 
     public void Dispose() => _inner.Dispose();
 }
