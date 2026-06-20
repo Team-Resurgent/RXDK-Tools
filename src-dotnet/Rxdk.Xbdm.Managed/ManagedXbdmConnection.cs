@@ -26,26 +26,11 @@ public sealed class ManagedXbdmConnection : IXbdmConnection
 
     internal void SyncConsoleClock() => XbdmTimeCorrection.SyncConsoleClock(_sci);
 
-    public IReadOnlyList<char> ListDrives()
-    {
-        var line = _session.SendCommand("DRIVELIST");
-        const string prefix = "200- ";
-        if (!line.StartsWith(prefix, StringComparison.Ordinal))
-            throw XbdmException.FromHResult("Unexpected DRIVELIST response.", XbdmHResults.FileError, line);
+    public IReadOnlyList<char> ListDrives() =>
+        XbdmSessionBrowseOps.ListDrives(_session);
 
-        return line[prefix.Length..].ToCharArray();
-    }
-
-    public IReadOnlyList<XbdmDirEntry> ListDirectory(string wirePath, int maxEntries = 512)
-    {
-        _session.SendCommand($"DIRLIST NAME=\"{wirePath}\"");
-        XbdmTimeCorrection.Ensure(_sci);
-        return _session.ReadMultiresponse()
-            .Take(maxEntries)
-            .Select(line => XbdmProtocol.ParseDmfaLine(line, _sci))
-            .Where(e => !string.IsNullOrEmpty(e.Name))
-            .ToArray();
-    }
+    public IReadOnlyList<XbdmDirEntry> ListDirectory(string wirePath, int maxEntries = 512) =>
+        XbdmSessionBrowseOps.ListDirectory(_sci, _session, wirePath, maxEntries);
 
     public XbdmDirEntry GetFileAttributes(string wirePath)
     {
@@ -54,7 +39,7 @@ public sealed class ManagedXbdmConnection : IXbdmConnection
         if (lines.Count == 0)
             throw XbdmException.FromHResult($"Could not get attributes for '{wirePath}'.", XbdmHResults.FileError);
 
-        XbdmTimeCorrection.Ensure(_sci);
+        XbdmTimeCorrection.Ensure(_sci, _session);
         return XbdmProtocol.ParseDmfaLine(lines[0], _sci);
     }
 
@@ -149,17 +134,8 @@ public sealed class ManagedXbdmConnection : IXbdmConnection
 
     public void Reboot(uint flags) => _debug.Reboot(flags);
 
-    public (ulong FreeBytes, ulong TotalBytes) GetDiskFreeSpace(string driveWire)
-    {
-        var (hr, line) = _session.SendCommandRaw($"DRIVEFREESPACE NAME=\"{driveWire}\"");
-        if (!XbdmProtocol.IsCommandSuccess(hr))
-            throw XbdmException.FromHResult($"Could not read disk space for '{driveWire}'.", hr, line);
-
-        if (hr == XbdmHResults.Multiresponse)
-            return XbdmProtocol.ParseDiskFreeSpaceLines(_session.ReadMultiresponse());
-
-        return XbdmProtocol.ParseDiskFreeSpaceLines([XbdmProtocol.StripResponsePrefix(line)]);
-    }
+    public (ulong FreeBytes, ulong TotalBytes) GetDiskFreeSpace(string driveWire) =>
+        XbdmSessionBrowseOps.GetDiskFreeSpace(_session, driveWire);
 
     public uint? TryResolveXboxAddress()
     {
@@ -466,6 +442,8 @@ public sealed class ManagedXbdmConnection : IXbdmConnection
 
     /// <summary>Used by the shell extension native bridge.</summary>
     public string SendCommandLine(string command) => _session.SendCommand(command);
+
+    internal void SetConversationTimeout(TimeSpan timeout) => _session.SetReadTimeout(timeout);
 
     public void Dispose()
     {

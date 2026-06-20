@@ -380,8 +380,11 @@ public interface IShellFolderViewCB
 
 internal static partial class NativeMethods
 {
+    public const uint ShChangeNotifyDelete = 0x00000002;
     public const uint ShChangeNotifyMkdir = 0x00000008;
+    public const uint ShChangeNotifyRmdir = 0x00000010;
     public const uint ShChangeNotifyUpdatedir = 0x00001000;
+    public const uint ShcnfIdList = 0x0000;
     public const uint ShcnfPath = 0x0001;
     public const uint ShcnfFlush = 0x1000;
 

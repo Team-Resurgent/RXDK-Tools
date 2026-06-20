@@ -62,15 +62,16 @@ public class FileOperationsService
             _clipboard.Clear();
     }
 
-    public async Task DeleteAsync(FileSelection selection, IFileOperationHost host)
+    public async Task<bool> DeleteAsync(FileSelection selection, IFileOperationHost host)
     {
         if (selection.Items.Count == 0)
-            return;
+            return false;
 
         if (!await host.ConfirmDeleteAsync(selection.Items))
-            return;
+            return false;
 
         DeleteSelectionWithoutPrompt(selection);
+        return true;
     }
 
     public void DeleteSelectionWithoutPrompt(FileSelection selection)

@@ -134,6 +134,12 @@ public sealed class XbdmConnection : IDisposable
     public void UseSecureConnection(string password) => _inner.UseSecureConnection(password);
     public void UseSharedConnection(bool enable) => _inner.UseSharedConnection(enable);
 
+    public void SetConversationTimeout(TimeSpan timeout)
+    {
+        if (_inner is ManagedXbdmConnection managed)
+            managed.SetConversationTimeout(timeout);
+    }
+
     public (int HResult, string Line) TrySendCommandRaw(string command)
     {
         if (_inner is ManagedXbdmConnection managed)

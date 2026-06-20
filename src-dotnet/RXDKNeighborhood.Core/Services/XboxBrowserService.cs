@@ -62,6 +62,7 @@ public sealed class XboxBrowserService : IDisposable
             throw new InvalidOperationException($"Invalid display path: {displayPath}");
 
         using var conn = XbdmSession.Connect(consoleName);
+        conn.SetConversationTimeout(TimeSpan.FromSeconds(45));
         return conn.ListDirectory(wirePath).Select(ToFileEntry).ToArray();
     }
 

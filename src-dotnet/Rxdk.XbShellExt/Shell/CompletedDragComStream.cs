@@ -27,8 +27,6 @@ internal sealed class CompletedDragComStream : INativeComStream, IDisposable
         ManagedTrace.Line($"TransferReplay path='{_wirePath}' size={_size}");
     }
 
-    ~CompletedDragComStream() => ReleaseHold();
-
     public int Read(IntPtr pv, int cb, IntPtr pcbRead)
     {
         WriteCount(pcbRead, 0);
@@ -104,6 +102,7 @@ internal sealed class CompletedDragComStream : INativeComStream, IDisposable
             return;
 
         _session?.NotifyComStreamReleased();
+        _session?.UnpinStream(this);
     }
 
     private static void WriteCount(IntPtr ptr, int value)

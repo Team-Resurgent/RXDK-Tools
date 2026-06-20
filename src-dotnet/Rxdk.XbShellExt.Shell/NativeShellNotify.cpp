@@ -46,7 +46,6 @@ bool ShouldRefreshFolderAfterContextCommand(int managedCommandId)
     switch (managedCommandId)
     {
     case 10: // Paste
-    case 11: // Delete
     case 12: // Rename
     case 13: // NewFolder
         return true;

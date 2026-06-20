@@ -732,7 +732,6 @@ public sealed class XboxFolder : IShellFolder, IShellFolder2, IPersistFolder, IP
         {
             ManagedTrace.Line($"GetDragFileContentsStream threw {ex.GetType().Name}: {ex.Message}");
             _dragTransferSession?.ReportFailure(ex.Message);
-            ClearDragTransferState();
             return HResults.NoObject;
         }
     }
