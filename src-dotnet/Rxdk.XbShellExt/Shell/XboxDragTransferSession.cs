@@ -21,6 +21,11 @@ internal sealed class XboxDragTransferSession : IDisposable
     private bool _disposed;
     private int _failureReported;
     private bool _transferFailed;
+    private int _cancelRequested;
+    private int _comStreamHolds;
+    private int _activityEnded;
+    private int _ownerReleased;
+    private int _disposeRequested;
     private TransferProgressForm? _progress;
     private Thread? _progressThread;
     private readonly ManualResetEventSlim _progressReady = new(false);
@@ -44,6 +49,7 @@ internal sealed class XboxDragTransferSession : IDisposable
         try
         {
             var session = new XboxDragTransferSession(catalog, transferConnection);
+            ShellTransferActivity.Begin();
             return (session, catalog);
         }
         catch
@@ -59,7 +65,6 @@ internal sealed class XboxDragTransferSession : IDisposable
         _fileCount = files.Count;
         _totalBytes = files.Aggregate(0UL, (sum, entry) => sum + entry.Size);
         _connection = connection;
-        EnsureProgressShown();
     }
 
     public INativeComStream? OpenStream(XboxDragEntry entry)
@@ -69,12 +74,37 @@ internal sealed class XboxDragTransferSession : IDisposable
             return null;
 
         if (_completedWirePaths.Contains(entry.WirePath))
-            return new CompletedDragComStream(entry);
+            return new CompletedDragComStream(entry, this);
 
         AbortStreamsForPath(entry.WirePath);
 
+        // Defer until Explorer opens the first content stream (after replace prompts).
+        EnsureProgressShown();
         var lease = BeginFile(entry.RelativePath, entry.WirePath, entry.Size);
-        return new XbdmReceiveComStream(_connection, entry, lease, _getFileGate, this);
+        var stream = new XbdmReceiveComStream(_connection, entry, lease, _getFileGate, this);
+        NotifyComStreamHeld();
+        return stream;
+    }
+
+    internal void NotifyComStreamHeld() => Interlocked.Increment(ref _comStreamHolds);
+
+    internal void NotifyComStreamReleased()
+    {
+        if (Interlocked.Decrement(ref _comStreamHolds) == 0)
+            TryCompleteSession();
+    }
+
+    internal void NotifyOwnerReleased()
+    {
+        Volatile.Write(ref _ownerReleased, 1);
+        TryCompleteSession();
+    }
+
+    internal void PrepareForReplacement()
+    {
+        Volatile.Write(ref _disposeRequested, 1);
+        AbortAllStreams();
+        TryCompleteSession();
     }
 
     internal bool IsWirePathCompleted(string wirePath)
@@ -264,8 +294,49 @@ internal sealed class XboxDragTransferSession : IDisposable
 
     internal void ThrowIfCancelled()
     {
-        if (_progress?.IsCancelRequested == true)
+        if (Volatile.Read(ref _cancelRequested) != 0)
             throw new OperationCanceledException();
+    }
+
+    internal bool IsCancelRequested => Volatile.Read(ref _cancelRequested) != 0;
+
+    internal void RequestCancel()
+    {
+        var message = BuildCancelledMessage();
+        var first = Interlocked.CompareExchange(ref _cancelRequested, 1, 0) == 0;
+        if (first)
+        {
+            ManagedTrace.Line("TransferCancel requested");
+            AbortAllStreams();
+            _transferFailed = true;
+            ComErrorInfo.SetMessage(message);
+            Interlocked.CompareExchange(ref _failureReported, 1, 0);
+        }
+
+        CloseProgressUi();
+    }
+
+    private void AbortAllStreams()
+    {
+        List<XbdmReceiveComStream>? targets = null;
+        lock (_streamRegistryLock)
+        {
+            PruneDeadStreams();
+            foreach (var weak in _liveStreams)
+            {
+                if (!weak.TryGetTarget(out var stream))
+                    continue;
+
+                targets ??= new List<XbdmReceiveComStream>();
+                targets.Add(stream);
+            }
+        }
+
+        if (targets == null)
+            return;
+
+        foreach (var stream in targets)
+            stream.FailCancelled();
     }
 
     internal void ReportFailure(string? detail, bool cancelled = false)
@@ -280,8 +351,9 @@ internal sealed class XboxDragTransferSession : IDisposable
         ManagedTrace.Line($"TransferFailed: {message}");
         ComErrorInfo.SetMessage(message);
 
-        var progress = _progress;
-        if (progress != null && !progress.IsDisposed)
+        if (cancelled)
+            CloseProgressUi();
+        else if (_progress is { IsDisposed: false } progress)
         {
             try
             {
@@ -297,6 +369,17 @@ internal sealed class XboxDragTransferSession : IDisposable
         }
 
         TryFinalizeBackendWhenIdle();
+    }
+
+    private void CloseProgressUi()
+    {
+        try
+        {
+            StopProgressUi();
+        }
+        catch
+        {
+        }
     }
 
     private string BuildCancelledMessage()
@@ -344,15 +427,47 @@ internal sealed class XboxDragTransferSession : IDisposable
         }
 
         if (Interlocked.Decrement(ref _activeStreams) == 0)
+            TryCompleteSession();
+    }
+
+    private void TryCompleteSession()
+    {
+        if (_activeStreams > 0 || Volatile.Read(ref _comStreamHolds) > 0)
+            return;
+
+        if (_transferFailed || IsCancelRequested || Volatile.Read(ref _ownerReleased) != 0 ||
+            Volatile.Read(ref _disposeRequested) != 0)
         {
-            if (_transferFailed)
+            if (_backendDisposed == 0)
                 TryFinalizeBackendWhenIdle();
-            else if (_filesCompleted >= _fileCount)
-            {
-                CompleteProgress();
-                Dispose();
-            }
+            return;
         }
+
+        if (_filesCompleted >= _fileCount)
+        {
+            CompleteProgress();
+            FinishSession();
+        }
+    }
+
+    private void FinishSession()
+    {
+        if (_disposed)
+            return;
+
+        _disposed = true;
+        StopProgressUi();
+        FinalizeBackend();
+        EndTransferActivity();
+        try { _progressReady.Dispose(); } catch { }
+    }
+
+    private void EndTransferActivity()
+    {
+        if (Interlocked.CompareExchange(ref _activityEnded, 1, 0) != 0)
+            return;
+
+        ShellTransferActivity.End();
     }
     private void MaybeDebugDelayAfterFile()
     {
@@ -407,34 +522,25 @@ internal sealed class XboxDragTransferSession : IDisposable
 
     public void Dispose()
     {
-        if (_disposed)
-            return;
-
-        if (_transferFailed)
-        {
-            // Explicit dispose (e.g. starting a new drag) tears everything down.
-            _disposed = true;
-            FinalizeBackend();
-            StopProgressUi();
-            try { _progressReady.Dispose(); } catch { }
-            return;
-        }
-
-        _disposed = true;
-        CompleteProgress();
-        StopProgressUi();
-        FinalizeBackend();
-        try { _progressReady.Dispose(); } catch { }
+        Volatile.Write(ref _disposeRequested, 1);
+        AbortAllStreams();
+        TryCompleteSession();
     }
 
     private void TryFinalizeBackendWhenIdle()
     {
-        if (!_transferFailed || _activeStreams > 0 || _backendDisposed != 0)
+        if (_activeStreams > 0 || Volatile.Read(ref _comStreamHolds) > 0 || _backendDisposed != 0)
             return;
 
         FinalizeBackend();
-        _disposed = true;
-        try { _progressReady.Dispose(); } catch { }
+        if (!_disposed)
+        {
+            _disposed = true;
+            StopProgressUi();
+            try { _progressReady.Dispose(); } catch { }
+        }
+
+        EndTransferActivity();
     }
 
     private void FinalizeBackend()
@@ -448,9 +554,7 @@ internal sealed class XboxDragTransferSession : IDisposable
 
     private void OnProgressFormClosed()
     {
-        _disposed = true;
-        FinalizeBackend();
-        try { _progressReady.Dispose(); } catch { }
+        TryFinalizeBackendWhenIdle();
     }
 
     private void EnsureProgressShown()
@@ -464,6 +568,8 @@ internal sealed class XboxDragTransferSession : IDisposable
             Application.SetCompatibleTextRenderingDefault(false);
             var form = new TransferProgressForm("Copying from Xbox");
             form.Configure(_fileCount);
+            form.CancelRequested += RequestCancel;
+            form.CloseRequested += RequestCancel;
             form.FormClosed += (_, _) =>
             {
                 OnProgressFormClosed();
@@ -512,7 +618,7 @@ internal sealed class XboxDragTransferSession : IDisposable
     private static void RunOnProgressThread(TransferProgressForm progress, Action<TransferProgressForm> action)
     {
         if (progress.InvokeRequired)
-            progress.Invoke(action, progress);
+            progress.BeginInvoke(action, progress);
         else
             action(progress);
     }

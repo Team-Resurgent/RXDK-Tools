@@ -97,7 +97,7 @@ internal sealed class XboxDropTarget : OleIDropTarget
                 return HResults.Ok;
 
             ManagedTrace.Line($"XboxDropTarget.Drop upload console='{_consoleName}' target='{_targetFolderPath}' paths={paths.Count}");
-            _fileOps.UploadFromPc(_consoleName, _targetFolderPath, paths);
+            XboxUploadTransferSession.Run(_consoleName, _targetFolderPath, paths);
             pdwEffect = OleDataTransfer.ChooseDropEffect(grfKeyState, OleConstants.DropeffectCopy | OleConstants.DropeffectMove);
             if (pdwEffect == OleConstants.DropeffectNone)
                 pdwEffect = OleConstants.DropeffectCopy;

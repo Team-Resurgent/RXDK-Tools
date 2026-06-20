@@ -59,6 +59,18 @@ internal sealed class XbdmReceiveComStream : INativeComStream, IDisposable
             $"TransferAbort path='{_wirePath}' position={position}/{total}");
     }
 
+    internal void FailCancelled()
+    {
+        if (_disposed || _failed)
+            return;
+
+        _failed = true;
+        _receiver?.Dispose();
+        _receiver = null;
+        ReleaseGetFileGate();
+        ManagedTrace.Line($"TransferCancel path='{_wirePath}'");
+    }
+
     ~XbdmReceiveComStream() => Dispose();
 
     internal bool TryStart()
@@ -79,7 +91,7 @@ internal sealed class XbdmReceiveComStream : INativeComStream, IDisposable
         if (_disposed || pv == IntPtr.Zero || cb < 0)
         {
             WriteCount(pcbRead, 0);
-            return HResults.Fail;
+            return _session.IsCancelRequested ? HResults.Abort : HResults.Fail;
         }
 
         if (_replayCompleted)
@@ -91,7 +103,7 @@ internal sealed class XbdmReceiveComStream : INativeComStream, IDisposable
         if (_failed)
         {
             WriteCount(pcbRead, 0);
-            return HResults.ReadFault;
+            return _session.IsCancelRequested ? HResults.Abort : HResults.ReadFault;
         }
 
         if (cb == 0)
@@ -102,6 +114,8 @@ internal sealed class XbdmReceiveComStream : INativeComStream, IDisposable
 
         try
         {
+            _lease.ThrowIfCancelled();
+
             if (!EnsureReceiver())
             {
                 _failed = true;
@@ -116,21 +130,33 @@ internal sealed class XbdmReceiveComStream : INativeComStream, IDisposable
             }
 
             var buffer = new byte[cb];
-            var read = _receiver!.Read(buffer.AsSpan());
-            if (read > 0)
-                Marshal.Copy(buffer, 0, pv, read);
-
-            _lease.ReportCurrentFileProgress(_receiver!.Position, _receiver.TotalSize);
-            if (read > 0)
+            var totalRead = 0;
+            while (totalRead < cb)
             {
+                _lease.ThrowIfCancelled();
+                var chunk = Math.Min(cb - totalRead, 65536);
+                var chunkRead = _receiver!.Read(buffer.AsSpan(totalRead, chunk));
+                if (_session.IsCancelRequested)
+                    throw new OperationCanceledException();
+
+                if (chunkRead <= 0)
+                    break;
+
+                totalRead += chunkRead;
+                _lease.ReportCurrentFileProgress(_receiver.Position, _receiver.TotalSize);
                 ManagedTrace.Line(
-                    $"TransferRead path='{_wirePath}' read={read} position={_receiver.Position}/{_expectedSize}");
+                    $"TransferRead path='{_wirePath}' read={chunkRead} position={_receiver.Position}/{_expectedSize}");
+
+                if (_receiver.IsComplete)
+                    break;
             }
 
-            WriteCount(pcbRead, read);
-            if (read == 0)
+            if (totalRead > 0)
+                Marshal.Copy(buffer, 0, pv, totalRead);
+
+            if (totalRead == 0)
             {
-                if (_receiver.IsComplete)
+                if (_receiver!.IsComplete)
                 {
                     _session.RecordCompletedWirePath(_wirePath, this);
                     _lease.MarkCompleted();
@@ -152,14 +178,20 @@ internal sealed class XbdmReceiveComStream : INativeComStream, IDisposable
                 _lease.MarkCompleted();
             }
 
+            WriteCount(pcbRead, totalRead);
             return HResults.Ok;
         }
         catch (OperationCanceledException)
         {
             _failed = true;
-            _lease.ReportTransferFailure(null, cancelled: true);
             WriteCount(pcbRead, 0);
-            return HResults.ReadFault;
+            return HResults.Abort;
+        }
+        catch (Exception) when (_session.IsCancelRequested)
+        {
+            _failed = true;
+            WriteCount(pcbRead, 0);
+            return HResults.Abort;
         }
         catch (Exception ex)
         {
@@ -291,10 +323,9 @@ internal sealed class XbdmReceiveComStream : INativeComStream, IDisposable
         catch (OperationCanceledException)
         {
             _failed = true;
-            _lease.ReportTransferFailure(null, cancelled: true);
             WriteCount(pcbRead, 0);
             WriteCount(pcbWritten, 0);
-            return HResults.Fail;
+            return HResults.Abort;
         }
         catch (Exception ex)
         {
@@ -328,7 +359,6 @@ internal sealed class XbdmReceiveComStream : INativeComStream, IDisposable
             return HResults.Fail;
         }
 
-        // Keep a stable STATSTG after a read failure so Explorer does not treat the stream as invalid.
         var reportedSize = _expectedSize > 0
             ? _expectedSize
             : (_receiver?.TotalSize ?? 0UL);
@@ -365,6 +395,7 @@ internal sealed class XbdmReceiveComStream : INativeComStream, IDisposable
         _receiver = null;
         ReleaseGetFileGate();
         _lease.Dispose();
+        _session.NotifyComStreamReleased();
         GC.SuppressFinalize(this);
     }
 
@@ -399,10 +430,16 @@ internal sealed class XbdmReceiveComStream : INativeComStream, IDisposable
 
     private void OpenReceiver()
     {
-        _getFileGate.Wait();
-        _gateHeld = true;
+        WaitForGetFileGate();
         try
         {
+            if (_session.IsCancelRequested)
+            {
+                _failed = true;
+                ReleaseGetFileGate();
+                throw new OperationCanceledException();
+            }
+
             if (_session.IsWirePathCompleted(_wirePath))
             {
                 _replayCompleted = true;
@@ -421,6 +458,19 @@ internal sealed class XbdmReceiveComStream : INativeComStream, IDisposable
             ReleaseGetFileGate();
             ManagedTrace.Line($"TransferOpen failed path='{_wirePath}' error={ex.Message}");
             throw;
+        }
+    }
+
+    private void WaitForGetFileGate()
+    {
+        while (true)
+        {
+            _lease.ThrowIfCancelled();
+            if (_getFileGate.Wait(TimeSpan.FromMilliseconds(100)))
+            {
+                _gateHeld = true;
+                return;
+            }
         }
     }
 

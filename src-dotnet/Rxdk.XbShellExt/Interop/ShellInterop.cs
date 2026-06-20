@@ -32,6 +32,8 @@ internal static class HResults
     public const int NoObject = unchecked((int)0x800401E5);
     public const int Fail = unchecked((int)0x80004005);
     public const int AccessDenied = unchecked((int)0x80070005);
+    public const int Abort = unchecked((int)0x80004004);
+    public const int Cancelled = unchecked((int)0x800704C7);
     public const int ReadFault = unchecked((int)0x80030006);
     // IShellFolder::CompareIDs success codes (legacy xbshlext S_* values).
     public const int Equal = 0;

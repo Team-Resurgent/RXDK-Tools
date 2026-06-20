@@ -7,19 +7,18 @@ public sealed partial class TransferProgressForm : Form
 {
     private bool _cancelRequested;
     private bool _failedMode;
+    private bool _completeMode;
+
+    public event Action? CancelRequested;
+    public event Action? CloseRequested;
 
     public TransferProgressForm()
     {
         InitializeComponent();
         if (LicenseManager.UsageMode != LicenseUsageMode.Designtime)
             ShellModernChrome.Apply(this);
-        cancelButton.Click += (_, _) =>
-        {
-            if (_failedMode)
-                Close();
-            else
-                _cancelRequested = true;
-        };
+        cancelButton.Click += (_, _) => OnCancelClicked();
+        FormClosing += OnFormClosing;
         ShellDialogLayout.ConfigureButton(cancelButton);
         DesignPreview.ApplyIfDesignTime(() =>
         {
@@ -66,16 +65,19 @@ public sealed partial class TransferProgressForm : Form
 
     public void Complete()
     {
+        _completeMode = true;
         filesProgressBar.Value = 100;
         fileProgressBar.Value = 100;
         PumpMessages();
     }
 
-    public void Fail(string message)
+    public void Fail(string message) => ShowTerminalState("Transfer failed", message);
+
+    private void ShowTerminalState(string title, string message)
     {
         _failedMode = true;
         Text = "Xbox Neighborhood";
-        titleLabel.Text = "Transfer failed";
+        titleLabel.Text = title;
         filesCaptionLabel.Visible = false;
         filesProgressBar.Visible = false;
         fileBytesCaptionLabel.Visible = false;
@@ -93,12 +95,18 @@ public sealed partial class TransferProgressForm : Form
 
     public void SetCurrentFile(string relativePath)
     {
+        if (_failedMode || _completeMode)
+            return;
+
         fileLabel.Text = relativePath;
         PumpMessages();
     }
 
     public void ReportProgress(int filesPercent, int currentFilePercent, int filesCompleted, int fileCount)
     {
+        if (_failedMode || _completeMode)
+            return;
+
         filesProgressBar.Value = Math.Clamp(filesPercent, 0, 100);
         fileProgressBar.Value = Math.Clamp(currentFilePercent, 0, 100);
         filesCaptionLabel.Text = fileCount == 1
@@ -108,4 +116,28 @@ public sealed partial class TransferProgressForm : Form
     }
 
     private static void PumpMessages() => Application.DoEvents();
+
+    private void OnCancelClicked()
+    {
+        if (_failedMode)
+        {
+            Close();
+            return;
+        }
+
+        if (_cancelRequested)
+            return;
+
+        _cancelRequested = true;
+        CancelRequested?.Invoke();
+    }
+
+    private void OnFormClosing(object? sender, FormClosingEventArgs e)
+    {
+        if (_failedMode || _completeMode || _cancelRequested)
+            return;
+
+        _cancelRequested = true;
+        CloseRequested?.Invoke();
+    }
 }

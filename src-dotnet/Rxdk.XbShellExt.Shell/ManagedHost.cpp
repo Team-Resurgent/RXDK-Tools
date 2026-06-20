@@ -1,6 +1,11 @@
 #include "stdafx.h"
 #include "ShellTrace.h"
 
+namespace
+{
+    CComAutoCriticalSection g_createFolderLock;
+}
+
 HRESULT CreateManagedFolder(REFIID riid, void** ppv)
 {
     XB_TRACE_SCOPE("CreateManagedFolder");
@@ -8,6 +13,7 @@ HRESULT CreateManagedFolder(REFIID riid, void** ppv)
         return E_POINTER;
 
     *ppv = nullptr;
+    CComCritSecLock<CComAutoCriticalSection> lock(g_createFolderLock);
     const HRESULT hr = CoCreateInstance(CLSID_XboxFolderManaged, nullptr, CLSCTX_INPROC_SERVER, riid, ppv);
     ShellTraceHr("CreateManagedFolder CoCreate CC45", hr);
     return hr;

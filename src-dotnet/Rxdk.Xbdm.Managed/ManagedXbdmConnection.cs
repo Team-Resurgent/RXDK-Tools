@@ -58,7 +58,13 @@ public sealed class ManagedXbdmConnection : IXbdmConnection
         return XbdmProtocol.ParseDmfaLine(lines[0], _sci);
     }
 
-    public void SendFile(string localPath, string wirePath)
+    public void SendFile(string localPath, string wirePath) => SendFile(localPath, wirePath, progress: null, isCancelled: null);
+
+    public void SendFile(
+        string localPath,
+        string wirePath,
+        Action<long, long>? progress,
+        Func<bool>? isCancelled)
     {
         var fileInfo = new FileInfo(localPath);
         if (!fileInfo.Exists)
@@ -75,9 +81,17 @@ public sealed class ManagedXbdmConnection : IXbdmConnection
         var buffer = new byte[8192];
         using (var stream = fileInfo.OpenRead())
         {
+            long sent = 0;
             int read;
             while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
+            {
+                if (isCancelled?.Invoke() == true)
+                    throw new OperationCanceledException();
+
                 _session.SendBinary(buffer.AsSpan(0, read));
+                sent += read;
+                progress?.Invoke(sent, size);
+            }
         }
 
         _session.ReceiveStatusOrThrow($"Could not send '{localPath}'.");
@@ -455,7 +469,9 @@ public sealed class ManagedXbdmConnection : IXbdmConnection
 
     public void Dispose()
     {
-        _sci.InvalidateSharedConnection();
+        // Only tear down this connection's dedicated session. Invalidating the per-console
+        // shared SCI pool here races with other live connections (e.g. Explorer re-enumerating
+        // the parent folder right after a delete) and leaves stale sockets behind.
         _session.Dispose();
     }
 }

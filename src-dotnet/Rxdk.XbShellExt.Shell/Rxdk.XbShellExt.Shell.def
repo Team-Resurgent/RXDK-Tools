@@ -6,3 +6,5 @@ EXPORTS
     OpenNamespace
     XbShellExt_CreateNativeContextMenu
     XbShellExt_CreateNativeExtractIcon
+    XbShellExt_BeginTransferActivity
+    XbShellExt_EndTransferActivity

@@ -11,17 +11,23 @@ namespace Rxdk.XbShellExt.Shell;
 /// </summary>
 [ComVisible(true)]
 [ClassInterface(ClassInterfaceType.None)]
-internal sealed class CompletedDragComStream : INativeComStream
+internal sealed class CompletedDragComStream : INativeComStream, IDisposable
 {
     private readonly ulong _size;
     private readonly string _wirePath;
+    private readonly XboxDragTransferSession? _session;
+    private int _released;
 
-    public CompletedDragComStream(XboxDragEntry entry)
+    public CompletedDragComStream(XboxDragEntry entry, XboxDragTransferSession? session = null)
     {
         _wirePath = entry.WirePath;
         _size = entry.Size;
+        _session = session;
+        _session?.NotifyComStreamHeld();
         ManagedTrace.Line($"TransferReplay path='{_wirePath}' size={_size}");
     }
+
+    ~CompletedDragComStream() => ReleaseHold();
 
     public int Read(IntPtr pv, int cb, IntPtr pcbRead)
     {
@@ -84,6 +90,20 @@ internal sealed class CompletedDragComStream : INativeComStream
     {
         ppstm = null!;
         return HResults.NotImpl;
+    }
+
+    public void Dispose()
+    {
+        ReleaseHold();
+        GC.SuppressFinalize(this);
+    }
+
+    private void ReleaseHold()
+    {
+        if (Interlocked.CompareExchange(ref _released, 1, 0) != 0)
+            return;
+
+        _session?.NotifyComStreamReleased();
     }
 
     private static void WriteCount(IntPtr ptr, int value)

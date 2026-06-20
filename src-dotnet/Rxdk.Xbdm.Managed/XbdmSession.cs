@@ -82,6 +82,18 @@ public sealed class XbdmConnection : IDisposable
     public XbdmDirEntry GetFileAttributes(string wirePath) => _inner.GetFileAttributes(wirePath);
 
     public void SendFile(string localPath, string wirePath) => _inner.SendFile(localPath, wirePath);
+
+    public void SendFile(
+        string localPath,
+        string wirePath,
+        Action<long, long>? progress,
+        Func<bool>? isCancelled = null)
+    {
+        if (_inner is ManagedXbdmConnection managed)
+            managed.SendFile(localPath, wirePath, progress, isCancelled);
+        else
+            _inner.SendFile(localPath, wirePath);
+    }
     public void ReceiveFile(string wirePath, string localPath) => _inner.ReceiveFile(wirePath, localPath);
 
     public XbdmFileReceiver OpenFileReceiver(string wirePath)

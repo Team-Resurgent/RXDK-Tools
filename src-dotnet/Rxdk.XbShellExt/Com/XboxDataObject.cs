@@ -229,7 +229,7 @@ internal sealed class XboxDataObject : OleIDataObject, IAsyncOperation
         }
         finally
         {
-            _transferSession?.Dispose();
+            _transferSession?.NotifyOwnerReleased();
             _transferSession = null;
         }
 

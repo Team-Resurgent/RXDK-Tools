@@ -71,6 +71,7 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)ShellGuids.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)dllmain.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)ManagedHost.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)TransferActivity.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)NativeContextMenu.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)NativeDataObject.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)NativeDropTarget.cpp" />
