@@ -373,6 +373,25 @@ function Invoke-XbShellExtRegsvr32 {
     }
 }
 
+function Set-XbShellExtDefaultIcon {
+    param(
+        [Parameter(Mandatory)]
+        [string]$ClsidKey,
+        [Parameter(Mandatory)]
+        [string]$ModulePath
+    )
+
+    $iconPath = Join-Path (Split-Path -Parent $ModulePath) 'xbox.ico'
+    $defaultIconKey = "$ClsidKey\DefaultIcon"
+    if (-not (Test-Path -LiteralPath $defaultIconKey)) {
+        New-Item -Path $defaultIconKey -Force | Out-Null
+    }
+
+    # IDI_MAIN is resource index 13 in Rxdk.XbShellExt.Shell.dll (see resource.h).
+    $iconValue = if (Test-Path -LiteralPath $iconPath) { $iconPath } else { "$ModulePath,13" }
+    Set-ItemProperty -LiteralPath $defaultIconKey -Name '(default)' -Value $iconValue
+}
+
 function Repair-XbShellExtRegistry {
     param(
         [string]$ModulePath
@@ -414,13 +433,7 @@ function Repair-XbShellExtRegistry {
     Set-ItemProperty -LiteralPath $shellFolderKey -Name 'Attributes' -Value 0xA0000004 -Type DWord
 
     if ($ModulePath) {
-        $iconPath = Join-Path (Split-Path -Parent $ModulePath) 'console.ico'
-        $defaultIconKey = "$clsidKey\DefaultIcon"
-        if (-not (Test-Path -LiteralPath $defaultIconKey)) {
-            New-Item -Path $defaultIconKey -Force | Out-Null
-        }
-        $iconValue = if (Test-Path -LiteralPath $iconPath) { $iconPath } else { "$ModulePath,0" }
-        Set-ItemProperty -LiteralPath $defaultIconKey -Name '(default)' -Value $iconValue
+        Set-XbShellExtDefaultIcon -ClsidKey $clsidKey -ModulePath $ModulePath
     }
 
     $progIdKey = 'Registry::HKEY_CLASSES_ROOT\Shellext.XboxFolder.1'
@@ -525,6 +538,7 @@ function Repair-XbShellExtNavPaneUserState {
         }
         Set-ItemProperty -LiteralPath $userInprocKey -Name '(default)' -Value $ModulePath
         Set-ItemProperty -LiteralPath $userInprocKey -Name 'ThreadingModel' -Value 'Apartment'
+        Set-XbShellExtDefaultIcon -ClsidKey $userClassesKey -ModulePath $ModulePath
     }
 
     $userDesktopKey = "Registry::HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Desktop\NameSpace\$Clsid"

@@ -18,9 +18,6 @@ public sealed partial class ConfirmAttributeChangesForm : ShellDialogForm
                 "Do you want to apply this change to this folder only, or do you want to apply it to all subfolders and files as well?";
             folderOnlyRadio.Text = "Apply changes to this folder only";
             recursiveRadio.Text = "Apply changes to this folder, subfolders and files";
-            ShellDialogLayout.ConfigureButton(okButton);
-            ShellDialogLayout.ConfigureButton(cancelButton);
-            ShellDialogLayout.PositionButtons(buttonPanel, cancelButton, okButton);
         });
     }
 
@@ -37,9 +34,5 @@ public sealed partial class ConfirmAttributeChangesForm : ShellDialogForm
         recursiveRadio.Text = $"Apply changes to {scope}, subfolders and files";
 
         okButton.Click += (_, _) => ApplyRecursively = recursiveRadio.Checked;
-        ShellDialogLayout.ConfigureButton(okButton);
-        ShellDialogLayout.ConfigureButton(cancelButton);
-        buttonPanel.Resize += (_, _) => ShellDialogLayout.PositionButtons(buttonPanel, cancelButton, okButton);
-        ShellDialogLayout.PositionButtons(buttonPanel, cancelButton, okButton);
     }
 }

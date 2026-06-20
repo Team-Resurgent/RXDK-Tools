@@ -152,6 +152,7 @@ if ($shellProxyOut -ne $shellProxyDest) {
 }
 
 Copy-Item -LiteralPath (Join-Path $RepoRoot 'assets\shell\console.ico') -Destination (Join-Path $installDir 'console.ico') -Force
+Copy-Item -LiteralPath (Join-Path $RepoRoot 'assets\shell\xbox.ico') -Destination (Join-Path $installDir 'xbox.ico') -Force
 
 $requiredStaged = @(
     'Rxdk.XbShellExt.Shell.dll',
@@ -163,7 +164,8 @@ $requiredStaged = @(
     'Rxdk.Xbdm.Managed.dll',
     'Rxdk.Xbdm.Abstractions.dll',
     'Rxdk.XbShellExt.runtimeconfig.json',
-    'console.ico'
+    'console.ico',
+    'xbox.ico'
 )
 foreach ($name in $requiredStaged) {
     $path = Join-Path $installDir $name

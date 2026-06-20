@@ -26,6 +26,29 @@ namespace
         return extension != nullptr && _stricmp(extension + 1, "XBE") == 0;
     }
 
+    bool TryResolveNeighborhoodIconLocation(LPSTR szIconFile, UINT cchMax, LPINT piIndex, UINT* pwFlags)
+    {
+        CHAR modulePath[MAX_PATH] = {};
+        if (!GetModuleFileNameA(_AtlBaseModule.GetModuleInstance(), modulePath, ARRAYSIZE(modulePath)))
+            return false;
+
+        CHAR iconPath[MAX_PATH] = {};
+        if (FAILED(StringCchCopyA(iconPath, ARRAYSIZE(iconPath), modulePath)))
+            return false;
+        if (!PathRemoveFileSpecA(iconPath))
+            return false;
+        if (FAILED(StringCchCatA(iconPath, ARRAYSIZE(iconPath), "\\xbox.ico")))
+            return false;
+
+        if (!PathFileExistsA(iconPath))
+            return false;
+
+        StringCchCopyA(szIconFile, cchMax, iconPath);
+        *piIndex = 0;
+        *pwFlags = 0;
+        return true;
+    }
+
     class ATL_NO_VTABLE CNativeExtractIcon :
         public CComObjectRootEx<CComMultiThreadModel>,
         public IExtractIconW,
@@ -127,8 +150,11 @@ namespace
             case NativeIconKind::Xbe:
                 *piIndex = ICON_INDEX(IDI_XBE);
                 break;
+            case NativeIconKind::Root:
             default:
-                *piIndex = ICON_INDEX(IDI_MAIN);
+                if (TryResolveNeighborhoodIconLocation(szIconFile, cchMax, piIndex, pwFlags))
+                    return S_OK;
+                *piIndex = IDI_MAIN_INDEX;
                 break;
             }
 

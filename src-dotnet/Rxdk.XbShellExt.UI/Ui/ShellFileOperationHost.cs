@@ -1,5 +1,6 @@
 using Rxdk.Xbdm.KitServices.Models;
 using Rxdk.Xbdm.KitServices.Services;
+using Rxdk.XbShellExt.Ui.Forms;
 
 namespace Rxdk.XbShellExt.Ui;
 
@@ -46,32 +47,11 @@ public sealed class ShellFileOperationHost : IFileOperationHost
 
     public Task<string?> PromptRenameAsync(string currentName)
     {
-        using var form = new Form
-        {
-            Text = "Rename",
-            FormBorderStyle = FormBorderStyle.FixedDialog,
-            MaximizeBox = false,
-            MinimizeBox = false,
-            StartPosition = FormStartPosition.CenterParent,
-            ClientSize = new Size(360, 150),
-        };
-        ShellModernChrome.Apply(form);
-
-        var label = new Label { Text = "Name:", Left = 12, Top = 16, AutoSize = true };
-        var textBox = new TextBox { Left = 12, Top = 40, Width = 332, Text = currentName };
-        var ok = new Button { Text = "OK", DialogResult = DialogResult.OK };
-        var cancel = new Button { Text = "Cancel", DialogResult = DialogResult.Cancel };
-        var buttonPanel = ShellDialogLayout.CreateButtonBar(cancel, ok);
-
-        form.Controls.Add(label);
-        form.Controls.Add(textBox);
-        form.Controls.Add(buttonPanel);
-        form.AcceptButton = ok;
-        form.CancelButton = cancel;
-
-        return Task.FromResult(form.ShowDialog(NativeWindow.FromHandle(_ownerHwnd)) == DialogResult.OK
-            ? textBox.Text.Trim()
-            : null);
+        using var form = new RenameForm(currentName);
+        return Task.FromResult(
+            form.ShowDialog(NativeWindow.FromHandle(_ownerHwnd)) == DialogResult.OK
+                ? form.NewName
+                : null);
     }
 
     public Task<string?> PickLocalFolderAsync(string title)

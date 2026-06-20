@@ -105,13 +105,15 @@ $stagedNames.Add('Rxdk.XbShellExt.Shell.dll')
 
 
 $iconSource = Join-Path $repoRoot 'assets\shell\console.ico'
-
 if (Test-Path -LiteralPath $iconSource) {
-
     Copy-XbShellExtStageFile -Source $iconSource -Destination (Join-Path $stageDir 'console.ico')
-
     $stagedNames.Add('console.ico')
+}
 
+$xboxIconSource = Join-Path $repoRoot 'assets\shell\xbox.ico'
+if (Test-Path -LiteralPath $xboxIconSource) {
+    Copy-XbShellExtStageFile -Source $xboxIconSource -Destination (Join-Path $stageDir 'xbox.ico')
+    $stagedNames.Add('xbox.ico')
 }
 
 

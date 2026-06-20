@@ -34,6 +34,7 @@
     <TargetName>Rxdk.XbShellExt.Shell</TargetName>
     <OutDir>$(BinOutDir)</OutDir>
     <IntDir>$(IntRoot)Rxdk.XbShellExt.Shell\$(Platform)\$(Configuration)\</IntDir>
+    <SharedCommonCompile>xdk_shellfolder_view.cpp</SharedCommonCompile>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -41,6 +42,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <AdditionalIncludeDirectories>$(MSBuildThisFileDirectory);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
@@ -55,6 +57,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <AdditionalIncludeDirectories>$(MSBuildThisFileDirectory);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
@@ -82,9 +85,6 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)ShellTrace.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)ShellObjectSite.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)ViewCallback.cpp" />
-    <ClCompile Include="$(CommonRoot)\xdk_shellfolder_view.cpp">
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="$(MSBuildThisFileDirectory)Rxdk.XbShellExt.Shell.rc" />
@@ -92,5 +92,8 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <Target Name="ClearXbShellTraceLog" BeforeTargets="PrepareForBuild">
     <Delete Files="C:\Temp\xb-shlext.log" ContinueOnError="true" />
+  </Target>
+  <Target Name="StageShellIcons" AfterTargets="Build">
+    <Copy SourceFiles="$(MSBuildThisFileDirectory)..\..\assets\shell\xbox.ico" DestinationFiles="$(OutDir)xbox.ico" SkipUnchangedFiles="true" Condition="Exists('$(MSBuildThisFileDirectory)..\..\assets\shell\xbox.ico')" />
   </Target>
 </Project>

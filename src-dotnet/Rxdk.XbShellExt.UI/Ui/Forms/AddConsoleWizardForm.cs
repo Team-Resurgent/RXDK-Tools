@@ -40,12 +40,6 @@ public sealed partial class AddConsoleWizardForm : ShellDialogForm
         nextButton.Click += (_, _) => OnNext();
         cancelButton.Click += (_, _) => Close();
 
-        ShellDialogLayout.ConfigureButton(cancelButton);
-        ShellDialogLayout.ConfigureButton(nextButton);
-        ShellDialogLayout.ConfigureButton(backButton);
-        buttonPanel.Resize += (_, _) => ShellDialogLayout.PositionButtons(buttonPanel, cancelButton, nextButton, backButton);
-        ShellDialogLayout.PositionButtons(buttonPanel, cancelButton, nextButton, backButton);
-
         _getNamePage.NameTextBox.TextChanged += (_, _) => UpdateWizardButtons();
         _accessDeniedPage.PasswordTextBox.TextChanged += (_, _) => UpdateWizardButtons();
         foreach (var box in new[]

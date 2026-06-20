@@ -19,6 +19,9 @@
   <ItemGroup>
     <ProjectReference Include="..\Rxdk.Xbdm.Managed\Rxdk.Xbdm.Managed.csproj" />
     <ProjectReference Include="..\Rxdk.Xbdm.Abstractions\Rxdk.Xbdm.Abstractions.csproj" />
+    <ProjectReference Include="..\Rxdk.XboxDbgBridge\Rxdk.XboxDbgBridge.csproj">
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <Content Include="..\TestFiles\**\*">
@@ -26,22 +29,20 @@
       <Link>TestFiles\%(RecursiveDir)%(Filename)%(Extension)</Link>
     </Content>
   </ItemGroup>
-  <ItemGroup>
-    <Content Include="..\Rxdk.XboxDbgBridge\bin\$(Configuration)\net8.0\xboxdbg-bridge.dll" Condition="Exists('..\Rxdk.XboxDbgBridge\bin\$(Configuration)\net8.0\xboxdbg-bridge.dll')">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Link>xboxdbg-bridge.dll</Link>
-    </Content>
-    <Content Include="..\Rxdk.XboxDbgBridge\bin\$(Configuration)\net8.0\xboxdbg-bridge.deps.json" Condition="Exists('..\Rxdk.XboxDbgBridge\bin\$(Configuration)\net8.0\xboxdbg-bridge.deps.json')">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Link>xboxdbg-bridge.deps.json</Link>
-    </Content>
-    <Content Include="..\Rxdk.XboxDbgBridge\bin\$(Configuration)\net8.0\xboxdbg-bridge.runtimeconfig.json" Condition="Exists('..\Rxdk.XboxDbgBridge\bin\$(Configuration)\net8.0\xboxdbg-bridge.runtimeconfig.json')">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Link>xboxdbg-bridge.runtimeconfig.json</Link>
-    </Content>
-    <Content Include="..\Rxdk.XboxDbgBridge\bin\$(Configuration)\net8.0\xboxdbg-bridge.exe" Condition="Exists('..\Rxdk.XboxDbgBridge\bin\$(Configuration)\net8.0\xboxdbg-bridge.exe')">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Link>xboxdbg-bridge.exe</Link>
-    </Content>
-  </ItemGroup>
+  <Target Name="CopyXboxDbgBridgeToOutput" AfterTargets="Build">
+    <PropertyGroup>
+      <XboxDbgBridgeOutDir>$(MSBuildThisFileDirectory)..\Rxdk.XboxDbgBridge\bin\$(Configuration)\net8.0\</XboxDbgBridgeOutDir>
+    </PropertyGroup>
+    <ItemGroup>
+      <XboxDbgBridgeOutput Include="$(XboxDbgBridgeOutDir)xboxdbg-bridge.exe" />
+      <XboxDbgBridgeOutput Include="$(XboxDbgBridgeOutDir)xboxdbg-bridge.dll" />
+      <XboxDbgBridgeOutput Include="$(XboxDbgBridgeOutDir)xboxdbg-bridge.deps.json" />
+      <XboxDbgBridgeOutput Include="$(XboxDbgBridgeOutDir)xboxdbg-bridge.runtimeconfig.json" />
+    </ItemGroup>
+    <Copy
+      SourceFiles="@(XboxDbgBridgeOutput)"
+      DestinationFolder="$(OutputPath)"
+      SkipUnchangedFiles="true"
+      Condition="Exists('%(XboxDbgBridgeOutput.Identity)')" />
+  </Target>
 </Project>

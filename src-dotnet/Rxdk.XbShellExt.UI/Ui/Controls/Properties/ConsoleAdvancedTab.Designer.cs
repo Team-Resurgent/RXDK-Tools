@@ -1,5 +1,7 @@
 namespace Rxdk.XbShellExt.Ui.Controls.Properties;
 
+using Rxdk.XbShellExt.Ui;
+
 partial class ConsoleAdvancedTab
 {
     private CheckBox warmRebootCheck = null!;
@@ -37,9 +39,10 @@ partial class ConsoleAdvancedTab
         // 
         // rebootButton
         // 
+        rebootButton.AutoSize = false;
         rebootButton.Location = new Point(0, 54);
         rebootButton.Name = "rebootButton";
-        rebootButton.Size = new Size(75, 23);
+        rebootButton.Size = ShellDialogLayout.ButtonSize;
         rebootButton.TabIndex = 1;
         rebootButton.Text = "Reboot";
         // 

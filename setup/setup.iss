@@ -59,6 +59,7 @@ Source: "..\out\bin\x64\Release\Rxdk.Xbdm.Abstractions.dll"; DestDir: "{app}"; F
 Source: "..\out\bin\x64\Release\Rxdk.XbShellExt.deps.json"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 Source: "..\out\bin\x64\Release\Rxdk.XbShellExt.runtimeconfig.json"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 Source: "..\out\bin\x64\Release\console.ico"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\out\bin\x64\Release\xbox.ico"; DestDir: "{app}"; Flags: ignoreversion
 
 [Registry]
 ; CC44 namespace shell extension (native proxy)
@@ -70,7 +71,7 @@ Root: HKCR; Subkey: "CLSID\{{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}}"; ValueType:
 Root: HKCR; Subkey: "CLSID\{{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}}\InprocServer32"; ValueType: string; ValueName: ""; ValueData: "{app}\Rxdk.XbShellExt.Shell.dll"
 Root: HKCR; Subkey: "CLSID\{{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}}\InprocServer32"; ValueType: string; ValueName: "ThreadingModel"; ValueData: "Apartment"
 Root: HKCR; Subkey: "CLSID\{{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}}\ShellFolder"; ValueType: dword; ValueName: "Attributes"; ValueData: "$a0000004"
-Root: HKCR; Subkey: "CLSID\{{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}}\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\console.ico"
+Root: HKCR; Subkey: "CLSID\{{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}}\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\xbox.ico"
 
 Root: HKCR; Subkey: "Shellext.XboxFolder.1"; ValueType: string; ValueName: ""; ValueData: "Xbox Neighborhood"; Flags: uninsdeletekey
 Root: HKCR; Subkey: "Shellext.XboxFolder.1"; ValueType: string; ValueName: "CLSID"; ValueData: "{#ClsidPublicBraced}"
@@ -93,8 +94,8 @@ Root: HKCR; Subkey: "CLSID\{{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC45}}\InprocServer
 Root: HKCR; Subkey: "CLSID\{{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC45}}\InprocServer32"; ValueType: string; ValueName: "ThreadingModel"; ValueData: "Apartment"
 
 [Icons]
-Name: "{group}\{#MyAppName}"; Filename: "{sys}\rundll32.exe"; Parameters: """{app}\Rxdk.XbShellExt.Shell.dll"",OpenNamespace"; WorkingDir: "{app}"; IconFilename: "{app}\console.ico"
-Name: "{commondesktop}\{#MyAppName}"; Filename: "{sys}\rundll32.exe"; Parameters: """{app}\Rxdk.XbShellExt.Shell.dll"",OpenNamespace"; WorkingDir: "{app}"; IconFilename: "{app}\console.ico"
+Name: "{group}\{#MyAppName}"; Filename: "{sys}\rundll32.exe"; Parameters: """{app}\Rxdk.XbShellExt.Shell.dll"",OpenNamespace"; WorkingDir: "{app}"; IconFilename: "{app}\xbox.ico"
+Name: "{commondesktop}\{#MyAppName}"; Filename: "{sys}\rundll32.exe"; Parameters: """{app}\Rxdk.XbShellExt.Shell.dll"",OpenNamespace"; WorkingDir: "{app}"; IconFilename: "{app}\xbox.ico"
 
 [Code]
 var
@@ -478,11 +479,11 @@ begin
   RegWriteStringValue(HKCR, ClsidPublicInprocKey, 'ThreadingModel', 'Apartment');
   RegWriteDWordValue(HKCR, ClsidPublicShellFolderKey, 'Attributes', $A0000004);
 
-  IconPath := InstallDir + '\console.ico';
+  IconPath := InstallDir + '\xbox.ico';
   if FileExists(IconPath) then
     RegWriteStringValue(HKCR, ClsidPublicDefaultIconKey, '', IconPath)
   else
-    RegWriteStringValue(HKCR, ClsidPublicDefaultIconKey, '', ShellDllPath + ',0');
+    RegWriteStringValue(HKCR, ClsidPublicDefaultIconKey, '', ShellDllPath + ',13');
 
   RegWriteStringValue(HKCR, 'Shellext.XboxFolder.1', '', 'Xbox Neighborhood');
   RegWriteStringValue(HKCR, 'Shellext.XboxFolder.1', 'CLSID', ClsidValue);

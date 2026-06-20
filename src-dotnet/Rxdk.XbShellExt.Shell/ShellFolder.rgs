@@ -12,6 +12,7 @@ HKCR
 			{
 				val ThreadingModel = s 'Apartment'
 			}
+			DefaultIcon = s '%MODULE%,13'
 			ShellFolder = s ''
 			{
 				val Attributes = d 'A0000004'

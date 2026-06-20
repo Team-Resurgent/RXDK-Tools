@@ -7,7 +7,7 @@ partial class PropertiesForm
     private TabControl tabs = null!;
     private TabPage designGeneralTabPage = null!;
     private FileGeneralTab designFileGeneralTab = null!;
-    private Panel buttonPanel = null!;
+    private FlowLayoutPanel buttonPanel = null!;
     private Button applyButton = null!;
     private Button cancelButton = null!;
     private Button okButton = null!;
@@ -17,7 +17,7 @@ partial class PropertiesForm
         tabs = new TabControl();
         designFileGeneralTab = new FileGeneralTab();
         designGeneralTabPage = new TabPage();
-        buttonPanel = new Panel();
+        buttonPanel = new FlowLayoutPanel();
         applyButton = new Button();
         cancelButton = new Button();
         okButton = new Button();
@@ -46,22 +46,35 @@ partial class PropertiesForm
         designGeneralTabPage.Controls.Add(designFileGeneralTab);
         tabs.Controls.Add(designGeneralTabPage);
 
+        buttonPanel.AutoSize = false;
         buttonPanel.Dock = DockStyle.Bottom;
+        buttonPanel.FlowDirection = FlowDirection.RightToLeft;
         buttonPanel.Height = ShellDialogLayout.ButtonBarHeight;
+        buttonPanel.Margin = Padding.Empty;
         buttonPanel.Padding = new Padding(0, ShellDialogLayout.ButtonBarPaddingTop, ShellDialogLayout.ButtonBarPaddingRight, ShellDialogLayout.ButtonBarPaddingBottom);
+        buttonPanel.WrapContents = false;
 
+        applyButton.AutoSize = false;
         applyButton.Enabled = false;
+        applyButton.Margin = new Padding(ShellDialogLayout.ButtonSpacing, 0, 0, 0);
+        applyButton.Size = ShellDialogLayout.ButtonSize;
         applyButton.Text = "Apply";
 
+        cancelButton.AutoSize = false;
         cancelButton.DialogResult = DialogResult.Cancel;
+        cancelButton.Margin = new Padding(ShellDialogLayout.ButtonSpacing, 0, 0, 0);
+        cancelButton.Size = ShellDialogLayout.ButtonSize;
         cancelButton.Text = "Cancel";
 
+        okButton.AutoSize = false;
         okButton.DialogResult = DialogResult.None;
+        okButton.Margin = new Padding(ShellDialogLayout.ButtonSpacing, 0, 0, 0);
+        okButton.Size = ShellDialogLayout.ButtonSize;
         okButton.Text = "OK";
 
-        buttonPanel.Controls.Add(okButton);
-        buttonPanel.Controls.Add(cancelButton);
         buttonPanel.Controls.Add(applyButton);
+        buttonPanel.Controls.Add(cancelButton);
+        buttonPanel.Controls.Add(okButton);
 
         Controls.Add(tabs);
         Controls.Add(buttonPanel);
