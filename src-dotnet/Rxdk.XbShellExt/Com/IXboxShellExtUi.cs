@@ -28,4 +28,7 @@ public interface IXboxShellExtUi
 
     [PreserveSig]
     int PerformDrop(nint hwnd, nint childPidl, nint dataObjectUnk, ref uint pdwEffect);
+
+    [PreserveSig]
+    int InvokeContextCommandForSelection(nint hwnd, uint cidl, nint apidl, int command);
 }

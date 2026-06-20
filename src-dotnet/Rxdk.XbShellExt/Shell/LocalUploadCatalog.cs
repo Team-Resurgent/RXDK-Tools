@@ -6,6 +6,7 @@ internal sealed class LocalUploadEntry
     public required string LocalPath { get; init; }
     public required string WirePath { get; init; }
     public long Size { get; init; }
+    public bool IsDirectory { get; init; }
 }
 
 internal static class LocalUploadCatalog
@@ -35,6 +36,7 @@ internal static class LocalUploadCatalog
             if (string.IsNullOrWhiteSpace(rootName))
                 continue;
 
+            AddDirectory(entries, wireBase, rootName, fullPath);
             AddDirectoryRecursive(entries, wireBase, rootName, fullPath);
         }
 
@@ -47,17 +49,36 @@ internal static class LocalUploadCatalog
         string relativePrefix,
         string localDir)
     {
+        foreach (var dir in Directory.GetDirectories(localDir))
+        {
+            var name = Path.GetFileName(dir);
+            var relativePath = $"{relativePrefix}\\{name}";
+            AddDirectory(entries, wireBase, relativePath, dir);
+            AddDirectoryRecursive(entries, wireBase, relativePath, dir);
+        }
+
         foreach (var file in Directory.GetFiles(localDir))
         {
             var name = Path.GetFileName(file);
             AddFile(entries, wireBase, $"{relativePrefix}\\{name}", file);
         }
+    }
 
-        foreach (var dir in Directory.GetDirectories(localDir))
+    private static void AddDirectory(
+        List<LocalUploadEntry> entries,
+        string wireBase,
+        string relativePath,
+        string localDir)
+    {
+        var normalized = relativePath.Replace('/', '\\');
+        entries.Add(new LocalUploadEntry
         {
-            var name = Path.GetFileName(dir);
-            AddDirectoryRecursive(entries, wireBase, $"{relativePrefix}\\{name}", dir);
-        }
+            RelativePath = normalized,
+            LocalPath = localDir,
+            WirePath = $"{wireBase}\\{normalized}",
+            Size = 0,
+            IsDirectory = true,
+        });
     }
 
     private static void AddFile(List<LocalUploadEntry> entries, string wireBase, string relativePath, string localPath)
@@ -78,6 +99,7 @@ internal static class LocalUploadCatalog
             LocalPath = localPath,
             WirePath = $"{wireBase}\\{normalized}",
             Size = size,
+            IsDirectory = false,
         });
     }
 }

@@ -52,6 +52,7 @@ internal static class XboxDragCatalog
         try
         {
             attrs = conn.GetFileAttributes(wirePath);
+            isDirectory = (attrs.Attributes & XbdmConstants.AttrDirectory) != 0;
         }
         catch
         {
@@ -72,12 +73,30 @@ internal static class XboxDragCatalog
         if (!isDirectory)
             return;
 
-        foreach (var child in conn.ListDirectory(wirePath))
+        IReadOnlyList<XbdmDirEntry> children;
+        try
         {
-            var childIsDir = (child.Attributes & XbdmConstants.AttrDirectory) != 0;
+            children = conn.ListDirectory(wirePath);
+        }
+        catch
+        {
+            return;
+        }
+
+        // List directories before files so parent folders appear before their contents
+        // in the file group descriptor (legacy Visit order).
+        foreach (var child in children.Where(c => (c.Attributes & XbdmConstants.AttrDirectory) != 0))
+        {
             var childRelative = $"{relativePath}\\{child.Name}";
             var childWire = $"{wirePath.TrimEnd('\\')}\\{child.Name}";
-            AddEntryRecursive(conn, childWire, childRelative, childIsDir, entries);
+            AddEntryRecursive(conn, childWire, childRelative, isDirectory: true, entries);
+        }
+
+        foreach (var child in children.Where(c => (c.Attributes & XbdmConstants.AttrDirectory) == 0))
+        {
+            var childRelative = $"{relativePath}\\{child.Name}";
+            var childWire = $"{wirePath.TrimEnd('\\')}\\{child.Name}";
+            AddEntryRecursive(conn, childWire, childRelative, isDirectory: false, entries);
         }
     }
 }

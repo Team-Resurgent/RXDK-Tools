@@ -11,4 +11,5 @@ struct __declspec(uuid("A7F2C9E1-4B8D-4A2E-9C31-8E5D6F0A2B44")) IXboxShellExtUi 
     STDMETHOD(GetDragFileGroupDescriptor)(UINT cidl, LPCITEMIDLIST* apidl, HGLOBAL* phGlobal) PURE;
     STDMETHOD(GetDragFileContentsStream)(LONG index, IUnknown** ppStream) PURE;
     STDMETHOD(PerformDrop)(HWND hwnd, LPCITEMIDLIST childPidl, IDataObject* pDataObject, DWORD* pdwEffect) PURE;
+    STDMETHOD(InvokeContextCommandForSelection)(HWND hwnd, UINT cidl, LPCITEMIDLIST* apidl, int command) PURE;
 };

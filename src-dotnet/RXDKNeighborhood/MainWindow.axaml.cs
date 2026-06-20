@@ -676,11 +676,30 @@ public partial class MainWindow : Window, IFileOperationHost
 
     public async Task<bool> ConfirmDeleteAsync(IReadOnlyList<Rxdk.Xbdm.KitServices.Models.FileSelectionItem> items)
     {
-        var message = items.Count == 1
-            ? $"Delete '{items[0].Name}'?"
-            : $"Delete {items.Count} selected items?";
+        var message = FormatDeleteMessage(items);
+        var title = items.Count == 1 && items[0].IsDirectory
+            ? "Confirm Folder Delete"
+            : items.Count > 1
+                ? "Confirm Multiple Delete"
+                : "Confirm Delete";
 
-        return await ShowYesNoDialogAsync("Confirm Delete", message);
+        return await ShowYesNoDialogAsync(title, message);
+    }
+
+    private static string FormatDeleteMessage(IReadOnlyList<Rxdk.Xbdm.KitServices.Models.FileSelectionItem> items)
+    {
+        if (items.Count == 0)
+            return "Are you sure you want to permanently delete this item?";
+
+        if (items.Count == 1)
+        {
+            var name = items[0].Name;
+            return items[0].IsDirectory
+                ? $"Are you sure you want to remove the folder '{name}' and permanently delete its contents?"
+                : $"Are you sure you want to permanently delete '{name}'?";
+        }
+
+        return $"Are you sure you want to permanently delete these '{items.Count}' items?";
     }
 
     public async Task<string?> PromptRenameAsync(string currentName)

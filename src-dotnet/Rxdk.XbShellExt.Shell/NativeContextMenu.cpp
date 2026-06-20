@@ -273,16 +273,20 @@ namespace
                 static_cast<CLIPFORMAT>(RegisterClipboardFormatA("XBOX_FILEDESCRIPTOR"));
             static const CLIPFORMAT cfFileDescW =
                 static_cast<CLIPFORMAT>(RegisterClipboardFormatW(CFSTR_FILEDESCRIPTORW));
-            const CLIPFORMAT formats[] = { CF_HDROP, cfXbox, cfFileDescW };
+            static const CLIPFORMAT cfFileContents =
+                static_cast<CLIPFORMAT>(RegisterClipboardFormat(CFSTR_FILECONTENTS));
 
-            for (const CLIPFORMAT cf : formats)
+            const FORMATETC formats[] = {
+                { CF_HDROP, nullptr, DVASPECT_CONTENT, -1, TYMED_HGLOBAL },
+                { cfXbox, nullptr, DVASPECT_CONTENT, -1, TYMED_HGLOBAL },
+                { cfFileDescW, nullptr, DVASPECT_CONTENT, -1, TYMED_HGLOBAL },
+                { cfFileContents, nullptr, DVASPECT_CONTENT, -1, TYMED_ISTREAM },
+                { cfFileContents, nullptr, DVASPECT_CONTENT, -1, TYMED_HGLOBAL },
+            };
+
+            for (const FORMATETC& etc : formats)
             {
-                FORMATETC etc = {};
-                etc.cfFormat = cf;
-                etc.dwAspect = DVASPECT_CONTENT;
-                etc.lindex = -1;
-                etc.tymed = TYMED_HGLOBAL;
-                if (SUCCEEDED(pDataObject->QueryGetData(&etc)))
+                if (SUCCEEDED(pDataObject->QueryGetData(const_cast<FORMATETC*>(&etc))))
                 {
                     canPaste = true;
                     break;
@@ -328,23 +332,31 @@ namespace
     HRESULT CutCopyOnExplorerThread(
         CShellObjectWithSite& site,
         LPCITEMIDLIST folderPidl,
-        LPCITEMIDLIST childPidl,
+        const std::vector<CComHeapPtr<ITEMIDLIST>>& childPidls,
         HWND hwnd,
         bool fCut)
     {
         XB_TRACE_SCOPE("CtxMenu.CutCopy");
-        if (!childPidl)
+        if (childPidls.empty())
             return E_FAIL;
 
         const HRESULT hrInit = OleInitialize(nullptr);
         UNREFERENCED_PARAMETER(hrInit);
 
+        std::vector<LPCITEMIDLIST> pidlPtrs;
+        pidlPtrs.reserve(childPidls.size());
+        for (const auto& pidl : childPidls)
+            pidlPtrs.push_back(pidl);
+
         CComPtr<IDataObject> dataObject;
-        LPCITEMIDLIST child = childPidl;
-        HRESULT hr = CreateNativeDataObject(folderPidl, 1, &child, IID_PPV_ARGS(&dataObject));
+        HRESULT hr = CreateNativeDataObject(
+            folderPidl,
+            static_cast<UINT>(pidlPtrs.size()),
+            pidlPtrs.data(),
+            IID_PPV_ARGS(&dataObject));
         if (FAILED(hr) || !dataObject)
         {
-            __xbTraceScope.Note("CreateNativeDataObject hr=0x%08X", hr);
+            __xbTraceScope.Note("CreateNativeDataObject hr=0x%08X count=%u", hr, static_cast<UINT>(pidlPtrs.size()));
             return FAILED(hr) ? hr : E_FAIL;
         }
 
@@ -358,7 +370,7 @@ namespace
         if (SUCCEEDED(hr) && shellFolderView)
             shellFolderView->SetClipboard(fCut);
 
-        __xbTraceScope.Note("OleSetClipboard hr=0x%08X cut=%d", hr, fCut ? 1 : 0);
+        __xbTraceScope.Note("OleSetClipboard hr=0x%08X cut=%d count=%u", hr, fCut ? 1 : 0, static_cast<UINT>(pidlPtrs.size()));
 
         return hr;
     }
@@ -383,7 +395,7 @@ namespace
 
     HRESULT InvokeManagedContextCommandSync(
         LPCITEMIDLIST folderPidl,
-        LPCITEMIDLIST childPidl,
+        const std::vector<CComHeapPtr<ITEMIDLIST>>& childPidls,
         HWND hwnd,
         CommandId command)
     {
@@ -408,7 +420,27 @@ namespace
         if (FAILED(hr) || !ui)
             return hr;
 
-        hr = ui->InvokeContextCommand(hwnd, childPidl, managedId);
+        if (childPidls.size() <= 1)
+        {
+            hr = ui->InvokeContextCommand(
+                hwnd,
+                childPidls.empty() ? nullptr : static_cast<LPCITEMIDLIST>(childPidls.front()),
+                managedId);
+        }
+        else
+        {
+            std::vector<LPCITEMIDLIST> pidlPtrs;
+            pidlPtrs.reserve(childPidls.size());
+            for (const auto& pidl : childPidls)
+                pidlPtrs.push_back(pidl);
+
+            hr = ui->InvokeContextCommandForSelection(
+                hwnd,
+                static_cast<UINT>(pidlPtrs.size()),
+                const_cast<LPCITEMIDLIST*>(pidlPtrs.data()),
+                managedId);
+        }
+
         if (SUCCEEDED(hr) && ShouldRefreshFolderAfterContextCommand(managedId))
             NotifyFolderContentsChanged(folderPidl, nullptr);
         return hr;
@@ -605,6 +637,7 @@ namespace
                 AttachShellPidl(m_folderPidl, folderPidl);
 
             m_childPidl.Free();
+            m_childPidls.clear();
             m_selectionSegment.clear();
             m_hasSelection = false;
             m_consoleOnly = false;
@@ -617,20 +650,49 @@ namespace
                 return;
             }
 
-            if (cidl == 1 && apidl && apidl[0])
+            if (cidl >= 1 && apidl)
             {
-                m_hasSelection = true;
-                AttachShellPidl(m_childPidl, apidl[0]);
-                m_selectionSegment = NativeFolderOps::GetLastSegment(apidl[0]);
-                m_target = ClassifyTarget(folderPidl, m_selectionSegment.c_str(), true);
-                m_consoleOnly = m_target == TargetKind::Console;
+                m_childPidls.reserve(cidl);
+                for (UINT i = 0; i < cidl; ++i)
+                {
+                    if (!apidl[i])
+                        continue;
+                    m_childPidls.emplace_back();
+                    AttachShellPidl(m_childPidls.back(), apidl[i]);
+                    if (!m_childPidls.back())
+                    {
+                        m_childPidls.pop_back();
+                        continue;
+                    }
+                }
 
-                if (m_target == TargetKind::AddConsole)
-                    m_kind = SelectionKind::AddConsole;
-                else if (ShouldOfferBrowseTarget(m_target))
-                    m_kind = SelectionKind::Folder;
-                else
-                    m_kind = SelectionKind::File;
+                if (m_childPidls.empty())
+                {
+                    m_kind = SelectionKind::Background;
+                    return;
+                }
+
+                m_hasSelection = true;
+                AttachShellPidl(m_childPidl, m_childPidls.front());
+                m_selectionSegment = NativeFolderOps::GetLastSegment(m_childPidls.front());
+
+                if (cidl == 1)
+                {
+                    m_target = ClassifyTarget(folderPidl, m_selectionSegment.c_str(), true);
+                    m_consoleOnly = m_target == TargetKind::Console;
+
+                    if (m_target == TargetKind::AddConsole)
+                        m_kind = SelectionKind::AddConsole;
+                    else if (ShouldOfferBrowseTarget(m_target))
+                        m_kind = SelectionKind::Folder;
+                    else
+                        m_kind = SelectionKind::File;
+                    return;
+                }
+
+                // Multi-select: offer file operations (legacy CloneSelection path).
+                m_kind = SelectionKind::File;
+                m_target = TargetKind::File;
                 return;
             }
 
@@ -839,9 +901,9 @@ namespace
             case CommandId::Security:
                 return LaunchManagedUi(m_folderPidl, nullptr, pici->hwnd, ManagedUiAction::Security);
             case CommandId::Cut:
-                return CutCopyOnExplorerThread(*this, m_folderPidl, m_childPidl, pici->hwnd, true);
+                return CutCopyOnExplorerThread(*this, m_folderPidl, m_childPidls, pici->hwnd, true);
             case CommandId::Copy:
-                return CutCopyOnExplorerThread(*this, m_folderPidl, m_childPidl, pici->hwnd, false);
+                return CutCopyOnExplorerThread(*this, m_folderPidl, m_childPidls, pici->hwnd, false);
             case CommandId::Paste:
                 if (!CanPasteFromClipboard())
                 {
@@ -852,12 +914,12 @@ namespace
                         MB_OK | MB_ICONINFORMATION);
                     return E_FAIL;
                 }
-                return InvokeManagedContextCommandSync(m_folderPidl, m_childPidl, pici->hwnd, CommandId::Paste);
+                return InvokeManagedContextCommandSync(m_folderPidl, m_childPidls, pici->hwnd, CommandId::Paste);
             default:
                 if (IsManagedCommand(command))
                 {
                     if (ShouldInvokeContextCommandSynchronously(command))
-                        return InvokeManagedContextCommandSync(m_folderPidl, m_childPidl, pici->hwnd, command);
+                        return InvokeManagedContextCommandSync(m_folderPidl, m_childPidls, pici->hwnd, command);
                     return LaunchManagedContextCommand(m_folderPidl, m_childPidl, pici->hwnd, command);
                 }
                 return E_INVALIDARG;
@@ -1067,6 +1129,7 @@ namespace
         std::string m_selectionSegment;
         CComHeapPtr<ITEMIDLIST> m_folderPidl;
         CComHeapPtr<ITEMIDLIST> m_childPidl;
+        std::vector<CComHeapPtr<ITEMIDLIST>> m_childPidls;
     };
 }
 
