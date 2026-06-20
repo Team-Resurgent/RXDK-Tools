@@ -623,8 +623,7 @@ public sealed class XboxFolder : IShellFolder, IShellFolder2, IPersistFolder, IP
                 return phGlobal == 0 ? HResults.OutOfMemory : HResults.Ok;
             }
 
-            _dragTransferSession?.Dispose();
-            ClearDragTransferState();
+            _dragTransferSession?.PrepareForReplacement();
 
             (_dragTransferSession, _dragCatalog) = XboxDragTransferSession.Start(selection);
             _dragPidls = pidls;
@@ -697,6 +696,7 @@ public sealed class XboxFolder : IShellFolder, IShellFolder2, IPersistFolder, IP
 
     private void ClearDragTransferState()
     {
+        _dragTransferSession?.NotifyOwnerReleased();
         _dragTransferSession = null;
         _dragCatalog = null;
         _dragPidls = null;

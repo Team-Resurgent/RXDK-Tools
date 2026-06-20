@@ -96,12 +96,17 @@ internal static class XboxShellItemFactory
         if (string.IsNullOrEmpty(fullPath))
             return ListRootChildren();
 
-        var item = FromPath(fullPath);
-        return item.Kind switch
+        if (string.Equals(fullPath, ShellConstants.AddConsoleSegment, StringComparison.Ordinal))
+            return Array.Empty<XboxShellItem>();
+
+        // Folder enumeration only happens for browsable containers. Route by path depth instead
+        // of FromPath() kind lookup so a transient DIRLIST failure cannot misclassify a folder
+        // as a file and yield an empty listing.
+        var depth = fullPath.Count(c => c == '\\') + 1;
+        return depth switch
         {
-            XboxItemKind.Console => ListConsoleChildren(item.FullPath),
-            XboxItemKind.Volume or XboxItemKind.Directory => ListFolderChildren(item.FullPath),
-            _ => Array.Empty<XboxShellItem>(),
+            1 => ListConsoleChildren(fullPath),
+            _ => ListFolderChildren(fullPath),
         };
     }
 

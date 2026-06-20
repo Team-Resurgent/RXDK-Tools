@@ -2,6 +2,7 @@
 #include "FolderProxy.h"
 #include "resource.h"
 #include "ShellTrace.h"
+#include "TransferActivity.h"
 
 CComModule _Module;
 
@@ -30,6 +31,9 @@ extern "C" BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID)
 
 STDAPI DllCanUnloadNow()
 {
+    if (XbShellExt_GetTransferActivityCount() > 0)
+        return S_FALSE;
+
     return _Module.GetLockCount() == 0 ? S_OK : S_FALSE;
 }
 
