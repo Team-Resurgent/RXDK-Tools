@@ -58,6 +58,7 @@ internal static class XbdmScreenshot
         var infoLine = session.ReceiveLine();
         var info = ParseInfoLine(infoLine);
         var buffer = new byte[info.FrameBufferSize];
+        session.BeginPendingBinary(info.FrameBufferSize);
         session.ReceiveBinary(buffer);
         return buffer;
     }
@@ -65,6 +66,7 @@ internal static class XbdmScreenshot
     internal static void WriteBmp(string localBmpPath, Info info, XbdmProtocolSession session)
     {
         var frameBuffer = new byte[info.FrameBufferSize];
+        session.BeginPendingBinary(info.FrameBufferSize);
         session.ReceiveBinary(frameBuffer);
         WriteBmpFromFramebuffer(localBmpPath, info, frameBuffer);
     }

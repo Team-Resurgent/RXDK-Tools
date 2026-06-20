@@ -4,14 +4,20 @@ partial class TransferProgressForm
 {
     private Label titleLabel = null!;
     private Label fileLabel = null!;
-    private ProgressBar progressBar = null!;
+    private Label filesCaptionLabel = null!;
+    private ProgressBar filesProgressBar = null!;
+    private Label fileBytesCaptionLabel = null!;
+    private ProgressBar fileProgressBar = null!;
     private Button cancelButton = null!;
 
     private void InitializeComponent()
     {
         titleLabel = new Label();
         fileLabel = new Label();
-        progressBar = new ProgressBar();
+        filesCaptionLabel = new Label();
+        filesProgressBar = new ProgressBar();
+        fileBytesCaptionLabel = new Label();
+        fileProgressBar = new ProgressBar();
         cancelButton = new Button();
         SuspendLayout();
 
@@ -23,7 +29,7 @@ partial class TransferProgressForm
         ShowInTaskbar = false;
         StartPosition = FormStartPosition.CenterScreen;
         TopMost = true;
-        ClientSize = new Size(420, 118);
+        ClientSize = new Size(420, 158);
         AutoScaleMode = AutoScaleMode.None;
         Font = new Font("Segoe UI", 9F);
 
@@ -33,19 +39,34 @@ partial class TransferProgressForm
 
         fileLabel.AutoSize = false;
         fileLabel.Location = new Point(12, 34);
-        fileLabel.Size = new Size(396, 32);
+        fileLabel.Size = new Size(396, 28);
         fileLabel.Text = "Preparing…";
 
-        progressBar.Location = new Point(12, 72);
-        progressBar.Size = new Size(320, 22);
-        progressBar.Style = ProgressBarStyle.Continuous;
+        filesCaptionLabel.AutoSize = true;
+        filesCaptionLabel.Location = new Point(12, 68);
+        filesCaptionLabel.Text = "Overall";
 
-        cancelButton.Location = new Point(338, 70);
+        filesProgressBar.Location = new Point(12, 86);
+        filesProgressBar.Size = new Size(396, 18);
+        filesProgressBar.Style = ProgressBarStyle.Continuous;
+
+        fileBytesCaptionLabel.AutoSize = true;
+        fileBytesCaptionLabel.Location = new Point(12, 112);
+        fileBytesCaptionLabel.Text = "Current file";
+
+        fileProgressBar.Location = new Point(12, 130);
+        fileProgressBar.Size = new Size(320, 18);
+        fileProgressBar.Style = ProgressBarStyle.Continuous;
+
+        cancelButton.Location = new Point(338, 126);
         cancelButton.Size = new Size(70, 26);
         cancelButton.Text = "Cancel";
 
         Controls.Add(cancelButton);
-        Controls.Add(progressBar);
+        Controls.Add(fileProgressBar);
+        Controls.Add(fileBytesCaptionLabel);
+        Controls.Add(filesProgressBar);
+        Controls.Add(filesCaptionLabel);
         Controls.Add(fileLabel);
         Controls.Add(titleLabel);
         ResumeLayout(false);

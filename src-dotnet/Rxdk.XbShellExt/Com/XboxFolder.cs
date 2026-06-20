@@ -613,19 +613,29 @@ public sealed class XboxFolder : IShellFolder, IShellFolder2, IPersistFolder, IP
             if (selection == null)
                 return HResults.NoObject;
 
+            // Explorer may request the descriptor more than once during paste. Reuse the
+            // live transfer session instead of disposing and opening another XBDM connection.
+            if (_dragCatalog != null && _dragTransferSession != null && _dragPidls != null &&
+                DragSelectionMatches(_fullPath, _dragPidls, pidls))
+            {
+                phGlobal = XboxDragFormats.CreateFileGroupDescriptor(_dragCatalog);
+                ManagedTrace.Line($"GetDragFileGroupDescriptor reused items={_dragCatalog.Count}");
+                return phGlobal == 0 ? HResults.OutOfMemory : HResults.Ok;
+            }
+
             _dragTransferSession?.Dispose();
-            var conn = XbdmSession.Connect(selection.ConsoleName);
-            var catalog = XboxDragCatalog.Build(conn, selection);
+            ClearDragTransferState();
+
+            (_dragTransferSession, _dragCatalog) = XboxDragTransferSession.Start(selection);
             _dragPidls = pidls;
-            _dragCatalog = catalog;
-            _dragTransferSession = new XboxDragTransferSession(catalog, conn);
-            phGlobal = XboxDragFormats.CreateFileGroupDescriptor(catalog);
-            ManagedTrace.Line($"GetDragFileGroupDescriptor items={catalog.Count} firstSize={(catalog.Count > 0 ? catalog[0].Size : 0)}");
+            phGlobal = XboxDragFormats.CreateFileGroupDescriptor(_dragCatalog);
+            ManagedTrace.Line($"GetDragFileGroupDescriptor items={_dragCatalog.Count} firstSize={(_dragCatalog.Count > 0 ? _dragCatalog[0].Size : 0)}");
             return phGlobal == 0 ? HResults.OutOfMemory : HResults.Ok;
         }
         catch (Exception ex)
         {
             ManagedTrace.Line($"GetDragFileGroupDescriptor threw {ex.GetType().Name}: {ex.Message}");
+            ClearDragTransferState();
             return HResults.NoObject;
         }
     }
@@ -649,12 +659,17 @@ public sealed class XboxFolder : IShellFolder, IShellFolder2, IPersistFolder, IP
             if (stream == null)
                 return OleConstants.DvEFormatetc;
 
-            ppStream = Marshal.GetIUnknownForObject(stream);
+            // Must expose the IStream vtable directly. GetIUnknownForObject + native QI
+            // fails on the CCW and paste to desktop returns "Unspecified error".
+            ppStream = Marshal.GetComInterfaceForObject(stream, typeof(INativeComStream));
+            ManagedTrace.Line($"GetDragFileContentsStream index={index} path='{entry.RelativePath}' size={entry.Size}");
             return ppStream == 0 ? HResults.NoObject : HResults.Ok;
         }
         catch (Exception ex)
         {
             ManagedTrace.Line($"GetDragFileContentsStream threw {ex.GetType().Name}: {ex.Message}");
+            _dragTransferSession?.ReportFailure(ex.Message);
+            ClearDragTransferState();
             return HResults.NoObject;
         }
     }
@@ -678,5 +693,31 @@ public sealed class XboxFolder : IShellFolder, IShellFolder2, IPersistFolder, IP
             ShellUiHost.ShowError(hwnd, ex.Message);
             return HResults.NoObject;
         }
+    }
+
+    private void ClearDragTransferState()
+    {
+        _dragTransferSession = null;
+        _dragCatalog = null;
+        _dragPidls = null;
+    }
+
+    private static bool DragSelectionMatches(string folderPath, IReadOnlyList<nint> previous, IReadOnlyList<nint> current)
+    {
+        if (previous.Count != current.Count)
+            return false;
+
+        for (var i = 0; i < previous.Count; i++)
+        {
+            if (!string.Equals(
+                    PidlHelper.GetLastSegment(previous[i]),
+                    PidlHelper.GetLastSegment(current[i]),
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

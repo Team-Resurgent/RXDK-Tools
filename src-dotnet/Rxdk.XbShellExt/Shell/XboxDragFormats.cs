@@ -10,7 +10,6 @@ internal static class XboxDragFormats
     private const uint FdCreationTime = 0x00000008;
     private const uint FdFileSize = 0x00000040;
     private const uint FdWriteTime = 0x00000080;
-    private const uint FdProgressUi = 0x00004000;
     private const uint FileAttributeDirectory = 0x00000010;
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode, Pack = 4)]
@@ -74,7 +73,7 @@ internal static class XboxDragFormats
 
     private static FileDescriptorW ToFileDescriptor(XboxDragEntry entry)
     {
-        var flags = FdAttributes | FdWriteTime | FdProgressUi;
+        var flags = FdAttributes | FdWriteTime;
         if (entry.CreationTimeUnix.HasValue)
             flags |= FdCreationTime;
         if (!entry.IsDirectory && entry.Size > 0)

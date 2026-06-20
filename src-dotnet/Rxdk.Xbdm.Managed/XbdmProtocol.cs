@@ -11,8 +11,13 @@ internal static class XbdmProtocol
 {
     public static int HResultFromStatusLine(string line)
     {
-        if (line.Length < 3)
-            throw XbdmException.FromHResult("Invalid XBDM status line.", XbdmHResults.CannotConnect, line);
+        if (line.Length < 3 ||
+            !char.IsDigit(line[0]) ||
+            !char.IsDigit(line[1]) ||
+            !char.IsDigit(line[2]))
+        {
+            return XbdmHResults.FileError;
+        }
 
         var nCode = (line[0] - '2') * 100 + (line[1] - '0') * 10 + (line[2] - '0');
         return line[0] == '4' ? XbdmHResults.Error(nCode - 200) : XbdmHResults.Success(nCode);
@@ -257,6 +262,7 @@ internal sealed class XbdmProtocolSession : IDisposable
     private readonly byte[] _readBuffer = new byte[4096];
     private int _bufferOffset;
     private int _bufferCount;
+    private ulong _pendingBinaryBytes;
 
     internal bool SecurityHandshakeAttempted { get; private set; }
 
@@ -276,6 +282,7 @@ internal sealed class XbdmProtocolSession : IDisposable
         options ??= new XbdmConnectOptions();
         var address = XboxNameResolver.ResolveAddress(consoleName);
         var client = new TcpClient();
+        XbdmProtocolSession? session = null;
         try
         {
             var connectTask = client.ConnectAsync(address, XbdmConstants.DebuggerPort);
@@ -283,7 +290,7 @@ internal sealed class XbdmProtocolSession : IDisposable
                 throw XbdmException.FromHResult($"Could not connect to '{consoleName}'.", XbdmHResults.CannotConnect);
 
             var stream = client.GetStream();
-            var session = new XbdmProtocolSession(client, stream);
+            session = new XbdmProtocolSession(client, stream);
             var welcome = session.ReceiveLine();
             var hr = XbdmProtocol.HResultFromStatusLine(welcome);
 
@@ -301,13 +308,19 @@ internal sealed class XbdmProtocolSession : IDisposable
         }
         catch
         {
-            client.Dispose();
+            if (session != null)
+                session.Dispose();
+            else
+                client.Dispose();
+
             throw;
         }
     }
 
     public (int HResult, string Line) SendCommandRaw(string command)
     {
+        PrepareForCommand();
+
         var payload = Encoding.ASCII.GetBytes(command + "\r\n");
         try
         {
@@ -377,7 +390,83 @@ internal sealed class XbdmProtocolSession : IDisposable
             if (!TryFillBuffer())
                 throw XbdmException.FromHResult("XBDM connection lost.", XbdmHResults.ConnectionLost);
         }
+
+        NoteBinaryConsumed((ulong)buffer.Length);
     }
+
+    /// <summary>
+    /// Announces a fixed-size binary payload that must be fully consumed before the next command.
+    /// </summary>
+    internal void BeginPendingBinary(ulong byteCount) => _pendingBinaryBytes = byteCount;
+
+    /// <summary>
+    /// Discards any tracked or buffered payload bytes still in the TCP pipe.
+    /// </summary>
+    internal void DrainPendingBinary()
+    {
+        Span<byte> scratch = stackalloc byte[8192];
+        while (_pendingBinaryBytes > 0)
+        {
+            var chunk = (int)Math.Min(_pendingBinaryBytes, (ulong)scratch.Length);
+            ReceiveBinary(scratch[..chunk]);
+        }
+
+        DiscardBufferedBytes();
+        DrainSocketAvailable();
+    }
+
+    private void PrepareForCommand()
+    {
+        DrainPendingBinary();
+    }
+
+    private void NoteBinaryConsumed(ulong bytes)
+    {
+        if (_pendingBinaryBytes == 0 || bytes == 0)
+            return;
+
+        _pendingBinaryBytes = bytes >= _pendingBinaryBytes ? 0 : _pendingBinaryBytes - bytes;
+    }
+
+    private void DiscardBufferedBytes()
+    {
+        _bufferOffset = 0;
+        _bufferCount = 0;
+    }
+
+    private void DrainSocketAvailable()
+    {
+        if (!_stream.CanRead || !_client.Connected)
+            return;
+
+        var previousTimeout = _stream.ReadTimeout;
+        try
+        {
+            _stream.ReadTimeout = 1;
+            Span<byte> discard = stackalloc byte[_readBuffer.Length];
+            while (true)
+            {
+                try
+                {
+                    var read = _stream.Read(discard);
+                    if (read <= 0)
+                        break;
+                }
+                catch (IOException ex) when (IsReadTimeout(ex))
+                {
+                    break;
+                }
+            }
+        }
+        finally
+        {
+            _stream.ReadTimeout = previousTimeout;
+            DiscardBufferedBytes();
+        }
+    }
+
+    private static bool IsReadTimeout(IOException ex) =>
+        ex.InnerException is SocketException { SocketErrorCode: SocketError.TimedOut };
 
     internal void SetReadTimeout(TimeSpan timeout)
     {

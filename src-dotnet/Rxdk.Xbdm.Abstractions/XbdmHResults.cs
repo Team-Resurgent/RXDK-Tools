@@ -17,6 +17,9 @@ public static class XbdmHResults
     public static bool IsSuccess(int hresult) => (hresult & unchecked((int)0x80000000)) == 0;
 
     public const int CannotConnect = unchecked((int)0x82DB0100);
+    public const int CannotAccess = unchecked((int)0x82DB000E);
+    public const int NoSuchFile = unchecked((int)0x82DB0002);
+    public const int MaxConnect = unchecked((int)0x82DB0001);
     public const int ConnectionLost = unchecked((int)0x82DB0101);
     public const int FileError = unchecked((int)0x82DB0103);
     public const int EndOfList = unchecked((int)0x82DB0104);
@@ -42,8 +45,8 @@ public static class XbdmHResults
         [ReadyForBin] = "ReadyForBin — ready for binary transfer",
         [Dedicated] = "Dedicated — dedicated connection mode",
         [Error(0)] = "Undefined — unspecified XBDM error",
-        [Error(1)] = "MaxConnect — too many connections",
-        [Error(2)] = "NoSuchFile — file or launch path not found",
+        [MaxConnect] = "MaxConnect — too many connections",
+        [NoSuchFile] = "NoSuchFile — file or launch path not found",
         [Error(3)] = "NoModule — module not loaded",
         [MemUnmapped] = "MemUnmapped — address not mapped",
         [Error(5)] = "NoThread — thread not found",
@@ -55,7 +58,7 @@ public static class XbdmHResults
         [Error(11)] = "DirNotEmpty — directory not empty",
         [Error(12)] = "BadFilename — invalid file name",
         [Error(13)] = "CannotCreate — cannot create file or directory",
-        [Error(14)] = "CannotAccess — access denied",
+        [CannotAccess] = "CannotAccess — access denied",
         [Error(15)] = "DeviceFull — storage device full",
         [NotDebuggable] = "NotDebuggable — debugger cannot attach",
         [Error(17)] = "BadCountType — invalid performance counter type",

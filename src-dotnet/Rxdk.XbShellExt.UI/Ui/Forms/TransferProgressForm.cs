@@ -6,20 +6,31 @@ using Rxdk.XbShellExt.Ui;
 public sealed partial class TransferProgressForm : Form
 {
     private bool _cancelRequested;
+    private bool _failedMode;
 
     public TransferProgressForm()
     {
         InitializeComponent();
         if (LicenseManager.UsageMode != LicenseUsageMode.Designtime)
             ShellModernChrome.Apply(this);
-        cancelButton.Click += (_, _) => _cancelRequested = true;
+        cancelButton.Click += (_, _) =>
+        {
+            if (_failedMode)
+                Close();
+            else
+                _cancelRequested = true;
+        };
         ShellDialogLayout.ConfigureButton(cancelButton);
         DesignPreview.ApplyIfDesignTime(() =>
         {
-            titleLabel.Text = "Copying to Xbox";
-            fileLabel.Text = @"Games\Halo\default.xbe";
-            progressBar.Maximum = 100;
-            progressBar.Value = 42;
+            titleLabel.Text = "Copying from Xbox";
+            fileLabel.Text = @"C:\dashboard.xbx";
+            filesCaptionLabel.Text = "Overall (2 of 8 files)";
+            filesProgressBar.Maximum = 100;
+            filesProgressBar.Value = 25;
+            fileBytesCaptionLabel.Text = "Current file";
+            fileProgressBar.Maximum = 100;
+            fileProgressBar.Value = 60;
         });
     }
 
@@ -31,23 +42,53 @@ public sealed partial class TransferProgressForm : Form
 
     public bool IsCancelRequested => _cancelRequested;
 
-    public void Configure(ulong totalBytes, int fileCount)
+    public void Configure(int fileCount)
     {
-        if (totalBytes > int.MaxValue)
-        {
-            progressBar.Maximum = int.MaxValue;
-            progressBar.Style = ProgressBarStyle.Marquee;
-            progressBar.MarqueeAnimationSpeed = 30;
-        }
-        else
-        {
-            progressBar.Maximum = Math.Max(1, (int)totalBytes);
-            progressBar.Value = 0;
-        }
+        filesProgressBar.Style = ProgressBarStyle.Continuous;
+        filesProgressBar.Minimum = 0;
+        filesProgressBar.Maximum = 100;
+        filesProgressBar.Value = 0;
 
+        fileProgressBar.Style = ProgressBarStyle.Continuous;
+        fileProgressBar.Minimum = 0;
+        fileProgressBar.Maximum = 100;
+        fileProgressBar.Value = 0;
+
+        filesCaptionLabel.Text = fileCount == 1
+            ? "Overall (1 file)"
+            : $"Overall (0 of {fileCount} files)";
+
+        fileBytesCaptionLabel.Text = "Current file";
         fileLabel.Text = fileCount == 1
             ? "Copying 1 item…"
             : $"Copying {fileCount} items…";
+    }
+
+    public void Complete()
+    {
+        filesProgressBar.Value = 100;
+        fileProgressBar.Value = 100;
+        PumpMessages();
+    }
+
+    public void Fail(string message)
+    {
+        _failedMode = true;
+        Text = "Xbox Neighborhood";
+        titleLabel.Text = "Transfer failed";
+        filesCaptionLabel.Visible = false;
+        filesProgressBar.Visible = false;
+        fileBytesCaptionLabel.Visible = false;
+        fileProgressBar.Visible = false;
+        fileLabel.Location = new Point(12, 34);
+        fileLabel.Size = new Size(396, 96);
+        fileLabel.Text = message;
+        cancelButton.Text = "Close";
+        cancelButton.Enabled = true;
+        ClientSize = new Size(420, 148);
+        BringToFront();
+        Activate();
+        PumpMessages();
     }
 
     public void SetCurrentFile(string relativePath)
@@ -56,16 +97,13 @@ public sealed partial class TransferProgressForm : Form
         PumpMessages();
     }
 
-    public void ReportBytes(ulong completedBytes, ulong totalBytes)
+    public void ReportProgress(int filesPercent, int currentFilePercent, int filesCompleted, int fileCount)
     {
-        if (progressBar.Style == ProgressBarStyle.Continuous)
-        {
-            var value = totalBytes > int.MaxValue
-                ? (int)(completedBytes * int.MaxValue / Math.Max(1UL, totalBytes))
-                : (int)Math.Min(completedBytes, (ulong)progressBar.Maximum);
-            progressBar.Value = Math.Clamp(value, 0, progressBar.Maximum);
-        }
-
+        filesProgressBar.Value = Math.Clamp(filesPercent, 0, 100);
+        fileProgressBar.Value = Math.Clamp(currentFilePercent, 0, 100);
+        filesCaptionLabel.Text = fileCount == 1
+            ? "Overall (1 file)"
+            : $"Overall ({filesCompleted} of {fileCount} files)";
         PumpMessages();
     }
 

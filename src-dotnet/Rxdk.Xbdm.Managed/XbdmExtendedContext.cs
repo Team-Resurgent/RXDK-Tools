@@ -43,6 +43,7 @@ internal static class XbdmExtendedContext
             return false;
 
         var cb = session.ReceiveUInt32();
+        session.BeginPendingBinary(cb);
         if (cb < (uint)ExtendedSize)
         {
             var partial = new byte[cb];
@@ -53,7 +54,8 @@ internal static class XbdmExtendedContext
         var buffer = new byte[ExtendedSize];
         session.ReceiveBinary(buffer);
         xfs = BytesToStruct<XbdmFloatExtendedSave>(buffer);
-        DrainRemaining(session, cb - (uint)ExtendedSize);
+        if (cb > (uint)ExtendedSize)
+            session.DrainPendingBinary();
         return true;
     }
 
@@ -146,17 +148,6 @@ internal static class XbdmExtendedContext
         {
             command.Append(
                 $" EAX=0x{context.Eax:x8} EBX=0x{context.Ebx:x8} ECX=0x{context.Ecx:x8} EDX=0x{context.Edx:x8} ESI=0x{context.Esi:x8} EDI=0x{context.Edi:x8}");
-        }
-    }
-
-    private static void DrainRemaining(XbdmProtocolSession session, uint remaining)
-    {
-        var buffer = new byte[512];
-        while (remaining > 0)
-        {
-            var chunk = (int)Math.Min(remaining, (uint)buffer.Length);
-            session.ReceiveBinary(buffer.AsSpan(0, chunk));
-            remaining -= (uint)chunk;
         }
     }
 
