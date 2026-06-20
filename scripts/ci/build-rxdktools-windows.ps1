@@ -41,7 +41,7 @@ function Ensure-InnoSetup {
     Write-Host 'Inno Setup 6 not found. Installing with Chocolatey...'
     $chocoCmd = Get-Command choco -ErrorAction SilentlyContinue
     if (-not $chocoCmd) {
-        throw 'Inno Setup 6 is required for XboxNeighborhood-Setup.exe (xbshlext post-build). Install Inno Setup or Chocolatey on the runner.'
+        throw 'Inno Setup 6 is required for XboxNeighborhood-Setup.exe. Install Inno Setup or Chocolatey on the runner.'
     }
     $choco = $chocoCmd.Source
 
@@ -107,3 +107,8 @@ Write-Host "Staged $($exes.Count) executable(s) in $stagingDir"
 Get-ChildItem -Path $stagingDir -Filter '*.exe' -File |
     Sort-Object Name |
     ForEach-Object { Write-Host ("  {0,-28} {1,12:N0} bytes" -f $_.Name, $_.Length) }
+
+Write-Host ''
+Write-Host 'Building Xbox Neighborhood installer...'
+& (Join-Path $repoRoot 'setup\build-installer.ps1')
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

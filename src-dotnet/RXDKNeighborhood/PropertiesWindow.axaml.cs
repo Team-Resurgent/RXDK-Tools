@@ -10,6 +10,7 @@ using RXDKNeighborhood.Core.Services;
 using RXDKNeighborhood.Services;
 using Rxdk.Xbdm;
 using Rxdk.Xbdm.Managed;
+using KitPropertyModels = Rxdk.Xbdm.KitServices.Models;
 
 namespace RXDKNeighborhood;
 
@@ -73,12 +74,12 @@ public partial class PropertiesWindow : Window
 
         switch (_session.Context.Kind)
         {
-            case PropertyTargetKind.Console:
+            case KitPropertyModels.PropertyTargetKind.Console:
                 tabs.Items.Add(CreateConsoleGeneralTab());
                 tabs.Items.Add(CreateConsoleAdvancedTab());
                 tabs.Items.Add(CreateSecurityTab());
                 break;
-            case PropertyTargetKind.Drive:
+            case KitPropertyModels.PropertyTargetKind.Drive:
                 tabs.Items.Add(CreateDriveTab());
                 break;
             default:
@@ -161,9 +162,9 @@ public partial class PropertiesWindow : Window
             panel.Children.Add(PropRow("Type", file.TypeName));
         if (!string.IsNullOrWhiteSpace(file.Location))
             panel.Children.Add(PropRow("Location", file.Location));
-        if (file.TotalSize > 0 || _session.Context.Kind == PropertyTargetKind.File)
+        if (file.TotalSize > 0 || _session.Context.Kind == KitPropertyModels.PropertyTargetKind.File)
             panel.Children.Add(PropRow("Size", FormattingHelper.FormatFileSize(file.TotalSize)));
-        if (_session.Context.Kind is PropertyTargetKind.Folder or PropertyTargetKind.MultiFile)
+        if (_session.Context.Kind is KitPropertyModels.PropertyTargetKind.Folder or KitPropertyModels.PropertyTargetKind.MultiFile)
             panel.Children.Add(PropRow("Contains", $"{file.FileCount} file(s), {file.FolderCount} folder(s)"));
         if (file.Created.HasValue)
             panel.Children.Add(PropRow("Created", FormattingHelper.FormatDateTime(file.Created)));
@@ -478,7 +479,7 @@ public partial class PropertiesWindow : Window
         }
     }
 
-    private void ApplyFileAttributes(FileGeneralInfo file)
+    private void ApplyFileAttributes(KitPropertyModels.FileGeneralInfo file)
     {
         if (_readOnlyCheck != null)
             file.ReadOnly = _readOnlyCheck.IsChecked;
@@ -551,9 +552,9 @@ public partial class PropertiesWindow : Window
         return ShellIconService.GetConsoleIcon(isDefault);
     }
 
-    private IImage? GetFilePropertyIcon(FileGeneralInfo file)
+    private IImage? GetFilePropertyIcon(KitPropertyModels.FileGeneralInfo file)
     {
-        if (_session.Context.Kind == PropertyTargetKind.MultiFile)
+        if (_session.Context.Kind == KitPropertyModels.PropertyTargetKind.MultiFile)
             return ShellIconService.GetMultiItemIcon();
 
         if (file.Items.Count == 1)

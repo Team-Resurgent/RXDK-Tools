@@ -23,10 +23,12 @@ extern "C"
 // initializer pointer so the linker keeps it (and this object).  Every consumer
 // of this header links xbdbgs.lib, so the symbol always resolves.
 //
+#if !defined(RXDK_NO_XBOXDBG_STATIC_CTOR)
 #if defined(_M_IX86)
 #pragma comment(linker, "/include:_g_pXboxdbgStaticCtor")
 #else
 #pragma comment(linker, "/include:g_pXboxdbgStaticCtor")
+#endif
 #endif
 
 #define DMHRAPI HRESULT __stdcall

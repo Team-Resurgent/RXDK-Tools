@@ -674,7 +674,7 @@ public partial class MainWindow : Window, IFileOperationHost
         }
     }
 
-    public async Task<bool> ConfirmDeleteAsync(IReadOnlyList<FileSelectionItem> items)
+    public async Task<bool> ConfirmDeleteAsync(IReadOnlyList<Rxdk.Xbdm.KitServices.Models.FileSelectionItem> items)
     {
         var message = items.Count == 1
             ? $"Delete '{items[0].Name}'?"
@@ -780,10 +780,14 @@ public partial class MainWindow : Window, IFileOperationHost
     {
         var selection = BuildSelection();
         var items = selection?.Items ?? Array.Empty<FileSelectionItem>();
-        var request = PropertyRequest.FromSelection(_selectedConsole, _currentDisplayPath, items);
+        RXDKNeighborhood.Core.Services.PropertyRequest? request =
+            RXDKNeighborhood.Core.Services.PropertyRequest.FromSelection(_selectedConsole, _currentDisplayPath, items);
         if (request == null)
         {
-            request = PropertyRequest.FromSelection(_selectedConsole, _currentDisplayPath, Array.Empty<FileSelectionItem>());
+            request = RXDKNeighborhood.Core.Services.PropertyRequest.FromSelection(
+                _selectedConsole,
+                _currentDisplayPath,
+                Array.Empty<FileSelectionItem>());
             if (request == null)
                 return;
         }
@@ -791,7 +795,7 @@ public partial class MainWindow : Window, IFileOperationHost
         await ShowPropertiesForRequestAsync(request);
     }
 
-    private async Task ShowPropertiesForRequestAsync(PropertyRequest request, string? initialTabHeader = null)
+    private async Task ShowPropertiesForRequestAsync(RXDKNeighborhood.Core.Services.PropertyRequest request, string? initialTabHeader = null)
     {
         try
         {

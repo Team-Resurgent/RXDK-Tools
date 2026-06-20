@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using Microsoft.Win32;
 using Rxdk.Xbdm;
 
 namespace Rxdk.Xbdm.Managed;
@@ -489,12 +490,17 @@ internal sealed class XbdmProtocolSession : IDisposable
 
 internal static class XboxNameResolver
 {
+    private const string ShellExtensionAddressKey = @"Software\Microsoft\XboxSDK\xbshlext\Addresses";
+
     public static IPAddress ResolveAddress(string consoleName)
     {
         if (IPAddress.TryParse(consoleName, out var parsed))
             return parsed;
 
         if (TryUdpNameQuery(consoleName, out var address))
+            return address;
+
+        if (TryRegistryAddress(consoleName, out address))
             return address;
 
         throw XbdmException.FromHResult($"Could not resolve Xbox name '{consoleName}'.", XbdmHResults.CannotConnect);
@@ -628,5 +634,29 @@ internal static class XboxNameResolver
         }
 
         return false;
+    }
+
+    private static bool TryRegistryAddress(string consoleName, out IPAddress address)
+    {
+        address = IPAddress.None;
+        if (!OperatingSystem.IsWindows())
+            return false;
+
+        try
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(ShellExtensionAddressKey, writable: false);
+            if (key?.GetValue(consoleName.Trim()) is not string value || value.Length == 0)
+                return false;
+
+            if (!IPAddress.TryParse(value, out var parsed))
+                return false;
+
+            address = parsed;
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 }

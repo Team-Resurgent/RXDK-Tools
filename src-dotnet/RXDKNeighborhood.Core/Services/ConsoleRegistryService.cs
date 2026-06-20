@@ -1,151 +1,29 @@
-using System.Text.Json;
 using RXDKNeighborhood.Core.Models;
-using Rxdk.Xbdm;
-using Rxdk.Xbdm.Managed;
+using Rxdk.Xbdm.KitServices.Stores;
 
 namespace RXDKNeighborhood.Core.Services;
 
-public sealed class ConsoleRegistryService
+public sealed class ConsoleRegistryService : JsonConsoleStore
 {
-    private const string RegistryPath = @"Software\Microsoft\XboxSDK\RXDKNeighborhood\Consoles";
-    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
-
-    private readonly string _configPath;
-
-    public ConsoleRegistryService()
+    public new ConsoleRegistryData Load()
     {
-        var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-        var dir = Path.Combine(appData, "RXDKNeighborhood");
-        Directory.CreateDirectory(dir);
-        _configPath = Path.Combine(dir, "consoles.json");
-    }
-
-    public ConsoleRegistryData Load()
-    {
-        if (!File.Exists(_configPath))
-        {
-            var migrated = TryMigrateFromRegistry();
-            if (migrated.Consoles.Count > 0)
-            {
-                Save(migrated);
-                return migrated;
-            }
-
-            return new ConsoleRegistryData();
-        }
-
-        var json = File.ReadAllText(_configPath);
-        return JsonSerializer.Deserialize<ConsoleRegistryData>(json, JsonOptions) ?? new ConsoleRegistryData();
+        var data = base.Load();
+        var result = new ConsoleRegistryData { DefaultConsole = data.DefaultConsole };
+        foreach (var console in data.Consoles)
+            result.Consoles.Add(new ConsoleInfo { Name = console.Name, Added = console.Added });
+        return result;
     }
 
     public void Save(ConsoleRegistryData data)
     {
-        var json = JsonSerializer.Serialize(data, JsonOptions);
-        File.WriteAllText(_configPath, json);
-    }
-
-    public IReadOnlyList<string> GetConsoleNames()
-    {
-        var data = Load();
-        return data.Consoles.Select(c => c.Name).OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToArray();
-    }
-
-    public void AddConsole(string name)
-    {
-        if (string.IsNullOrWhiteSpace(name))
-            throw new ArgumentException("Console name is required.", nameof(name));
-
-        var data = Load();
-        if (data.Consoles.Any(c => string.Equals(c.Name, name, StringComparison.OrdinalIgnoreCase)))
-            return;
-
-        data.Consoles.Add(new ConsoleInfo { Name = name, Added = DateTimeOffset.UtcNow });
-        if (string.IsNullOrWhiteSpace(data.DefaultConsole))
-            data.DefaultConsole = name;
-
-        Save(data);
-    }
-
-    public void RemoveConsole(string name)
-    {
-        var data = Load();
-        data.Consoles.RemoveAll(c => string.Equals(c.Name, name, StringComparison.OrdinalIgnoreCase));
-        if (string.Equals(data.DefaultConsole, name, StringComparison.OrdinalIgnoreCase))
-            data.DefaultConsole = data.Consoles.FirstOrDefault()?.Name;
-        Save(data);
-    }
-
-    public void SetDefaultConsole(string name)
-    {
-        var data = Load();
-        if (!data.Consoles.Any(c => string.Equals(c.Name, name, StringComparison.OrdinalIgnoreCase)))
-            data.Consoles.Add(new ConsoleInfo { Name = name, Added = DateTimeOffset.UtcNow });
-
-        data.DefaultConsole = name;
-        Save(data);
-        XbdmSession.SetDefaultConsoleName(name);
-    }
-
-    public bool IsDefaultConsole(string name)
-    {
-        var defaultName = GetDefaultConsoleName();
-        return !string.IsNullOrWhiteSpace(defaultName) &&
-               string.Equals(defaultName, name, StringComparison.OrdinalIgnoreCase);
-    }
-
-    public string? GetDefaultConsoleName()
-    {
-        try
+        base.Save(new Rxdk.Xbdm.KitServices.Models.ConsoleRegistryData
         {
-            var dmDefault = XbdmSession.GetDefaultConsoleName();
-            if (!string.IsNullOrWhiteSpace(dmDefault))
-                return dmDefault;
-        }
-        catch
-        {
-            // fall through to json default
-        }
-
-        return Load().DefaultConsole;
-    }
-
-    private ConsoleRegistryData TryMigrateFromRegistry()
-    {
-        var data = new ConsoleRegistryData();
-        if (!OperatingSystem.IsWindows())
-            return data;
-
-        try
-        {
-            using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(RegistryPath);
-            if (key == null)
-                return data;
-
-            foreach (var name in key.GetValueNames())
+            DefaultConsole = data.DefaultConsole,
+            Consoles = data.Consoles.Select(c => new Rxdk.Xbdm.KitServices.Models.ConsoleInfo
             {
-                if (string.IsNullOrWhiteSpace(name))
-                    continue;
-                data.Consoles.Add(new ConsoleInfo { Name = name, Added = DateTimeOffset.UtcNow });
-            }
-
-            data.DefaultConsole = data.Consoles.FirstOrDefault()?.Name;
-            try
-            {
-                XbdmSession.EnsureInitialized();
-                var dmDefault = XbdmSession.GetDefaultConsoleName();
-                if (!string.IsNullOrWhiteSpace(dmDefault))
-                    data.DefaultConsole = dmDefault;
-            }
-            catch
-            {
-                // keep first console as default
-            }
-        }
-        catch
-        {
-            // ignore registry errors on non-Windows or restricted environments
-        }
-
-        return data;
+                Name = c.Name,
+                Added = c.Added,
+            }).ToList(),
+        });
     }
 }

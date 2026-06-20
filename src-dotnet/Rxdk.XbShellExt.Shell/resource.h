@@ -1,0 +1,26 @@
+#pragma once
+
+#define IDR_SHELLFOLDER 101
+
+#define IDI_BASE 201
+#define IDI_REPLACE 201
+#define IDI_DELETE 202
+#define IDI_MOVE 203
+#define IDI_MULDOC 204
+#define IDI_CAMERA 205
+#define IDI_REBOOT 206
+#define IDI_RESERVED_207 207
+#define IDI_RESERVED_208 208
+#define IDI_RESERVED_209 209
+#define IDI_RESERVED_210 210
+#define IDI_RESERVED_211 211
+#define IDI_RESERVED_212 212
+#define IDI_RESERVED_213 213
+#define IDI_MAIN 214
+#define IDI_ADD_CONSOLE 215
+#define IDI_CONSOLE 216
+#define IDI_CONSOLE_DEFAULT 217
+#define IDI_VOLUME 218
+#define IDI_FOLDER 219
+#define IDI_XBE 220
+#define ICON_INDEX(rsrcId) (rsrcId - IDI_BASE)

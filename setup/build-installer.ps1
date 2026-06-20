@@ -82,10 +82,30 @@ function Ensure-Iscc {
 if (-not (Test-Path -LiteralPath $IssPath)) {
     throw "Missing $IssPath"
 }
-$xbshlextDll = Join-Path $RepoRoot 'out\bin\x64\Release\xbshlext.dll'
-if (-not (Test-Path -LiteralPath $xbshlextDll)) {
-    throw "Missing $xbshlextDll - build xbshlext (Release|x64) before creating the installer"
+
+$installDir = Join-Path $RepoRoot 'out\bin\x64\Release'
+New-Item -ItemType Directory -Force -Path $installDir | Out-Null
+
+$shellExtProject = Join-Path $RepoRoot 'src-dotnet\Rxdk.XbShellExt\Rxdk.XbShellExt.csproj'
+Write-Host "Building Rxdk.XbShellExt (Release|win-x64)..." -ForegroundColor Cyan
+dotnet build $shellExtProject -c Release -r win-x64
+if ($LASTEXITCODE -ne 0) {
+    throw 'dotnet build failed for Rxdk.XbShellExt'
 }
+
+$buildOut = Join-Path $RepoRoot 'src-dotnet\Rxdk.XbShellExt\bin\Release\net8.0-windows\win-x64'
+if (-not (Test-Path -LiteralPath $buildOut)) {
+    throw "Missing build output: $buildOut"
+}
+
+Get-ChildItem -LiteralPath $buildOut -File | Copy-Item -Destination $installDir -Force
+Copy-Item -LiteralPath (Join-Path $RepoRoot 'assets\shell\console.ico') -Destination (Join-Path $installDir 'console.ico') -Force
+
+$comHost = Join-Path $installDir 'Rxdk.XbShellExt.comhost.dll'
+if (-not (Test-Path -LiteralPath $comHost)) {
+    throw "Missing $comHost after staging managed shell extension build"
+}
+
 foreach ($required in @('Icon.ico', 'WizardImage.bmp', 'WizardSmallImage.bmp')) {
     $path = Join-Path $PSScriptRoot $required
     if (-not (Test-Path -LiteralPath $path)) {
@@ -101,5 +121,5 @@ if ($LASTEXITCODE -ne 0) {
     throw "ISCC failed (exit $LASTEXITCODE)"
 }
 
-$output = Join-Path $RepoRoot 'out\bin\x64\Release\XboxNeighborhood-Setup.exe'
+$output = Join-Path $installDir 'XboxNeighborhood-Setup.exe'
 Write-Host "Installer: $output" -ForegroundColor Green

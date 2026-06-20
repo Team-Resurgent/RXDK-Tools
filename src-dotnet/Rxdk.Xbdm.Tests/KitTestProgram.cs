@@ -1,3 +1,4 @@
+using Rxdk.Xbdm.Managed;
 using Rxdk.Xbdm.Tests.Hardware;
 
 namespace Rxdk.Xbdm.Tests;
@@ -25,6 +26,31 @@ internal static class KitTestProgram
                 : Environment.GetEnvironmentVariable("RXDK_TEST_PASSWORD")
                     ?? Environment.GetEnvironmentVariable("RXDK_XBDM_PASSWORD");
             return XbdmKitUnlock.Run(console, password);
+        }
+
+        if (args.Length >= 1 && string.Equals(args[0], "--debugname", StringComparison.OrdinalIgnoreCase))
+        {
+            var console = args.Length >= 2
+                ? args[1]
+                : Environment.GetEnvironmentVariable("RXDK_TEST_CONSOLE") ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(console))
+            {
+                Console.Error.WriteLine("Usage: --debugname <console-or-ip>  (or set RXDK_TEST_CONSOLE)");
+                return 2;
+            }
+
+            try
+            {
+                XbdmSession.EnsureInitialized();
+                using var connection = XbdmSession.Connect(console);
+                Console.WriteLine($"DEBUGNAME: {connection.GetNameOfXbox(resolvable: false)}");
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine(ex.Message);
+                return 1;
+            }
         }
 
         if (args.Length == 0 ||

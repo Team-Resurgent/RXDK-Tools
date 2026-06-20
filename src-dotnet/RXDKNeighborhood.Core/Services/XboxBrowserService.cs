@@ -1,15 +1,20 @@
 using RXDKNeighborhood.Core.Models;
 using Rxdk.Xbdm;
+using Rxdk.Xbdm.KitServices.Stores;
 using Rxdk.Xbdm.Managed;
 
 namespace RXDKNeighborhood.Core.Services;
 
 public sealed class XboxBrowserService : IDisposable
 {
-    private readonly ConsoleRegistryService _consoles;
+    private readonly IConsoleStore _consoles;
     private XbdmSession? _session;
 
-    public XboxBrowserService(ConsoleRegistryService consoles) => _consoles = consoles;
+    public XboxBrowserService(ConsoleRegistryService consoles) : this((IConsoleStore)consoles)
+    {
+    }
+
+    public XboxBrowserService(IConsoleStore consoles) => _consoles = consoles;
 
     public void EnsureNativeInitialized()
     {
@@ -32,7 +37,7 @@ public sealed class XboxBrowserService : IDisposable
 
         return names.Select(name => new NavigationNode
         {
-            Kind = NavigationNodeKind.Console,
+            Kind = (Rxdk.Xbdm.KitServices.Models.NavigationNodeKind)NavigationNodeKind.Console,
             ConsoleName = name,
             DisplayPath = name,
             Title = name,
@@ -44,7 +49,7 @@ public sealed class XboxBrowserService : IDisposable
         using var conn = XbdmSession.Connect(consoleName);
         return conn.ListDrives().Select(drive => new NavigationNode
         {
-            Kind = NavigationNodeKind.Drive,
+            Kind = (Rxdk.Xbdm.KitServices.Models.NavigationNodeKind)NavigationNodeKind.Drive,
             ConsoleName = consoleName,
             DisplayPath = WirePathService.BuildDriveDisplayPath(consoleName, drive),
             Title = $"{drive}:",

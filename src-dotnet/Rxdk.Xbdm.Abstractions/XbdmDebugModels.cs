@@ -32,7 +32,25 @@ public sealed record XbdmThreadStop(uint NotifiedReason, object? Data);
 
 public sealed record XbdmThreadInfo(uint SuspendCount, uint Priority, nuint TlsBase);
 
-public sealed record XbdmXbeInfo(string LaunchPath, uint TimeStamp, uint CheckSum, uint StackSize);
+public sealed record XbdmXbeInfo
+{
+    public string LaunchPath { get; set; } = "";
+    public uint TimeStamp { get; set; }
+    public uint CheckSum { get; set; }
+    public uint StackSize { get; set; }
+
+    public XbdmXbeInfo()
+    {
+    }
+
+    public XbdmXbeInfo(string launchPath, uint timeStamp, uint checkSum, uint stackSize)
+    {
+        LaunchPath = launchPath;
+        TimeStamp = timeStamp;
+        CheckSum = checkSum;
+        StackSize = stackSize;
+    }
+}
 
 public sealed record XbdmXtlData(uint LastErrorOffset);
 

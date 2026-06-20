@@ -1,11 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net8.0-windows</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <ApplicationIcon>..\..\src\xbshlext\console.ico</ApplicationIcon>
+    <ApplicationIcon>..\..\assets\shell\console.ico</ApplicationIcon>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
   </PropertyGroup>
@@ -28,14 +28,14 @@
   </ItemGroup>
 
   <ItemGroup>
-    <AvaloniaResource Include="..\..\src\xbshlext\console.ico" Link="Assets\console.ico" />
-    <AvaloniaResource Include="..\..\src\xbshlext\console-default.ico" Link="Assets\console-default.ico" />
-    <AvaloniaResource Include="..\..\src\xbshlext\volume.ico" Link="Assets\volume.ico" />
-    <AvaloniaResource Include="..\..\src\xbshlext\folder.ico" Link="Assets\folder.ico" />
-    <AvaloniaResource Include="..\..\src\xbshlext\xbe.ico" Link="Assets\xbe.ico" />
-    <AvaloniaResource Include="..\..\src\xbshlext\placeholder.ico" Link="Assets\placeholder.ico" />
-    <AvaloniaResource Include="..\..\src\xbshlext\xbox.ico" Link="Assets\xbox.ico" />
-    <AvaloniaResource Include="..\..\src\xbshlext\muldoc.ico" Link="Assets\muldoc.ico" />
+    <AvaloniaResource Include="..\..\assets\shell\console.ico" Link="Assets\console.ico" />
+    <AvaloniaResource Include="..\..\assets\shell\console-default.ico" Link="Assets\console-default.ico" />
+    <AvaloniaResource Include="..\..\assets\shell\volume.ico" Link="Assets\volume.ico" />
+    <AvaloniaResource Include="..\..\assets\shell\folder.ico" Link="Assets\folder.ico" />
+    <AvaloniaResource Include="..\..\assets\shell\xbe.ico" Link="Assets\xbe.ico" />
+    <AvaloniaResource Include="..\..\assets\shell\placeholder.ico" Link="Assets\placeholder.ico" />
+    <AvaloniaResource Include="..\..\assets\shell\xbox.ico" Link="Assets\xbox.ico" />
+    <AvaloniaResource Include="..\..\assets\shell\muldoc.ico" Link="Assets\muldoc.ico" />
   </ItemGroup>
 
 </Project>

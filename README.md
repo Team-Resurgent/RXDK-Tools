@@ -10,13 +10,13 @@
 
 **Recompiled Original Xbox XDK host tools for 64-bit Windows 10 and Windows 11.**
 
-The classic XDK shipped 32-bit utilities that no longer run on modern Windows. RXDK Tools rebuilds them as **x64-native** ports. All console-facing tools use a statically linked **`xbdbgs.lib`** client and talk to kits over the **Xbox Debug Monitor (XBDM)** protocol.
+The classic XDK shipped 32-bit utilities that no longer run on modern Windows. RXDK Tools rebuilds them as **x64-native** ports. CLI tools use a statically linked **`xbdbgs.lib`** client; **Xbox Neighborhood** is a managed **`Rxdk.XbShellExt`** COM shell extension over **`Rxdk.Xbdm.Managed`**. All console-facing tools talk to kits over the **Xbox Debug Monitor (XBDM)** protocol.
 
 **What's included**
 
 | Category | Tools |
 |----------|-------|
-| Explorer | **Xbox Neighborhood** shell extension (`xbshlext.dll`) |
+| Explorer | **Xbox Neighborhood** shell extension (`Rxdk.XbShellExt.comhost.dll`) |
 | Neighborhood app | **`RXDKNeighborhood.exe`** — Avalonia standalone browser (`RXDKNeighborhood.sln`) |
 | File transfer | `xbcp`, `xbdir`, `xbmkdir`, `xbecopy` |
 | Build | `imagebld` (PE → signed `.xbe`) |
@@ -29,7 +29,7 @@ The classic XDK shipped 32-bit utilities that no longer run on modern Windows. R
 - [Quick start — RXDKNeighborhood app](#quick-start--rxdkneighborhood-app)
 - [Screenshots](#screenshots)
 - [Tools](#tools)
-  - [Xbox Neighborhood](#xbox-neighborhood-xbshlextdll)
+  - [Xbox Neighborhood](#xbox-neighborhood-rxdkxbshlext)
   - [RXDKNeighborhood app](#rxdkneighborhood-app)
   - [File utilities](#file-utilities-xbcp-xbdir-xbmkdir-xbecopy)
   - [Image builder](#xbox-image-file-builder-imagebld)
@@ -55,6 +55,18 @@ The installer registers the shell extension and opens Neighborhood in Explorer. 
 ```uri
 shell:::{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}
 ```
+
+### Dev register / unregister (from source)
+
+Build **`Rxdk.XbShellExt`** (`Release | win-x64`), then stage and register locally (scripts prompt for UAC elevation when needed):
+
+```powershell
+.\scripts\register-xbshlext-dev.ps1
+.\scripts\status-xbshlext-dev.ps1
+.\scripts\unregister-xbshlext-dev.ps1
+```
+
+Repo-root **`register-shell-ext.cmd`** / **`unregister-shell-ext.cmd`** are convenience wrappers for the same scripts. Staged payloads: **`out/dev/xbshlext/`** (managed comhost + dependencies). Manual Explorer checks: [`artifacts/xbshlext-manual-checklist.md`](artifacts/xbshlext-manual-checklist.md).
 
 ## Quick start — RXDKNeighborhood app
 
@@ -85,7 +97,7 @@ Click any image for full size.
 
 Binaries build to **`out/bin/x64/Release/`**. Most CLI tools accept **`/x console`** to target a named kit. Xbox paths use the **`xE:\`**, **`xD:\`**, … prefix (for example `xE:\title\default.xbe`).
 
-### Xbox Neighborhood (`xbshlext.dll`)
+### Xbox Neighborhood (`Rxdk.XbShellExt`)
 
 The headline feature — an **Xbox Neighborhood** entry in Windows Explorer for browsing kits on the network with familiar folder UI.
 
@@ -98,7 +110,7 @@ The headline feature — an **Xbox Neighborhood** entry in Windows Explorer for 
 | Reboot | Warm, cold, or same-title reboot from the console context menu |
 | Capture & security | Screenshot capture and security settings from the console menu |
 
-Built as `xbshlext.dll`. The Inno Setup post-build step produces **`XboxNeighborhood-Setup.exe`**.
+Built as **`Rxdk.XbShellExt.comhost.dll`** with shared **`Rxdk.Xbdm.KitServices`** / **`RXDKNeighborhood.Core`** logic and WinForms UI in-process. Run **`setup/build-installer.ps1`** (or build from **`RXDKNeighborhood.sln`**) to produce **`XboxNeighborhood-Setup.exe`**.
 
 ### RXDKNeighborhood app
 
@@ -114,7 +126,7 @@ Modern **Avalonia** standalone browser (`RXDKNeighborhood.sln`) — browse kits,
 | Property pages | Console, drive, and file/folder properties |
 | Security | Lock/unlock, users, permissions, admin password |
 
-**Explorer-only** (requires `xbshlext.dll`):
+**Explorer-only** (requires shell extension registration):
 
 | Shell extension only | Notes |
 |----------------------|-------|
@@ -224,7 +236,7 @@ Requires **Visual Studio 2022** with **Desktop development with C++** (v145 tool
 |--------|----------|
 | Executables & DLL | `out/bin/x64/Release/` |
 | Static libraries | `out/lib/x64/Release/` (`xbdbgs.lib`, `xbfile.lib`, `xrsa.lib`) |
-| Neighborhood installer | `out/bin/x64/Release/XboxNeighborhood-Setup.exe` (built with **`xbshlext`**; Inno Setup installed automatically if missing) |
+| Neighborhood installer | `out/bin/x64/Release/XboxNeighborhood-Setup.exe` (built via `setup/build-installer.ps1`; Inno Setup installed automatically if missing) |
 
 ### Solution layout
 
@@ -235,7 +247,7 @@ Each `.vcxproj` lives alongside its sources under `src/`; shared headers and hel
 | `xbdbgs` | `xbdbgs.lib` | Static XBDM client (connection, files, notifications, debug API) |
 | `xbfile` | `xbfile.lib` | Shared path/option parsing for file CLI tools |
 | `xrsa` | `xrsa.lib` | Source-built RSA/crypto for `imagebld` signing |
-| `xbshlext` | `xbshlext.dll` | Xbox Neighborhood shell extension |
+| `Rxdk.XbShellExt` | `Rxdk.XbShellExt.comhost.dll` | Managed Xbox Neighborhood shell extension |
 | `xbcp`, `xbdir`, `xbmkdir`, `xbecopy` | `*.exe` | File transfer utilities |
 | `imagebld` | `imagebld.exe` | PE → XBE image builder |
 | `xbox-launch` | `xbox-launch.exe` | CLI debug launch helper |
