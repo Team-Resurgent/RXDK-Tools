@@ -16,6 +16,17 @@ HKCR
 			}
 		}
 	}
+	ForceRemove xbox = s 'URL:Xbox Namespace Extension'
+	{
+		val 'URL Protocol' = s ''
+		Shell
+		{
+			Open
+			{
+				Command = s '"%SystemRoot%\System32\rundll32.exe" "%MODULE%",LaunchExplorer %1'
+			}
+		}
+	}
 }
 
 HKLM

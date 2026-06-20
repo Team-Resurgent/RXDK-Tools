@@ -4,6 +4,7 @@ EXPORTS
     DllRegisterServer   PRIVATE
     DllUnregisterServer PRIVATE
     OpenNamespace
+    LaunchExplorer
     XbShellExt_CreateNativeContextMenu
     XbShellExt_CreateNativeExtractIcon
     XbShellExt_BeginTransferActivity

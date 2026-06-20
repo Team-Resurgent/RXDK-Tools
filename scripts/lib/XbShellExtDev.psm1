@@ -459,6 +459,23 @@ function Repair-XbShellExtRegistry {
         New-Item -Path $approvedKey -Force | Out-Null
     }
     Set-ItemProperty -LiteralPath $approvedKey -Name $clsidBare -Value 'Xbox Namespace Shell Extension'
+
+    if ($ModulePath) {
+        $rundll32 = Join-Path $env:SystemRoot 'System32\rundll32.exe'
+        $xboxKey = 'Registry::HKEY_CLASSES_ROOT\xbox'
+        if (-not (Test-Path -LiteralPath $xboxKey)) {
+            New-Item -Path $xboxKey -Force | Out-Null
+        }
+        Set-ItemProperty -LiteralPath $xboxKey -Name '(default)' -Value 'URL:Xbox Namespace Extension'
+        New-ItemProperty -LiteralPath $xboxKey -Name 'URL Protocol' -Value '' -PropertyType String -Force | Out-Null
+
+        $openKey = "$xboxKey\shell\open\command"
+        if (-not (Test-Path -LiteralPath $openKey)) {
+            New-Item -Path $openKey -Force | Out-Null
+        }
+        $command = "`"$rundll32`" `"$ModulePath`",LaunchExplorer %1"
+        Set-ItemProperty -LiteralPath $openKey -Name '(default)' -Value $command
+    }
 }
 
 function Repair-XbShellExtManagedRegistry {
@@ -491,6 +508,8 @@ function Clear-XbShellExtRegistry {
     Remove-Item -LiteralPath "Registry::HKEY_CLASSES_ROOT\CLSID\{$managedClsid}" -Recurse -Force -ErrorAction SilentlyContinue
     Remove-Item -LiteralPath "Registry::HKEY_CLASSES_ROOT\Shellext.XboxFolder.1" -Recurse -Force -ErrorAction SilentlyContinue
     Remove-Item -LiteralPath "Registry::HKEY_CLASSES_ROOT\Shellext.XboxFolder" -Recurse -Force -ErrorAction SilentlyContinue
+
+    Remove-Item -LiteralPath 'Registry::HKEY_CLASSES_ROOT\xbox' -Recurse -Force -ErrorAction SilentlyContinue
 
     Remove-ItemProperty -LiteralPath 'Registry::HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Shell Extensions\Approved' -Name $publicClsid -ErrorAction SilentlyContinue
     Remove-Item -LiteralPath "Registry::HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Explorer\Desktop\NameSpace\{$publicClsid}" -Recurse -Force -ErrorAction SilentlyContinue
