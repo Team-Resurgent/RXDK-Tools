@@ -6,6 +6,8 @@ HKCR
 		{
 			ProgID = s 'Shellext.XboxFolder.1'
 			VersionIndependentProgID = s 'Shellext.XboxFolder'
+			val System.IsPinnedToNameSpaceTree = d '1'
+			val SortOrderIndex = d '50'
 			InprocServer32 = s '%MODULE%'
 			{
 				val ThreadingModel = s 'Apartment'
@@ -42,6 +44,13 @@ HKLM
 					NoRemove Explorer
 					{
 						NoRemove Desktop
+						{
+							NoRemove NameSpace
+							{
+								ForceRemove {DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44} = s 'Xbox Neighborhood'
+							}
+						}
+						NoRemove MyComputer
 						{
 							NoRemove NameSpace
 							{
