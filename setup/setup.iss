@@ -48,8 +48,8 @@ Source: "..\out\bin\x64\Release\console.ico"; DestDir: "{app}"; Flags: ignorever
 Source: "..\out\bin\x64\Release\*.deps.json"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 
 [Icons]
-Name: "{group}\{#MyAppName}"; Filename: "{win}\explorer.exe"; Parameters: "shell:::{{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}}"; IconFilename: "{app}\console.ico"
-Name: "{commondesktop}\{#MyAppName}"; Filename: "{win}\explorer.exe"; Parameters: "shell:::{{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}}"; IconFilename: "{app}\console.ico"
+Name: "{group}\{#MyAppName}"; Filename: "{win}\explorer.exe"; Parameters: "/e,/root,shell:::{{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}}"; IconFilename: "{app}\console.ico"
+Name: "{commondesktop}\{#MyAppName}"; Filename: "{win}\explorer.exe"; Parameters: "/e,/root,shell:::{{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}}"; IconFilename: "{app}\console.ico"
 
 [Code]
 var

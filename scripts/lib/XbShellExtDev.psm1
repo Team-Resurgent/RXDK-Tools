@@ -388,6 +388,10 @@ function Repair-XbShellExtRegistry {
     Set-ItemProperty -LiteralPath $clsidKey -Name '(default)' -Value 'Xbox Neighborhood'
     Set-ItemProperty -LiteralPath $clsidKey -Name 'ProgID' -Value 'Shellext.XboxFolder.1'
     Set-ItemProperty -LiteralPath $clsidKey -Name 'VersionIndependentProgID' -Value 'Shellext.XboxFolder'
+    # Pin to the Explorer navigation pane (required on Win10/11 alongside NameSpace registration).
+    Set-ItemProperty -LiteralPath $clsidKey -Name 'System.IsPinnedToNameSpaceTree' -Value 1 -Type DWord
+    # Place near other This PC items (Network uses 0x58).
+    Set-ItemProperty -LiteralPath $clsidKey -Name 'SortOrderIndex' -Value 0x50 -Type DWord
 
     $inprocKey = "$clsidKey\InprocServer32"
     if (-not (Test-Path -LiteralPath $inprocKey)) {
@@ -454,6 +458,12 @@ function Repair-XbShellExtRegistry {
     }
     Set-ItemProperty -LiteralPath $desktopKey -Name '(default)' -Value 'Xbox Neighborhood'
 
+    $myComputerKey = "Registry::HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Explorer\MyComputer\NameSpace\$clsid"
+    if (-not (Test-Path -LiteralPath $myComputerKey)) {
+        New-Item -Path $myComputerKey -Force | Out-Null
+    }
+    Set-ItemProperty -LiteralPath $myComputerKey -Name '(default)' -Value 'Xbox Neighborhood'
+
     $approvedKey = 'Registry::HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Shell Extensions\Approved'
     if (-not (Test-Path -LiteralPath $approvedKey)) {
         New-Item -Path $approvedKey -Force | Out-Null
@@ -476,6 +486,58 @@ function Repair-XbShellExtRegistry {
         $command = "`"$rundll32`" `"$ModulePath`",LaunchExplorer %1"
         Set-ItemProperty -LiteralPath $openKey -Name '(default)' -Value $command
     }
+
+    Repair-XbShellExtNavPaneUserState -Clsid $clsid -ModulePath $ModulePath
+}
+
+function Repair-XbShellExtNavPaneUserState {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Clsid,
+        [string]$ModulePath
+    )
+
+    # Explorer caches per-user ShellFolder attribute overrides under
+    # HKCU\...\Explorer\CLSID\{guid}. A stale SFGAO_NONENUMERATED (0x100000)
+    # value hides the namespace from the navigation pane even when machine
+    # registration is correct.
+    $explorerClsidKey = "Registry::HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\CLSID\$Clsid"
+    $explorerShellFolderKey = "$explorerClsidKey\ShellFolder"
+    if (Test-Path -LiteralPath $explorerShellFolderKey) {
+        $attrs = (Get-ItemProperty -LiteralPath $explorerShellFolderKey -ErrorAction SilentlyContinue).Attributes
+        if ($null -eq $attrs -or $attrs -band 0x100000) {
+            Remove-Item -LiteralPath $explorerShellFolderKey -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    $userClassesKey = "Registry::HKEY_CURRENT_USER\Software\Classes\CLSID\$Clsid"
+    if (-not (Test-Path -LiteralPath $userClassesKey)) {
+        New-Item -Path $userClassesKey -Force | Out-Null
+    }
+    Set-ItemProperty -LiteralPath $userClassesKey -Name '(default)' -Value 'Xbox Neighborhood'
+    Set-ItemProperty -LiteralPath $userClassesKey -Name 'System.IsPinnedToNameSpaceTree' -Value 1 -Type DWord
+    Set-ItemProperty -LiteralPath $userClassesKey -Name 'SortOrderIndex' -Value 0x50 -Type DWord
+
+    if ($ModulePath) {
+        $userInprocKey = "$userClassesKey\InprocServer32"
+        if (-not (Test-Path -LiteralPath $userInprocKey)) {
+            New-Item -Path $userInprocKey -Force | Out-Null
+        }
+        Set-ItemProperty -LiteralPath $userInprocKey -Name '(default)' -Value $ModulePath
+        Set-ItemProperty -LiteralPath $userInprocKey -Name 'ThreadingModel' -Value 'Apartment'
+    }
+
+    $userDesktopKey = "Registry::HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Desktop\NameSpace\$Clsid"
+    if (-not (Test-Path -LiteralPath $userDesktopKey)) {
+        New-Item -Path $userDesktopKey -Force | Out-Null
+    }
+    Set-ItemProperty -LiteralPath $userDesktopKey -Name '(default)' -Value 'Xbox Neighborhood'
+
+    $hideDesktopKey = 'Registry::HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\HideDesktopIcons\NewStartPanel'
+    if (-not (Test-Path -LiteralPath $hideDesktopKey)) {
+        New-Item -Path $hideDesktopKey -Force | Out-Null
+    }
+    Set-ItemProperty -LiteralPath $hideDesktopKey -Name $Clsid -Value 1 -Type DWord
 }
 
 function Repair-XbShellExtManagedRegistry {
@@ -513,6 +575,11 @@ function Clear-XbShellExtRegistry {
 
     Remove-ItemProperty -LiteralPath 'Registry::HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Shell Extensions\Approved' -Name $publicClsid -ErrorAction SilentlyContinue
     Remove-Item -LiteralPath "Registry::HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Explorer\Desktop\NameSpace\{$publicClsid}" -Recurse -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath "Registry::HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Explorer\MyComputer\NameSpace\{$publicClsid}" -Recurse -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath "Registry::HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\CLSID\{$publicClsid}" -Recurse -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath "Registry::HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Desktop\NameSpace\{$publicClsid}" -Recurse -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath "Registry::HKEY_CURRENT_USER\Software\Classes\CLSID\{$publicClsid}" -Recurse -Force -ErrorAction SilentlyContinue
+    Remove-ItemProperty -LiteralPath 'Registry::HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\HideDesktopIcons\NewStartPanel' -Name "{$publicClsid}" -ErrorAction SilentlyContinue
     Remove-Item -LiteralPath 'Registry::HKEY_CURRENT_USER\Software\Microsoft\XboxSDK\xbshlext' -Recurse -Force -ErrorAction SilentlyContinue
 }
 
@@ -697,6 +764,7 @@ Export-ModuleMember -Function @(
     'Remove-XbShellExtStaleStageFiles',
     'Assert-XbShellExtComHostClsidMap',
     'Repair-XbShellExtRegistry',
+    'Repair-XbShellExtNavPaneUserState',
     'Repair-XbShellExtManagedRegistry',
     'Enable-ExplorerNavPaneShowAllFolders',
     'Clear-XbShellExtRegistry',
