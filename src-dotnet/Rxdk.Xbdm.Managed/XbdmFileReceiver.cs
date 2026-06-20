@@ -1,3 +1,5 @@
+using Rxdk.Xbdm;
+
 namespace Rxdk.Xbdm.Managed;
 
 /// <summary>
@@ -29,11 +31,12 @@ public sealed class XbdmFileReceiver : IDisposable
         if (_started)
             return;
 
-        var (hr, _) = _session.SendCommandRaw($"GETFILE NAME=\"{_wirePath}\"");
+        var (hr, line) = _session.SendCommandRaw($"GETFILE NAME=\"{_wirePath}\"");
         if (!XbdmProtocol.IsCommandSuccess(hr))
-            throw XbdmException.FromHResult($"Could not receive '{_wirePath}'.", hr);
+            throw XbdmException.FromHResult(FormatReceiveFailure(_wirePath, hr), hr, line);
 
         TotalSize = _session.ReceiveUInt32();
+        _session.BeginPendingBinary(TotalSize);
         _remaining = TotalSize;
         _started = true;
     }
@@ -91,8 +94,26 @@ public sealed class XbdmFileReceiver : IDisposable
             }
             catch
             {
-                // Leave the session for the connection owner to discard.
+                // Best effort; always flush the pipe before the next command.
             }
         }
+
+        try
+        {
+            _session.DrainPendingBinary();
+        }
+        catch
+        {
+        }
     }
+
+    private static string FormatReceiveFailure(string wirePath, int hr) =>
+        hr switch
+        {
+            XbdmHResults.CannotAccess => $"Access is denied for '{wirePath}'.",
+            XbdmHResults.NoSuchFile => $"The file '{wirePath}' does not exist on the Xbox.",
+            XbdmHResults.MaxConnect => "The Xbox refused the connection because too many debug sessions are open.",
+            XbdmHResults.FileError => $"The Xbox connection was out of sync while receiving '{wirePath}'. Try the transfer again.",
+            _ => $"Could not receive '{wirePath}'. ({XbdmHResults.Describe(hr)})",
+        };
 }

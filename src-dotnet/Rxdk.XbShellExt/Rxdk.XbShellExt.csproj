@@ -32,4 +32,8 @@
     <EmbeddedResource Include="..\..\assets\shell\xheader.bmp" Link="Assets\xheader.bmp" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="ProbeFolder" />
+  </ItemGroup>
+
 </Project>

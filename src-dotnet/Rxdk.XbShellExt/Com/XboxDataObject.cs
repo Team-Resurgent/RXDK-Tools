@@ -77,8 +77,9 @@ internal sealed class XboxDataObject : OleIDataObject, IAsyncOperation
                 };
                 return HResults.Ok;
             }
-            catch
+            catch (Exception ex)
             {
+                _transferSession?.ReportFailure(ex.Message);
                 return OleConstants.DvEFormatetc;
             }
         }
@@ -199,7 +200,7 @@ internal sealed class XboxDataObject : OleIDataObject, IAsyncOperation
 
     public int GetAsyncMode(out bool pfIsOpAsync)
     {
-        pfIsOpAsync = true;
+        pfIsOpAsync = false;
         return HResults.Ok;
     }
 
@@ -226,22 +227,32 @@ internal sealed class XboxDataObject : OleIDataObject, IAsyncOperation
         catch
         {
         }
+        finally
+        {
+            _transferSession?.Dispose();
+            _transferSession = null;
+        }
 
         return HResults.Ok;
     }
 
-    private IReadOnlyList<XboxDragEntry> EnsureCatalog() =>
-        _catalog ??= XboxDragCatalog.Build(_selection!);
+    private IReadOnlyList<XboxDragEntry> EnsureCatalog()
+    {
+        if (_catalog != null)
+            return _catalog;
+
+        EnsureTransferSession();
+        return _catalog!;
+    }
 
     private XboxDragTransferSession EnsureTransferSession()
     {
         if (_transferSession != null)
             return _transferSession;
 
-        var conn = XbdmSession.Connect(_selection!.ConsoleName);
-        var catalog = XboxDragCatalog.Build(conn, _selection);
+        var (session, catalog) = XboxDragTransferSession.Start(_selection!);
         _catalog = catalog;
-        return _transferSession = new XboxDragTransferSession(catalog, conn);
+        return _transferSession = session;
     }
 
     private bool HasAnyFileEntry() => EnsureCatalog().Any(entry => !entry.IsDirectory);

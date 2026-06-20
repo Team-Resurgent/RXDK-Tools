@@ -166,7 +166,11 @@ for (var iter = 0; iter < iterations; iter++)
         }
 
         if (DoDataObj() && ProbeNative.GetUIObjectOf(driveSf, child, iidDataObj, out var dobj) >= 0 && dobj != 0)
+        {
+            if (iter == 0 && children.IndexOf(child) == 0)
+                ProbeNative.ExerciseCopyGetData(dobj);
             Marshal.Release(dobj);
+        }
     }
 
     foreach (var child in children) ProbeNative.CoTaskMemFree(child);
@@ -212,7 +216,29 @@ internal static class ProbeNative
     [UnmanagedFunctionPointer(CallingConvention.StdCall)] private delegate int GetUIObjectOfFn(nint self, nint hwnd, uint cidl, nint apidl, ref Guid riid, nint rgf, out nint ppv);
     [UnmanagedFunctionPointer(CallingConvention.StdCall)] private delegate int GetAttributesOfFn(nint self, uint cidl, nint apidl, ref uint rgf);
     [UnmanagedFunctionPointer(CallingConvention.StdCall)] private delegate int QueryContextMenuFn(nint self, nint hmenu, uint indexMenu, uint idCmdFirst, uint idCmdLast, uint flags);
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)] private delegate int GetDataFn(nint self, ref FormatEtc format, out StgMedium medium);
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)] private delegate int QueryGetDataFn(nint self, ref FormatEtc format);
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)] private delegate int StreamReadFn(nint self, nint pv, int cb, out int read);
 
+    [StructLayout(LayoutKind.Sequential)]
+    private struct FormatEtc
+    {
+        public ushort cfFormat;
+        public nint ptd;
+        public uint dwAspect;
+        public int lindex;
+        public uint tymed;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct StgMedium
+    {
+        public uint tymed;
+        public nint unionmember;
+        public nint pUnkForRelease;
+    }
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern ushort RegisterClipboardFormat(string format);
     [DllImport("user32.dll")] public static extern nint CreatePopupMenu();
     [DllImport("user32.dll")] public static extern int DestroyMenu(nint hMenu);
     [UnmanagedFunctionPointer(CallingConvention.StdCall)] private delegate int CreateShellFolderViewDelegate(ref SfvCreate pcsfv, out nint ppsv);
@@ -392,6 +418,75 @@ internal static class ProbeNative
         var fn = Marshal.GetDelegateForFunctionPointer<QueryContextMenuFn>(Marshal.ReadIntPtr(vtable, IntPtr.Size * 3));
         return fn(contextMenu, hmenu, indexMenu, idCmdFirst, idCmdLast, flags);
     }
+
+    public static void ExerciseCopyGetData(nint dataObject)
+    {
+        var cfDesc = RegisterClipboardFormat("FileGroupDescriptorW");
+        var cfContents = RegisterClipboardFormat("FileContents");
+        const uint tymedHglobal = 1;
+        const uint tymedIstream = 4;
+        const uint aspectContent = 1;
+
+        var vtable = Marshal.ReadIntPtr(dataObject);
+        var getData = Marshal.GetDelegateForFunctionPointer<GetDataFn>(Marshal.ReadIntPtr(vtable, IntPtr.Size * 3));
+        var queryGetData = Marshal.GetDelegateForFunctionPointer<QueryGetDataFn>(Marshal.ReadIntPtr(vtable, IntPtr.Size * 5));
+
+        var descEtc = new FormatEtc { cfFormat = cfDesc, dwAspect = aspectContent, lindex = -1, tymed = tymedHglobal };
+        var hrDesc = getData(dataObject, ref descEtc, out var descMedium);
+        Console.WriteLine($"  GetData(FileGroupDescriptorW): 0x{hrDesc:X8} tymed={descMedium.tymed}");
+        if (hrDesc < 0 || descMedium.unionmember == 0)
+            return;
+
+        var locked = GlobalLock(descMedium.unionmember);
+        var itemCount = locked != 0 ? Marshal.ReadInt32(locked) : 0;
+        if (locked != 0) GlobalUnlock(descMedium.unionmember);
+        Console.WriteLine($"    descriptor items={itemCount}");
+
+        for (var index = 0; index < Math.Min(itemCount, 16); index++)
+        {
+            var contentsEtc = new FormatEtc
+            {
+                cfFormat = cfContents,
+                dwAspect = aspectContent,
+                lindex = index,
+                tymed = tymedIstream,
+            };
+            if (queryGetData(dataObject, ref contentsEtc) < 0)
+                continue;
+
+            var hrContents = getData(dataObject, ref contentsEtc, out var contentsMedium);
+            Console.WriteLine($"  GetData(FileContents lindex={index}): 0x{hrContents:X8} tymed={contentsMedium.tymed}");
+            if (hrContents < 0 || contentsMedium.unionmember == 0)
+                continue;
+
+            var iidStream = new Guid("0000000c-0000-0000-c000-000000000046");
+            if (Marshal.QueryInterface(contentsMedium.unionmember, ref iidStream, out var stream) < 0 || stream == 0)
+            {
+                Console.WriteLine("    QI IStream failed");
+                Marshal.Release(contentsMedium.unionmember);
+                continue;
+            }
+
+            var streamVtable = Marshal.ReadIntPtr(stream);
+            var readFn = Marshal.GetDelegateForFunctionPointer<StreamReadFn>(Marshal.ReadIntPtr(streamVtable, IntPtr.Size * 3));
+            var buffer = Marshal.AllocCoTaskMem(4096);
+            var hrRead = readFn(stream, buffer, 64, out var bytesRead);
+            Marshal.FreeCoTaskMem(buffer);
+            Console.WriteLine($"    IStream::Read: 0x{hrRead:X8} bytes={bytesRead}");
+            Marshal.Release(stream);
+            Marshal.Release(contentsMedium.unionmember);
+            break;
+        }
+
+        if (descMedium.pUnkForRelease != 0)
+            Marshal.Release(descMedium.pUnkForRelease);
+        else
+            GlobalFree(descMedium.unionmember);
+    }
+
+    [DllImport("kernel32.dll")] private static extern nint GlobalLock(nint hMem);
+    [DllImport("kernel32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool GlobalUnlock(nint hMem);
+    [DllImport("kernel32.dll")] private static extern nint GlobalFree(nint hMem);
 
     public static int CreateViewObject(nint shellFolder, ref Guid riid, out nint ppv)
     {

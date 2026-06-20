@@ -400,7 +400,9 @@ namespace
         {
             if (!pfIsOpAsync)
                 return E_POINTER;
-            *pfIsOpAsync = TRUE;
+            // Let our TransferProgressForm own progress UI. Async mode makes Explorer
+            // show its own "Copying..." dialog, which sits at 0% and hides our form.
+            *pfIsOpAsync = FALSE;
             return S_OK;
         }
         STDMETHOD(StartOperation)(IBindCtx*)
