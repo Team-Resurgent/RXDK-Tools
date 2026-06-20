@@ -33,14 +33,17 @@ internal sealed class XboxDragTransferSession : IDisposable
     private readonly object _tempCacheLock = new();
     private readonly List<WeakReference<XbdmReceiveComStream>> _liveStreams = new();
     private readonly HashSet<string> _completedWirePaths = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _countedForProgress = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, string> _tempFilesByWirePath = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<string> _tempDirs = new();
-    private readonly SemaphoreSlim _getFileGate = new(1, 1);
+    private XbdmConnection? _transferConnection;
+    private int _progressClosed;
 
     public static (XboxDragTransferSession Session, IReadOnlyList<XboxDragEntry> Catalog) Start(FileSelection selection)
     {
         ArgumentNullException.ThrowIfNull(selection);
         IReadOnlyList<XboxDragEntry> catalog;
+        using (XbdmConsoleTransferGate.Enter(selection.ConsoleName))
         using (var catalogConnection = XbdmSession.Connect(selection.ConsoleName))
             catalog = XboxDragCatalog.Build(catalogConnection, selection);
 
@@ -99,18 +102,23 @@ internal sealed class XboxDragTransferSession : IDisposable
         lock (_tempCacheLock)
         {
             if (_tempFilesByWirePath.TryGetValue(entry.WirePath, out var cached))
+            {
+                NoteFileDownloaded(entry);
                 return cached;
+            }
         }
 
-        _getFileGate.Wait();
-        try
+        using (XbdmConsoleTransferGate.Enter(_consoleName))
         {
             ThrowIfCancelled();
 
             lock (_tempCacheLock)
             {
                 if (_tempFilesByWirePath.TryGetValue(entry.WirePath, out var cachedAgain))
+                {
+                    NoteFileDownloaded(entry);
                     return cachedAgain;
+                }
             }
 
             SetCurrentFile(entry.RelativePath);
@@ -124,20 +132,27 @@ internal sealed class XboxDragTransferSession : IDisposable
             var tempPath = Path.Combine(tempDir, fileName);
             ManagedTrace.Line($"TransferDownload start path='{entry.WirePath}' temp='{tempPath}'");
 
-            using (var connection = XbdmSession.Connect(_consoleName))
-            using (var receiver = connection.OpenFileReceiver(entry.WirePath))
+            using (var receiver = GetTransferConnection().OpenFileReceiver(entry.WirePath))
             {
-                receiver.Start();
-                var buffer = new byte[65536];
-                using (var outStream = File.Create(tempPath))
+                try
                 {
-                    int read;
-                    while ((read = receiver.Read(buffer)) > 0)
+                    receiver.Start();
+                    var buffer = new byte[65536];
+                    using (var outStream = File.Create(tempPath))
                     {
-                        ThrowIfCancelled();
-                        outStream.Write(buffer, 0, read);
-                        lease.ReportCurrentFileProgress((ulong)outStream.Length, receiver.TotalSize);
+                        int read;
+                        while ((read = receiver.Read(buffer)) > 0)
+                        {
+                            ThrowIfCancelled();
+                            outStream.Write(buffer, 0, read);
+                            lease.ReportCurrentFileProgress((ulong)outStream.Length, receiver.TotalSize);
+                        }
                     }
+                }
+                catch
+                {
+                    ReleaseTransferConnection();
+                    throw;
                 }
             }
 
@@ -149,11 +164,8 @@ internal sealed class XboxDragTransferSession : IDisposable
 
             ManagedTrace.Line(
                 $"TransferDownload done path='{entry.WirePath}' temp='{tempPath}' size={entry.Size}");
+            NoteFileDownloaded(entry);
             return tempPath;
-        }
-        finally
-        {
-            _getFileGate.Release();
         }
     }
 
@@ -175,7 +187,20 @@ internal sealed class XboxDragTransferSession : IDisposable
     {
         Volatile.Write(ref _disposeRequested, 1);
         AbortAllStreams();
+        ReleaseTransferConnection();
         TryCompleteSession();
+    }
+
+    private XbdmConnection GetTransferConnection()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        return _transferConnection ??= XbdmSession.Connect(_consoleName);
+    }
+
+    private void ReleaseTransferConnection()
+    {
+        _transferConnection?.Dispose();
+        _transferConnection = null;
     }
 
     internal bool IsWirePathCompleted(string wirePath)
@@ -475,59 +500,89 @@ internal sealed class XboxDragTransferSession : IDisposable
 
     internal void EndFile(StreamLease lease, bool completedSuccessfully)
     {
-        if (completedSuccessfully)
+        Interlocked.Decrement(ref _activeStreams);
+        TryCompleteSession();
+    }
+
+    private void NoteFileDownloaded(XboxDragEntry entry)
+    {
+        lock (_countedForProgress)
         {
-            var fileBytes = lease.CatalogSize > 0 ? lease.CatalogSize : lease.BytesRead;
-            if (fileBytes > 0)
-                _completedBytes += fileBytes;
-
-            _currentFileBytes = 0;
-            _currentFileSize = 0;
-
-            Interlocked.Increment(ref _filesCompleted);
-            var filesPct = _filesCompleted >= _fileCount
-                ? 100
-                : (_totalBytes > 0
-                    ? (int)Math.Min(100UL, (_completedBytes * 100UL + _totalBytes - 1) / _totalBytes)
-                    : FilesPercent());
-            ManagedTrace.Line(
-                $"TransferProgress file='{lease.RelativePath}' bytes={fileBytes} " +
-                $"filePct=100 overallPct={filesPct} files={_filesCompleted}/{_fileCount}");
-            RefreshProgress(async: false, filePercentOverride: 100, filesPercentOverride: filesPct);
-            MaybeDebugDelayAfterFile();
+            if (!_countedForProgress.Add(entry.WirePath))
+                return;
         }
 
-        if (Interlocked.Decrement(ref _activeStreams) == 0)
-            TryCompleteSession();
+        lock (_completedWirePaths)
+            _completedWirePaths.Add(entry.WirePath);
+
+        if (entry.Size > 0)
+            _completedBytes += entry.Size;
+
+        _currentFileBytes = 0;
+        _currentFileSize = 0;
+
+        var completed = Interlocked.Increment(ref _filesCompleted);
+        var filesPct = completed >= _fileCount
+            ? 100
+            : (_totalBytes > 0
+                ? (int)Math.Min(100UL, (_completedBytes * 100UL + _totalBytes - 1) / _totalBytes)
+                : FilesPercent());
+        ManagedTrace.Line(
+            $"TransferProgress file='{entry.RelativePath}' bytes={entry.Size} " +
+            $"filePct=100 overallPct={filesPct} files={completed}/{_fileCount}");
+        RefreshProgress(async: false, filePercentOverride: 100, filesPercentOverride: filesPct);
+        MaybeDebugDelayAfterFile();
+        TryCompleteSession();
     }
 
     private void TryCompleteSession()
     {
-        if (_activeStreams > 0 || Volatile.Read(ref _comStreamHolds) > 0)
-            return;
-
-        if (_transferFailed || IsCancelRequested || Volatile.Read(ref _ownerReleased) != 0 ||
-            Volatile.Read(ref _disposeRequested) != 0)
+        if (_transferFailed || IsCancelRequested)
         {
             if (_backendDisposed == 0)
                 TryFinalizeBackendWhenIdle();
             return;
         }
 
-        if (_filesCompleted >= _fileCount)
+        if (_filesCompleted >= _fileCount && _fileCount > 0)
+            CloseProgressIfNeeded();
+
+        if (Volatile.Read(ref _ownerReleased) != 0 || Volatile.Read(ref _disposeRequested) != 0)
         {
-            CompleteProgress();
-            FinishSession();
+            CloseProgressIfNeeded();
+            if (_activeStreams == 0 && Volatile.Read(ref _comStreamHolds) == 0)
+                FinishSessionBackend();
+            else if (_backendDisposed == 0)
+                TryFinalizeBackendWhenIdle();
+            return;
         }
+
+        if (_activeStreams > 0 || Volatile.Read(ref _comStreamHolds) > 0)
+            return;
+
+        if (_filesCompleted >= _fileCount)
+            FinishSessionBackend();
     }
 
-    private void FinishSession()
+    private void CloseProgressIfNeeded()
+    {
+        if (Volatile.Read(ref _progressClosed) != 0)
+            return;
+
+        if (Interlocked.CompareExchange(ref _progressClosed, 1, 0) != 0)
+            return;
+
+        CompleteProgress();
+        StopProgressUi();
+    }
+
+    private void FinishSessionBackend()
     {
         if (_disposed)
             return;
 
+        CloseProgressIfNeeded();
         _disposed = true;
-        StopProgressUi();
         FinalizeBackend();
         EndTransferActivity();
         try { _progressReady.Dispose(); } catch { }
@@ -607,7 +662,7 @@ internal sealed class XboxDragTransferSession : IDisposable
         if (!_disposed)
         {
             _disposed = true;
-            StopProgressUi();
+            CloseProgressIfNeeded();
             try { _progressReady.Dispose(); } catch { }
         }
 
@@ -620,6 +675,7 @@ internal sealed class XboxDragTransferSession : IDisposable
             return;
 
         CleanupTempFiles();
+        ReleaseTransferConnection();
     }
 
     private void CleanupTempFiles()
