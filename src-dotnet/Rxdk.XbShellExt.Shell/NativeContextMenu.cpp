@@ -52,6 +52,7 @@ namespace
         Security,
         SetDefault,
         Capture,
+        SynchronizeTime,
         RebootWarm,
         RebootSameTitle,
         RebootCold,
@@ -83,35 +84,6 @@ namespace
         if (strchr(segment, '.') == nullptr)
             return true;
         return false;
-    }
-
-    bool IsDefaultConsole(LPCSTR segment)
-    {
-        if (!segment || segment[0] == '\0')
-            return false;
-
-        HKEY key = nullptr;
-        if (RegOpenKeyExW(
-                HKEY_CURRENT_USER,
-                L"Software\\Microsoft\\XboxSDK\\xbshlext",
-                0,
-                KEY_READ,
-                &key) != ERROR_SUCCESS)
-        {
-            return false;
-        }
-
-        char defaultName[256] = {};
-        DWORD size = sizeof(defaultName);
-        const LONG result = RegQueryValueExA(
-            key,
-            "Default",
-            nullptr,
-            nullptr,
-            reinterpret_cast<LPBYTE>(defaultName),
-            &size);
-        RegCloseKey(key);
-        return result == ERROR_SUCCESS && _stricmp(defaultName, segment) == 0;
     }
 
     LocationKind ClassifyLocation(LPCITEMIDLIST folderPidl)
@@ -161,8 +133,7 @@ namespace
 
     bool ShouldOfferBrowseTarget(TargetKind target)
     {
-        return target == TargetKind::AddConsole ||
-            target == TargetKind::Console ||
+        return target == TargetKind::Console ||
             target == TargetKind::Volume ||
             target == TargetKind::Directory;
     }
@@ -203,6 +174,8 @@ namespace
             return 14;
         case CommandId::RemoveConsole:
             return 15;
+        case CommandId::SynchronizeTime:
+            return 16;
         default:
             return -1;
         }
@@ -387,6 +360,7 @@ namespace
         case CommandId::RebootWarm:
         case CommandId::RebootSameTitle:
         case CommandId::RebootCold:
+        case CommandId::SynchronizeTime:
             return true;
         default:
             return false;
@@ -603,6 +577,8 @@ namespace
             return "setdefault";
         case CommandId::Capture:
             return "capture";
+        case CommandId::SynchronizeTime:
+            return "synchronizetime";
         case CommandId::RebootWarm:
             return "rebootwarm";
         case CommandId::RebootSameTitle:
@@ -785,10 +761,11 @@ namespace
             case TargetKind::Console:
                 RH(appendSeparator());
                 RH(appendRebootSubmenu());
-                RH(appendItem(L"&Capture", CommandId::Capture));
-                if (!IsDefaultConsole(m_selectionSegment.c_str()))
-                    RH(appendItem(L"Set &Default", CommandId::SetDefault));
+                RH(appendItem(L"Screen &Capture", CommandId::Capture));
+                RH(appendItem(L"Synchronize &Time", CommandId::SynchronizeTime));
                 RH(appendItem(L"&Security", CommandId::Security));
+                if (!NativeFolderOps::IsDefaultConsole(m_selectionSegment.c_str()))
+                    RH(appendItem(L"Set as de&fault Xbox", CommandId::SetDefault));
                 RH(appendItem(L"&Delete", CommandId::RemoveConsole));
                 RH(appendSeparator());
                 RH(appendItem(L"&Properties", CommandId::Properties));
@@ -805,6 +782,7 @@ namespace
                 RH(appendItem(L"&Copy", CommandId::Copy));
                 RH(appendItem(L"&Paste", CommandId::Paste, false, !pasteAvailable));
                 RH(appendItem(L"&Delete", CommandId::Delete));
+                RH(appendSeparator());
                 if (canRename)
                     RH(appendItem(L"&Rename", CommandId::Rename));
                 RH(appendItem(L"&New Folder", CommandId::NewFolder));
@@ -818,6 +796,7 @@ namespace
                 RH(appendItem(L"&Copy", CommandId::Copy));
                 RH(appendSeparator());
                 RH(appendItem(L"&Delete", CommandId::Delete));
+                RH(appendSeparator());
                 if (canRename)
                     RH(appendItem(L"&Rename", CommandId::Rename));
                 RH(appendSeparator());
@@ -832,6 +811,7 @@ namespace
                 RH(appendItem(L"&Copy", CommandId::Copy));
                 RH(appendSeparator());
                 RH(appendItem(L"&Delete", CommandId::Delete));
+                RH(appendSeparator());
                 if (canRename)
                     RH(appendItem(L"&Rename", CommandId::Rename));
                 RH(appendSeparator());
@@ -1007,6 +987,8 @@ namespace
                     return CommandId::SetDefault;
                 if (_stricmp(verb, "capture") == 0)
                     return CommandId::Capture;
+                if (_stricmp(verb, "synchronizetime") == 0)
+                    return CommandId::SynchronizeTime;
                 if (_stricmp(verb, "rebootwarm") == 0)
                     return CommandId::RebootWarm;
                 if (_stricmp(verb, "rebootsametitle") == 0)

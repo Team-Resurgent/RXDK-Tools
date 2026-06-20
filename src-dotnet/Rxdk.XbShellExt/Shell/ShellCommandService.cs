@@ -72,6 +72,9 @@ internal static class ShellCommandService
                 case ShellContextCommand.CaptureScreenshot:
                     ExecuteCapture(selectionPath ?? folderPath, hwnd, host);
                     break;
+                case ShellContextCommand.SynchronizeTime:
+                    ExecuteSynchronizeTime(selectionPath ?? folderPath, host);
+                    break;
             }
 
             if (deletedSelection != null)
@@ -216,6 +219,16 @@ internal static class ShellCommandService
         using var conn = XbdmSession.Connect(consolePath);
         conn.CaptureScreenshot(dialog.FileName);
         host.ShowInfo("Screenshot saved.");
+    }
+
+    private static void ExecuteSynchronizeTime(string consolePath, ShellFileOperationHost host)
+    {
+        if (string.IsNullOrWhiteSpace(consolePath) || consolePath.Contains('\\'))
+            throw new InvalidOperationException("Select a console to synchronize time.");
+
+        using var conn = XbdmSession.Connect(consolePath);
+        conn.SyncConsoleClock();
+        host.ShowInfo("Console time synchronized.");
     }
 
     private static void NotifyFolderRefresh(nint folderPidl, string folderPath)

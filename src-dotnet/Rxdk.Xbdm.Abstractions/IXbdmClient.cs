@@ -49,6 +49,7 @@ public interface IXbdmConnection : IDisposable
     XbdmXbeInfo GetXbeInfo(string name);
 
     void CaptureScreenshot(string localBmpPath);
+    void SyncConsoleClock();
     void SetFileAttributes(string wirePath, uint attributes);
 
     bool IsSecurityEnabled();

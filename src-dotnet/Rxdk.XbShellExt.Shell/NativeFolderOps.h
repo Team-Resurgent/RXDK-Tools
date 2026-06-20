@@ -52,6 +52,7 @@ namespace NativeFolderOps
     std::string GetLastSegment(LPCITEMIDLIST pidl);
     UINT CountPidlSegments(LPCITEMIDLIST pidl);
     bool ConsoleNameExists(LPCSTR segment);
+    bool IsDefaultConsole(LPCSTR segment);
     bool IsPlausibleChildBind(LPCITEMIDLIST folderPidl, LPCITEMIDLIST childPidl);
     bool ShouldBindWithoutManagedInner(LPCITEMIDLIST folderPidl, LPCITEMIDLIST childPidl);
     HRESULT CompareSimplePidls(LPCITEMIDLIST pidl1, LPCITEMIDLIST pidl2);
