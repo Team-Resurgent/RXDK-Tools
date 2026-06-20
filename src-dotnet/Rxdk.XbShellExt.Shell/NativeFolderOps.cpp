@@ -365,6 +365,35 @@ namespace NativeFolderOps
         return false;
     }
 
+    bool IsDefaultConsole(LPCSTR segment)
+    {
+        if (!segment || segment[0] == '\0')
+            return false;
+
+        HKEY key = nullptr;
+        if (RegOpenKeyExW(
+                HKEY_CURRENT_USER,
+                L"Software\\Microsoft\\XboxSDK",
+                0,
+                KEY_READ,
+                &key) != ERROR_SUCCESS)
+        {
+            return false;
+        }
+
+        char defaultName[256] = {};
+        DWORD size = sizeof(defaultName);
+        const LONG result = RegQueryValueExA(
+            key,
+            "XboxName",
+            nullptr,
+            nullptr,
+            reinterpret_cast<LPBYTE>(defaultName),
+            &size);
+        RegCloseKey(key);
+        return result == ERROR_SUCCESS && _stricmp(defaultName, segment) == 0;
+    }
+
     bool IsPlausibleChildBind(LPCITEMIDLIST folderPidl, LPCITEMIDLIST childPidl)
     {
         if (!childPidl || !childPidl->mkid.cb)

@@ -24,7 +24,7 @@ public sealed class ManagedXbdmConnection : IXbdmConnection
 
     public IXbdmDebugConnection Debug => _debug;
 
-    internal void SyncConsoleClock() => XbdmTimeCorrection.SyncConsoleClock(_sci);
+    public void SyncConsoleClock() => XbdmTimeCorrection.SyncConsoleClock(_sci);
 
     public IReadOnlyList<char> ListDrives() =>
         XbdmSessionBrowseOps.ListDrives(_session);

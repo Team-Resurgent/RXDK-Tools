@@ -18,4 +18,5 @@ internal enum ShellContextCommand
     NewFolder = 13,
     Launch = 14,
     RemoveConsole = 15,
+    SynchronizeTime = 16,
 }

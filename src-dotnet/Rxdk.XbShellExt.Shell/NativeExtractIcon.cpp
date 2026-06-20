@@ -26,29 +26,6 @@ namespace
         return extension != nullptr && _stricmp(extension + 1, "XBE") == 0;
     }
 
-    bool IsDefaultConsole(LPCSTR segment)
-    {
-        if (!segment || segment[0] == '\0')
-            return false;
-
-        HKEY key = nullptr;
-        if (RegOpenKeyExW(
-                HKEY_CURRENT_USER,
-                L"Software\\Microsoft\\XboxSDK\\xbshlext",
-                0,
-                KEY_READ,
-                &key) != ERROR_SUCCESS)
-        {
-            return false;
-        }
-
-        char defaultName[256] = {};
-        DWORD size = sizeof(defaultName);
-        const LONG result = RegQueryValueExA(key, "Default", nullptr, nullptr, reinterpret_cast<LPBYTE>(defaultName), &size);
-        RegCloseKey(key);
-        return result == ERROR_SUCCESS && _stricmp(defaultName, segment) == 0;
-    }
-
     class ATL_NO_VTABLE CNativeExtractIcon :
         public CComObjectRootEx<CComMultiThreadModel>,
         public IExtractIconW,
@@ -183,7 +160,7 @@ namespace
             return NativeIconKind::Volume;
 
         if (NativeFolderOps::ConsoleNameExists(segment.c_str()))
-            return IsDefaultConsole(segment.c_str()) ? NativeIconKind::ConsoleDefault : NativeIconKind::Console;
+            return NativeFolderOps::IsDefaultConsole(segment.c_str()) ? NativeIconKind::ConsoleDefault : NativeIconKind::Console;
 
         if (IsXbeFile(segment.c_str()))
             return NativeIconKind::Xbe;
