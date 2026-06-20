@@ -21,10 +21,11 @@ internal sealed class XbdmReceiveComStream : INativeComStream, IDisposable
     private readonly XboxDragTransferSession.StreamLease _lease;
     private readonly XboxDragTransferSession _session;
     private FileStream? _fileStream;
+    private Task<string>? _downloadTask;
+    private readonly object _downloadLock = new();
     private readonly ulong _expectedSize;
     private bool _disposed;
     private bool _failed;
-    private bool _downloadStarted;
     private int _readFailureHr = HResults.ReadFault;
 
     public XbdmReceiveComStream(
@@ -37,6 +38,20 @@ internal sealed class XbdmReceiveComStream : INativeComStream, IDisposable
         _lease = lease;
         _session = session;
         session.RegisterStream(this);
+
+        if (!session.IsWirePathCompleted(_entry.WirePath))
+            StartBackgroundDownload();
+    }
+
+    private void StartBackgroundDownload()
+    {
+        lock (_downloadLock)
+        {
+            if (_downloadTask != null)
+                return;
+
+            _downloadTask = Task.Run(() => _session.EnsureDownloadedToTemp(_entry, _lease));
+        }
     }
 
     internal string WirePath => _entry.WirePath;
@@ -363,15 +378,14 @@ internal sealed class XbdmReceiveComStream : INativeComStream, IDisposable
             }
         }
 
-        if (_downloadStarted)
-            return _fileStream != null;
+        if (_downloadTask == null)
+            StartBackgroundDownload();
 
-        _downloadStarted = true;
         try
         {
-            var tempPath = _session.EnsureDownloadedToTemp(_entry, _lease);
-            _fileStream = File.OpenRead(tempPath);
-            return true;
+            var tempPath = _downloadTask!.GetAwaiter().GetResult();
+            _fileStream ??= File.OpenRead(tempPath);
+            return _fileStream != null;
         }
         catch (Exception ex)
         {

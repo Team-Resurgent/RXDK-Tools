@@ -69,6 +69,16 @@ public sealed partial class TransferProgressForm : Form
         filesProgressBar.Value = 100;
         fileProgressBar.Value = 100;
         PumpMessages();
+
+        var closeTimer = new System.Windows.Forms.Timer { Interval = 750 };
+        closeTimer.Tick += (_, _) =>
+        {
+            closeTimer.Stop();
+            closeTimer.Dispose();
+            if (!IsDisposed && !_failedMode)
+                Close();
+        };
+        closeTimer.Start();
     }
 
     public void Fail(string message) => ShowTerminalState("Transfer failed", message);

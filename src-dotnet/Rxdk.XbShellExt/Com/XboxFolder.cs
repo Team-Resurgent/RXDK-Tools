@@ -667,6 +667,7 @@ public sealed class XboxFolder : IShellFolder, IShellFolder2, IPersistFolder, IP
 
             _dragTransferSession?.PrepareForReplacement();
 
+            using (XbdmConsoleTransferGate.Enter(selection.ConsoleName))
             using (var catalogConnection = XbdmSession.Connect(selection.ConsoleName))
                 _dragCatalog = XboxDragCatalog.Build(catalogConnection, selection);
 
