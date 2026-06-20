@@ -1,7 +1,8 @@
-using RXDKNeighborhood.Core.Services;
 using Rxdk.XbShellExt.Interop;
+using Rxdk.Xbdm;
 using Rxdk.Xbdm.KitServices.Services;
 using Rxdk.Xbdm.KitServices.Stores;
+using Rxdk.Xbdm.Managed;
 
 namespace Rxdk.XbShellExt.Shell;
 
@@ -59,23 +60,28 @@ internal static class XboxShellItemFactory
             return new XboxShellItem(letter, fullPath, XboxItemKind.Volume, ShellConstants.VolumeAttributes, true);
         }
 
-        var browser = CreateBrowser();
         try
         {
             var console = fullPath.Split('\\')[0];
             if (depth > 2)
             {
-                var parentPath = Rxdk.Xbdm.KitServices.Services.WirePathService.GetParentDisplayPath(fullPath) ?? fullPath;
-                var entries = browser.ListFolder(parentPath.Replace('\\', Path.DirectorySeparatorChar), console);
-                var match = entries.FirstOrDefault(e => string.Equals(e.Name, segment, StringComparison.OrdinalIgnoreCase));
-                if (match != null)
+                var parentPath = WirePathService.GetParentDisplayPath(fullPath) ?? fullPath;
+                if (WirePathService.TryBuildWirePath(
+                        parentPath.Replace('\\', Path.DirectorySeparatorChar),
+                        out var wirePath))
                 {
-                    return new XboxShellItem(
-                        segment,
-                        fullPath,
-                        match.IsDirectory ? XboxItemKind.Directory : XboxItemKind.File,
-                        match.IsDirectory ? ShellConstants.DirectoryAttributes : ShellConstants.FileAttributes,
-                        match.IsDirectory);
+                    var match = ShellXbdm.WithBrowse(console, browse => browse.ListDirectory(wirePath))
+                        .FirstOrDefault(e => string.Equals(e.Name, segment, StringComparison.OrdinalIgnoreCase));
+                    if (match != null)
+                    {
+                        var isDir = (match.Attributes & XbdmConstants.AttrDirectory) != 0;
+                        return new XboxShellItem(
+                            segment,
+                            fullPath,
+                            isDir ? XboxItemKind.Directory : XboxItemKind.File,
+                            isDir ? ShellConstants.DirectoryAttributes : ShellConstants.FileAttributes,
+                            isDir);
+                    }
                 }
             }
         }
@@ -99,9 +105,6 @@ internal static class XboxShellItemFactory
         if (string.Equals(fullPath, ShellConstants.AddConsoleSegment, StringComparison.Ordinal))
             return Array.Empty<XboxShellItem>();
 
-        // Folder enumeration only happens for browsable containers. Route by path depth instead
-        // of FromPath() kind lookup so a transient DIRLIST failure cannot misclassify a folder
-        // as a file and yield an empty listing.
         var depth = fullPath.Count(c => c == '\\') + 1;
         return depth switch
         {
@@ -117,7 +120,6 @@ internal static class XboxShellItemFactory
             FromPath(ShellConstants.AddConsoleSegment),
         };
 
-        // Match native CXboxRoot::RefreshChildren — registry only, no XBDM init on enum.
         var store = new ShellExtensionConsoleStore();
         foreach (var name in store.GetConsoleNames())
             items.Add(FromPath(name));
@@ -127,53 +129,55 @@ internal static class XboxShellItemFactory
 
     private static IReadOnlyList<XboxShellItem> ListConsoleChildren(string consolePath)
     {
-        using var conn = Rxdk.Xbdm.Managed.XbdmSession.Connect(consolePath);
-        return conn.ListDrives().Select(drive =>
+        return ShellXbdm.WithBrowse(consolePath, browse =>
         {
-            var letter = char.ToUpperInvariant(drive);
-            var fullPath = Rxdk.Xbdm.KitServices.Services.WirePathService.BuildDriveDisplayPath(consolePath, letter);
-            ulong? free = null;
-            ulong? total = null;
-            try
+            var drives = browse.ListDrives();
+            return drives.Select(drive =>
             {
-                (free, total) = conn.GetDiskFreeSpace($"{letter}:\\");
-            }
-            catch
-            {
-            }
+                var letter = char.ToUpperInvariant(drive);
+                var fullPath = WirePathService.BuildDriveDisplayPath(consolePath, letter);
+                ulong? free = null;
+                ulong? total = null;
+                try
+                {
+                    (free, total) = browse.GetDiskFreeSpace($"{letter}:\\");
+                }
+                catch
+                {
+                }
 
-            // Match native CXboxConsole: pidl segment is the drive letter only ("T", not "T:").
-            return new XboxShellItem(
-                $"{letter}",
-                fullPath,
-                XboxItemKind.Volume,
-                ShellConstants.VolumeAttributes,
-                true,
-                Rxdk.Xbdm.KitServices.Services.FormattingHelper.GetVolumeDisplayName(letter),
-                Rxdk.Xbdm.KitServices.Services.FormattingHelper.GetVolumeTypeDescription(letter),
-                free,
-                total);
-        }).ToArray();
+                return new XboxShellItem(
+                    $"{letter}",
+                    fullPath,
+                    XboxItemKind.Volume,
+                    ShellConstants.VolumeAttributes,
+                    true,
+                    FormattingHelper.GetVolumeDisplayName(letter),
+                    FormattingHelper.GetVolumeTypeDescription(letter),
+                    free,
+                    total);
+            }).ToArray();
+        });
     }
 
     private static IReadOnlyList<XboxShellItem> ListFolderChildren(string fullPath)
     {
         var parts = fullPath.Split('\\', 2);
         var console = parts[0];
-        var browser = CreateBrowser();
         var displayPath = fullPath.Replace('\\', Path.DirectorySeparatorChar);
-        return browser.ListFolder(displayPath, console).Select(entry =>
+        if (!WirePathService.TryBuildWirePath(displayPath, out var wirePath))
+            throw new InvalidOperationException($"Invalid display path: {displayPath}");
+
+        return ShellXbdm.WithBrowse(console, browse => browse.ListDirectory(wirePath).Select(entry =>
         {
+            var isDir = (entry.Attributes & XbdmConstants.AttrDirectory) != 0;
             var childPath = $"{fullPath}\\{entry.Name}";
             return new XboxShellItem(
                 entry.Name,
                 childPath,
-                entry.IsDirectory ? XboxItemKind.Directory : XboxItemKind.File,
-                entry.IsDirectory ? ShellConstants.DirectoryAttributes : ShellConstants.FileAttributes,
-                entry.IsDirectory);
-        }).ToArray();
+                isDir ? XboxItemKind.Directory : XboxItemKind.File,
+                isDir ? ShellConstants.DirectoryAttributes : ShellConstants.FileAttributes,
+                isDir);
+        }).ToArray());
     }
-
-    private static XboxBrowserService CreateBrowser() =>
-        new(new ShellExtensionConsoleStore());
 }

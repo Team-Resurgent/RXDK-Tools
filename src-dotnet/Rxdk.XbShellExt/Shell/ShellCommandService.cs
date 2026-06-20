@@ -1,6 +1,7 @@
 using Rxdk.XbShellExt.Diagnostics;
 using Rxdk.XbShellExt.Interop;
 using Rxdk.XbShellExt.Ui;
+using Rxdk.Xbdm.KitServices.Models;
 using Rxdk.Xbdm.KitServices.Services;
 using Rxdk.Xbdm.KitServices.Stores;
 using Rxdk.Xbdm.Managed;
@@ -20,6 +21,7 @@ internal static class ShellCommandService
             var selectionPath = ShellSelectionBuilder.GetSelectionPath(folderPath, childPidl);
             var host = new ShellFileOperationHost(hwnd);
 
+            FileSelection? deletedSelection = null;
             switch (command)
             {
                 case ShellContextCommand.Cut:
@@ -32,7 +34,7 @@ internal static class ShellCommandService
                     ExecutePaste(folderPath, childPidl, host);
                     break;
                 case ShellContextCommand.Delete:
-                    ExecuteDelete(folderPath, childPidl, host);
+                    deletedSelection = ExecuteDelete(folderPath, childPidl, host);
                     break;
                 case ShellContextCommand.Rename:
                     ExecuteRename(folderPath, childPidl, host);
@@ -63,7 +65,9 @@ internal static class ShellCommandService
                     break;
             }
 
-            if (ShouldRefreshFolder(command))
+            if (deletedSelection != null)
+                NotifyDeletedItems(folderPidl, deletedSelection);
+            else if (ShouldRefreshFolder(command))
                 NotifyFolderRefresh(folderPidl, folderPath);
         }
         catch (Exception ex)
@@ -76,7 +80,6 @@ internal static class ShellCommandService
     private static bool ShouldRefreshFolder(ShellContextCommand command) => command switch
     {
         ShellContextCommand.Paste => true,
-        ShellContextCommand.Delete => true,
         ShellContextCommand.Rename => true,
         ShellContextCommand.NewFolder => true,
         _ => false,
@@ -106,13 +109,16 @@ internal static class ShellCommandService
             host.ShowError("There is nothing to paste.");
     }
 
-    private static void ExecuteDelete(string folderPath, nint childPidl, ShellFileOperationHost host)
+    private static FileSelection? ExecuteDelete(string folderPath, nint childPidl, ShellFileOperationHost host)
     {
         var selection = ShellSelectionBuilder.BuildFileSelection(folderPath, childPidl);
         if (selection == null)
-            return;
+            return null;
 
-        FileOps.DeleteAsync(selection, host).GetAwaiter().GetResult();
+        if (!FileOps.DeleteAsync(selection, host).GetAwaiter().GetResult())
+            return null;
+
+        return selection;
     }
 
     private static void ExecuteRename(string folderPath, nint childPidl, ShellFileOperationHost host)
@@ -209,5 +215,39 @@ internal static class ShellCommandService
             ShellFolderNotify.RefreshFolder(folderPidl);
         else
             ShellFolderNotify.RefreshDisplayFolder(folderPath);
+    }
+
+    private static void NotifyDeletedItems(nint folderPidl, FileSelection selection)
+    {
+        foreach (var item in selection.Items)
+        {
+            nint absolute = 0;
+            nint relative = 0;
+            try
+            {
+                relative = PidlHelper.CreateSimple(item.Name.TrimEnd(':'));
+                if (folderPidl != 0)
+                {
+                    absolute = PidlHelper.Concatenate(folderPidl, relative);
+                }
+                else
+                {
+                    var itemDisplayPath = string.IsNullOrEmpty(selection.FolderDisplayPath)
+                        ? item.Name.TrimEnd(':')
+                        : WirePathService.GetItemDisplayPath(selection.FolderDisplayPath, item.Name);
+                    absolute = PidlHelper.BuildNamespaceRelativePidl(itemDisplayPath);
+                }
+
+                if (absolute != 0)
+                    ShellFolderNotify.NotifyItemRemoved(absolute, item.IsDirectory);
+            }
+            finally
+            {
+                if (absolute != 0)
+                    PidlHelper.Free(absolute);
+                if (relative != 0)
+                    PidlHelper.Free(relative);
+            }
+        }
     }
 }

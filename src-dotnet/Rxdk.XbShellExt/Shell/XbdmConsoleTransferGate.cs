@@ -3,8 +3,8 @@ using System.Collections.Concurrent;
 namespace Rxdk.XbShellExt.Shell;
 
 /// <summary>
-/// Serializes XBDM TCP connects for a console. Reentrant on the same thread because
-/// Explorer may call IDataObject::GetData again while an IStream::Read download is active.
+/// Serializes drag/paste XBDM downloads per console. Independent from browse so Explorer
+/// can still open drives while a desktop copy is running.
 /// </summary>
 internal static class XbdmConsoleTransferGate
 {

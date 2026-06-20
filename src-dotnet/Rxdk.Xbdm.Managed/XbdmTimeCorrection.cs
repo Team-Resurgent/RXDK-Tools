@@ -12,19 +12,30 @@ internal static class XbdmTimeCorrection
         if (sci.GotTimeCorrection)
             return;
 
+        sci.WithSession(session => EnsureOnSession(sci, session));
+    }
+
+    internal static void Ensure(XbdmSci sci, XbdmProtocolSession session) =>
+        EnsureOnSession(sci, session);
+
+    private static void EnsureOnSession(XbdmSci sci, XbdmProtocolSession session)
+    {
+        if (sci.GotTimeCorrection)
+            return;
+
         try
         {
-            var remote = QuerySystemFileTime(sci);
+            var remote = QuerySystemFileTime(session);
             var local = (ulong)DateTime.UtcNow.ToFileTimeUtc();
             ApplyClockSkew(sci, local, remote);
             sci.GotTimeCorrection = true;
         }
         catch (XbdmException ex) when (ex.HResultCode == XbdmHResults.ClockNotSet)
         {
-            TrySetSystemTime(sci);
+            TrySetSystemTime(session);
             try
             {
-                var remote = QuerySystemFileTime(sci);
+                var remote = QuerySystemFileTime(session);
                 var local = (ulong)DateTime.UtcNow.ToFileTimeUtc();
                 ApplyClockSkew(sci, local, remote);
                 sci.GotTimeCorrection = true;
@@ -97,32 +108,34 @@ internal static class XbdmTimeCorrection
     }
 
     private static ulong QuerySystemFileTime(XbdmSci sci) =>
-        sci.WithSession(session =>
+        sci.WithSession(QuerySystemFileTime);
+
+    private static ulong QuerySystemFileTime(XbdmProtocolSession session)
+    {
+        var (hr, line) = session.SendCommandRaw("SYSTIME");
+        if (hr == XbdmHResults.ClockNotSet)
+            throw XbdmException.FromHResult("Console clock is not set.", hr, line);
+        if (!XbdmProtocol.IsCommandSuccess(hr))
+            throw XbdmException.FromHResult("SYSTIME failed.", hr, line);
+
+        if (!XbdmParamParser.TryGetDwParam(line, "high", out var high) ||
+            !XbdmParamParser.TryGetDwParam(line, "low", out var low))
         {
-            var (hr, line) = session.SendCommandRaw("SYSTIME");
-            if (hr == XbdmHResults.ClockNotSet)
-                throw XbdmException.FromHResult("Console clock is not set.", hr, line);
-            if (!XbdmProtocol.IsCommandSuccess(hr))
-                throw XbdmException.FromHResult("SYSTIME failed.", hr, line);
+            throw XbdmException.FromHResult("SYSTIME response was invalid.", XbdmHResults.FileError, line);
+        }
 
-            if (!XbdmParamParser.TryGetDwParam(line, "high", out var high) ||
-                !XbdmParamParser.TryGetDwParam(line, "low", out var low))
-            {
-                throw XbdmException.FromHResult("SYSTIME response was invalid.", XbdmHResults.FileError, line);
-            }
+        return ((ulong)high << 32) | low;
+    }
 
-            return ((ulong)high << 32) | low;
-        });
+    private static void TrySetSystemTime(XbdmSci sci) =>
+        sci.WithSession(TrySetSystemTime);
 
-    private static void TrySetSystemTime(XbdmSci sci)
+    private static void TrySetSystemTime(XbdmProtocolSession session)
     {
         var ft = DateTime.UtcNow.ToFileTimeUtc();
         var high = (uint)(ft >> 32);
         var low = (uint)ft;
-        sci.WithSession(session =>
-        {
-            session.SendCommand($"setsystime clockhi=0x{high:x8} clocklo=0x{low:x8}");
-        });
+        session.SendCommand($"setsystime clockhi=0x{high:x8} clocklo=0x{low:x8}");
     }
 
     private static void ApplyClockSkew(XbdmSci sci, ulong local, ulong remote)

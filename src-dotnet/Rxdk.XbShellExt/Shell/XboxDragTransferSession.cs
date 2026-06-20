@@ -36,6 +36,7 @@ internal sealed class XboxDragTransferSession : IDisposable
     private readonly HashSet<string> _countedForProgress = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, string> _tempFilesByWirePath = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<string> _tempDirs = new();
+    private readonly List<object> _pinnedStreams = new();
     private XbdmConnection? _transferConnection;
     private int _progressClosed;
 
@@ -75,7 +76,11 @@ internal sealed class XboxDragTransferSession : IDisposable
             return null;
 
         if (_completedWirePaths.Contains(entry.WirePath))
-            return new CompletedDragComStream(entry, this);
+        {
+            var replay = new CompletedDragComStream(entry, this);
+            PinStream(replay);
+            return replay;
+        }
 
         AbortStreamsForPath(entry.WirePath);
 
@@ -84,6 +89,7 @@ internal sealed class XboxDragTransferSession : IDisposable
 
         // One XBDM connection at a time: download to temp, then serve reads locally.
         var stream = new XbdmReceiveComStream(entry, lease, this);
+        PinStream(stream);
         NotifyComStreamHeld();
         return stream;
     }
@@ -175,6 +181,18 @@ internal sealed class XboxDragTransferSession : IDisposable
     {
         if (Interlocked.Decrement(ref _comStreamHolds) == 0)
             TryCompleteSession();
+    }
+
+    internal void UnpinStream(object stream)
+    {
+        lock (_streamRegistryLock)
+            _pinnedStreams.Remove(stream);
+    }
+
+    private void PinStream(object stream)
+    {
+        lock (_streamRegistryLock)
+            _pinnedStreams.Add(stream);
     }
 
     internal void NotifyOwnerReleased()
@@ -675,6 +693,8 @@ internal sealed class XboxDragTransferSession : IDisposable
             return;
 
         CleanupTempFiles();
+        lock (_streamRegistryLock)
+            _pinnedStreams.Clear();
         ReleaseTransferConnection();
     }
 

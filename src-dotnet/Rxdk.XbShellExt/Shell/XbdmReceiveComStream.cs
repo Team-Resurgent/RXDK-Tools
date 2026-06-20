@@ -76,8 +76,6 @@ internal sealed class XbdmReceiveComStream : INativeComStream, IDisposable
         ManagedTrace.Line($"TransferCancel path='{_entry.WirePath}'");
     }
 
-    ~XbdmReceiveComStream() => Dispose();
-
     public int Read(IntPtr pv, int cb, IntPtr pcbRead)
     {
         if (_disposed || pv == IntPtr.Zero || cb < 0)
@@ -115,8 +113,6 @@ internal sealed class XbdmReceiveComStream : INativeComStream, IDisposable
             {
                 Marshal.Copy(buffer, 0, pv, totalRead);
                 _lease.ReportCurrentFileProgress((ulong)_fileStream.Position, _expectedSize);
-                ManagedTrace.Line(
-                    $"TransferRead path='{_entry.WirePath}' read={totalRead} position={_fileStream.Position}/{_expectedSize}");
             }
 
             if (totalRead == 0)
@@ -349,6 +345,7 @@ internal sealed class XbdmReceiveComStream : INativeComStream, IDisposable
         _disposed = true;
         CloseFile();
         _lease.Dispose();
+        _session.UnpinStream(this);
         _session.NotifyComStreamReleased();
         GC.SuppressFinalize(this);
     }
