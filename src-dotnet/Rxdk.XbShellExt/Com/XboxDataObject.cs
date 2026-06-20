@@ -59,6 +59,13 @@ internal sealed class XboxDataObject : OleIDataObject, IAsyncOperation
         {
             try
             {
+                var catalog = EnsureCatalog();
+                if (pFormatetc.lindex < 0 || pFormatetc.lindex >= catalog.Count)
+                    return OleConstants.DvELindex;
+
+                if (catalog[pFormatetc.lindex].IsDirectory)
+                    return OleConstants.DvELindex;
+
                 if (!TryGetFileEntry(pFormatetc.lindex, out var entry))
                     return OleConstants.DvEFormatetc;
 
@@ -124,7 +131,14 @@ internal sealed class XboxDataObject : OleIDataObject, IAsyncOperation
             if (pFormatetc.lindex < 0)
                 return HasAnyFileEntry() ? HResults.Ok : OleConstants.DvEFormatetc;
 
-            return TryGetFileEntry(pFormatetc.lindex, out _) ? HResults.Ok : OleConstants.DvEFormatetc;
+            var catalog = EnsureCatalog();
+            if (pFormatetc.lindex >= catalog.Count)
+                return OleConstants.DvELindex;
+
+            if (catalog[pFormatetc.lindex].IsDirectory)
+                return OleConstants.DvELindex;
+
+            return HResults.Ok;
         }
 
         return OleConstants.DvEFormatetc;

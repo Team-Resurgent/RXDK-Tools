@@ -13,37 +13,46 @@ internal static class ShellCommandService
     private static FileClipboardService Clipboard => ShellClipboardOperations.SharedClipboard;
     private static FileOperationsService FileOps => ShellClipboardOperations.SharedFileOps;
 
-    public static void Execute(nint hwnd, string folderPath, nint folderPidl, nint childPidl, ShellContextCommand command)
+    public static void Execute(nint hwnd, string folderPath, nint folderPidl, nint childPidl, ShellContextCommand command) =>
+        Execute(
+            hwnd,
+            folderPath,
+            folderPidl,
+            childPidl == 0 ? Array.Empty<nint>() : new[] { childPidl },
+            command);
+
+    public static void Execute(nint hwnd, string folderPath, nint folderPidl, IReadOnlyList<nint> childPidls, ShellContextCommand command)
     {
-        ManagedTrace.Line($"ShellCommandService.Execute folder='{folderPath}' command={command}");
+        ManagedTrace.Line($"ShellCommandService.Execute folder='{folderPath}' command={command} count={childPidls.Count}");
         try
         {
-            var selectionPath = ShellSelectionBuilder.GetSelectionPath(folderPath, childPidl);
+            var primaryChild = childPidls.Count > 0 ? childPidls[0] : 0;
+            var selectionPath = ShellSelectionBuilder.GetSelectionPath(folderPath, primaryChild);
             var host = new ShellFileOperationHost(hwnd);
 
             FileSelection? deletedSelection = null;
             switch (command)
             {
                 case ShellContextCommand.Cut:
-                    ExecuteCut(folderPath, childPidl, host);
+                    ExecuteCut(folderPath, childPidls, host);
                     break;
                 case ShellContextCommand.Copy:
-                    ExecuteCopy(folderPath, childPidl, host);
+                    ExecuteCopy(folderPath, childPidls, host);
                     break;
                 case ShellContextCommand.Paste:
-                    ExecutePaste(folderPath, childPidl, host);
+                    ExecutePaste(folderPath, primaryChild, host);
                     break;
                 case ShellContextCommand.Delete:
-                    deletedSelection = ExecuteDelete(folderPath, childPidl, host);
+                    deletedSelection = ExecuteDelete(folderPath, childPidls, host);
                     break;
                 case ShellContextCommand.Rename:
-                    ExecuteRename(folderPath, childPidl, host);
+                    ExecuteRename(folderPath, childPidls, host);
                     break;
                 case ShellContextCommand.NewFolder:
                     ExecuteNewFolder(folderPath, host);
                     break;
                 case ShellContextCommand.Launch:
-                    ExecuteLaunch(folderPath, childPidl, host);
+                    ExecuteLaunch(folderPath, primaryChild, host);
                     break;
                 case ShellContextCommand.SetDefaultConsole:
                     ExecuteSetDefault(selectionPath ?? folderPath, host);
@@ -85,18 +94,18 @@ internal static class ShellCommandService
         _ => false,
     };
 
-    private static void ExecuteCut(string folderPath, nint childPidl, ShellFileOperationHost host)
+    private static void ExecuteCut(string folderPath, IReadOnlyList<nint> childPidls, ShellFileOperationHost host)
     {
-        var selection = ShellSelectionBuilder.BuildFileSelection(folderPath, childPidl);
+        var selection = ShellSelectionBuilder.BuildFileSelection(folderPath, childPidls);
         if (selection == null)
             return;
 
         ShellClipboardOperations.SetCutCopy(selection, cut: true);
     }
 
-    private static void ExecuteCopy(string folderPath, nint childPidl, ShellFileOperationHost host)
+    private static void ExecuteCopy(string folderPath, IReadOnlyList<nint> childPidls, ShellFileOperationHost host)
     {
-        var selection = ShellSelectionBuilder.BuildFileSelection(folderPath, childPidl);
+        var selection = ShellSelectionBuilder.BuildFileSelection(folderPath, childPidls);
         if (selection == null)
             return;
 
@@ -109,9 +118,9 @@ internal static class ShellCommandService
             host.ShowError("There is nothing to paste.");
     }
 
-    private static FileSelection? ExecuteDelete(string folderPath, nint childPidl, ShellFileOperationHost host)
+    private static FileSelection? ExecuteDelete(string folderPath, IReadOnlyList<nint> childPidls, ShellFileOperationHost host)
     {
-        var selection = ShellSelectionBuilder.BuildFileSelection(folderPath, childPidl);
+        var selection = ShellSelectionBuilder.BuildFileSelection(folderPath, childPidls);
         if (selection == null)
             return null;
 
@@ -121,9 +130,9 @@ internal static class ShellCommandService
         return selection;
     }
 
-    private static void ExecuteRename(string folderPath, nint childPidl, ShellFileOperationHost host)
+    private static void ExecuteRename(string folderPath, IReadOnlyList<nint> childPidls, ShellFileOperationHost host)
     {
-        var selection = ShellSelectionBuilder.BuildFileSelection(folderPath, childPidl);
+        var selection = ShellSelectionBuilder.BuildFileSelection(folderPath, childPidls);
         if (selection == null || selection.Items.Count != 1)
         {
             host.ShowInfo("Select exactly one item to rename.");

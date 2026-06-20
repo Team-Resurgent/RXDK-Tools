@@ -642,6 +642,22 @@ public sealed class XboxFolder : IShellFolder, IShellFolder2, IPersistFolder, IP
         }
     }
 
+    public int InvokeContextCommandForSelection(nint hwnd, uint cidl, nint apidl, int command)
+    {
+        try
+        {
+            var pidls = ReadChildPidls(cidl, apidl);
+            ShellCommandService.Execute(hwnd, _fullPath, _folderPidl, pidls, (ShellContextCommand)command);
+            return HResults.Ok;
+        }
+        catch (Exception ex)
+        {
+            ManagedTrace.Line($"InvokeContextCommandForSelection threw {ex.GetType().Name}: {ex.Message}");
+            ShellUiHost.ShowError(hwnd, ex.Message);
+            return HResults.NoObject;
+        }
+    }
+
     public int GetDragFileGroupDescriptor(uint cidl, nint apidl, out nint phGlobal)
     {
         phGlobal = 0;

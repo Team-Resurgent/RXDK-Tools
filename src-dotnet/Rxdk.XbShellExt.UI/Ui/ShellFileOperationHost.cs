@@ -11,19 +11,37 @@ public sealed class ShellFileOperationHost : IFileOperationHost
 
     public Task<bool> ConfirmDeleteAsync(IReadOnlyList<FileSelectionItem> items)
     {
-        var names = string.Join(Environment.NewLine, items.Select(i => i.Name));
-        var message = items.Count == 1
-            ? $"Delete '{items[0].Name}'?"
-            : $"Delete these {items.Count} items?{Environment.NewLine}{Environment.NewLine}{names}";
+        var message = FormatDeleteMessage(items);
+        var caption = items.Count == 1 && items[0].IsDirectory
+            ? "Confirm Folder Delete"
+            : items.Count > 1
+                ? "Confirm Multiple Delete"
+                : "Confirm Delete";
 
         var result = MessageBox.Show(
             NativeWindow.FromHandle(_ownerHwnd),
             message,
-            "Xbox Neighborhood",
+            caption,
             MessageBoxButtons.YesNo,
             MessageBoxIcon.Warning);
 
         return Task.FromResult(result == DialogResult.Yes);
+    }
+
+    private static string FormatDeleteMessage(IReadOnlyList<FileSelectionItem> items)
+    {
+        if (items.Count == 0)
+            return "Are you sure you want to permanently delete this item?";
+
+        if (items.Count == 1)
+        {
+            var name = items[0].Name;
+            return items[0].IsDirectory
+                ? $"Are you sure you want to remove the folder '{name}' and permanently delete its contents?"
+                : $"Are you sure you want to permanently delete '{name}'?";
+        }
+
+        return $"Are you sure you want to permanently delete these '{items.Count}' items?";
     }
 
     public Task<string?> PromptRenameAsync(string currentName)

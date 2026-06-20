@@ -87,7 +87,7 @@ internal static class XboxUploadTransferSession
                 _catalog = LocalUploadCatalog.Build(_localPaths, _wireFolder);
                 if (_catalog.Count == 0)
                 {
-                    SetCurrentFile("No files to upload.");
+                    SetCurrentFile("Nothing to upload.");
                     return;
                 }
 
@@ -97,6 +97,13 @@ internal static class XboxUploadTransferSession
                 {
                     ThrowIfCancelled();
                     BeginCurrentFile(entry);
+                    if (entry.IsDirectory)
+                    {
+                        CreateWireDirectory(conn, entry.WirePath);
+                        CompleteCurrentFile(entry);
+                        continue;
+                    }
+
                     EnsureWireDirectories(conn, entry.WirePath);
                     conn.SendFile(
                         entry.LocalPath,
@@ -358,6 +365,17 @@ internal static class XboxUploadTransferSession
             ShellTransferActivity.End();
         }
 
+        private static void CreateWireDirectory(XbdmConnection conn, string wirePath)
+        {
+            try
+            {
+                conn.CreateDirectory(wirePath);
+            }
+            catch (XbdmException ex) when (ex.HResultCode == XbdmHResults.AlreadyExists)
+            {
+            }
+        }
+
         private static void EnsureWireDirectories(XbdmConnection conn, string wirePath)
         {
             var slash = wirePath.LastIndexOf('\\');
@@ -375,7 +393,7 @@ internal static class XboxUploadTransferSession
                 current = $"{current}\\{parts[i]}";
                 try
                 {
-                    conn.CreateDirectory(current);
+                    CreateWireDirectory(conn, current);
                 }
                 catch (XbdmException ex) when (ex.HResultCode == XbdmHResults.AlreadyExists)
                 {
