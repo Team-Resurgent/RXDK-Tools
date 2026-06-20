@@ -35,6 +35,7 @@ internal static class HResults
     public const int Abort = unchecked((int)0x80004004);
     public const int Cancelled = unchecked((int)0x800704C7);
     public const int ReadFault = unchecked((int)0x80030006);
+    public const int FileNotFound = unchecked((int)0x80070002);
     // IShellFolder::CompareIDs success codes (legacy xbshlext S_* values).
     public const int Equal = 0;
     public const int Greater = 1;

@@ -457,6 +457,16 @@ namespace NativeFolderOps
         LPITEMIDLIST* ppidl,
         ULONG* pdwAttributes)
     {
+        return ParseRelativeDisplayName(nullptr, displayName, pchEaten, ppidl, pdwAttributes);
+    }
+
+    HRESULT ParseRelativeDisplayName(
+        LPCITEMIDLIST folderPidl,
+        LPCWSTR displayName,
+        ULONG* pchEaten,
+        LPITEMIDLIST* ppidl,
+        ULONG* pdwAttributes)
+    {
         if (!displayName || !ppidl)
             return E_POINTER;
 
@@ -464,32 +474,124 @@ namespace NativeFolderOps
         if (pchEaten)
             *pchEaten = 0;
 
-        LPCWSTR cursor = displayName;
-        while (*cursor == L'\\' || *cursor == L'/')
-            ++cursor;
+        std::wstring trimmed(displayName);
+        while (!trimmed.empty() && iswspace(trimmed.front()))
+            trimmed.erase(trimmed.begin());
+        while (!trimmed.empty() && iswspace(trimmed.back()))
+            trimmed.pop_back();
 
-        LPCWSTR end = cursor;
-        while (*end && *end != L'\\' && *end != L'/')
-            ++end;
-
-        if (end == cursor)
+        if (trimmed.empty())
             return E_INVALIDARG;
 
-        std::wstring component(cursor, end - cursor);
-        const auto segment = WideToAnsiSegment(component.c_str());
-        if (!ConsoleNameExists(segment.c_str()))
-            return HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND);
+        ULONG protocolPrefixLen = 0;
+        std::wstring path = trimmed;
+        if (_wcsnicmp(path.c_str(), L"xbox://", 7) == 0)
+        {
+            protocolPrefixLen = 7;
+            path = path.substr(7);
+            for (auto& ch : path)
+            {
+                if (ch == L'/')
+                    ch = L'\\';
+            }
+            while (!path.empty() && path.back() == L'\\')
+                path.pop_back();
+        }
 
-        LPITEMIDLIST pidl = CreateSimplePidl(segment.c_str());
-        if (!pidl)
-            return E_OUTOFMEMORY;
+        static const wchar_t kNamespacePrefix[] = L"Xbox Neighborhood\\";
+        const size_t namespacePrefixLen = wcslen(kNamespacePrefix);
+        if (path.size() >= namespacePrefixLen &&
+            _wcsnicmp(path.c_str(), kNamespacePrefix, namespacePrefixLen) == 0)
+        {
+            path = path.substr(namespacePrefixLen);
+        }
 
-        *ppidl = pidl;
+        while (!path.empty() && (path.front() == L'\\' || path.front() == L'/'))
+            path.erase(path.begin());
+        while (!path.empty() && (path.back() == L'\\' || path.back() == L'/'))
+            path.pop_back();
+
+        if (path.empty())
+            return E_INVALIDARG;
+
+        std::vector<std::string> segments;
+        size_t start = 0;
+        while (start < path.size())
+        {
+            const size_t slash = path.find_first_of(L"\\/", start);
+            const auto component = WideToAnsiSegment(
+                std::wstring(path, start, slash == std::wstring::npos ? std::wstring::npos : slash - start).c_str());
+            if (!component.empty())
+                segments.push_back(component);
+            if (slash == std::wstring::npos)
+                break;
+            start = slash + 1;
+        }
+
+        if (segments.empty())
+            return E_INVALIDARG;
+
+        const auto parentPath = GetNamespaceRelativePath(folderPidl);
+        const size_t parentDepth = parentPath.empty()
+            ? 0
+            : static_cast<size_t>(std::count(parentPath.begin(), parentPath.end(), '\\') + 1);
+
+        for (size_t i = 0; i < segments.size(); ++i)
+        {
+            const size_t depth = parentDepth + i + 1;
+            if (depth == 2 && !segments[i].empty() && isalpha(static_cast<unsigned char>(segments[i][0])))
+            {
+                segments[i].assign(1, static_cast<char>(toupper(static_cast<unsigned char>(segments[i][0]))));
+            }
+        }
+
+        const bool wantsValidate = pdwAttributes && (*pdwAttributes & 0x01000000) != 0;
+        CComHeapPtr<ITEMIDLIST> walk;
+        AttachShellPidl(walk, folderPidl, nullptr);
+        for (const auto& segment : segments)
+        {
+            CComHeapPtr<ITEMIDLIST> segmentPidl;
+            AttachShellPidl(segmentPidl, CreateSimplePidl(segment.c_str()));
+            if (!segmentPidl)
+                return E_OUTOFMEMORY;
+
+            if (wantsValidate && !IsPlausibleChildBind(walk, segmentPidl))
+                return HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND);
+
+            CComHeapPtr<ITEMIDLIST> combined;
+            AttachShellPidl(combined, walk, segmentPidl);
+            if (!combined)
+                return E_OUTOFMEMORY;
+            walk.Attach(combined.Detach());
+        }
+
+        CComHeapPtr<ITEMIDLIST> relative;
+        for (const auto& segment : segments)
+        {
+            CComHeapPtr<ITEMIDLIST> segmentPidl;
+            AttachShellPidl(segmentPidl, CreateSimplePidl(segment.c_str()));
+            if (!segmentPidl)
+                return E_OUTOFMEMORY;
+
+            if (!relative)
+            {
+                relative.Attach(segmentPidl.Detach());
+                continue;
+            }
+
+            CComHeapPtr<ITEMIDLIST> combined;
+            AttachShellPidl(combined, relative, segmentPidl);
+            if (!combined)
+                return E_OUTOFMEMORY;
+            relative.Attach(combined.Detach());
+        }
+
+        *ppidl = relative.Detach();
         if (pchEaten)
-            *pchEaten = static_cast<ULONG>(end - displayName);
+            *pchEaten = static_cast<ULONG>(trimmed.size());
 
         if (pdwAttributes)
-            *pdwAttributes &= GetChildAttributes(segment.c_str());
+            *pdwAttributes &= GetChildAttributes(segments.back().c_str());
 
         return S_OK;
     }

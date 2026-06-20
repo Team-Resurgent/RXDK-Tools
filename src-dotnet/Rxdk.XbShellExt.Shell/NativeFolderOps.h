@@ -43,6 +43,12 @@ namespace NativeFolderOps
         ULONG* pchEaten,
         LPITEMIDLIST* ppidl,
         ULONG* pdwAttributes);
+    HRESULT ParseRelativeDisplayName(
+        LPCITEMIDLIST folderPidl,
+        LPCWSTR displayName,
+        ULONG* pchEaten,
+        LPITEMIDLIST* ppidl,
+        ULONG* pdwAttributes);
     std::string GetLastSegment(LPCITEMIDLIST pidl);
     UINT CountPidlSegments(LPCITEMIDLIST pidl);
     bool ConsoleNameExists(LPCSTR segment);

@@ -52,30 +52,19 @@ namespace
 
 
 
-    HRESULT OpenNamespaceViaShell()
+    HRESULT OpenShellNamespacePath(LPCSTR relativePathAnsi)
     {
-        XB_TRACE_SCOPE("OpenNamespaceViaShell");
+        XB_TRACE_SCOPE("OpenShellNamespacePath");
         if (IsProcessElevated())
-
         {
-
             MessageBoxW(
-
                 nullptr,
-
                 L"Do not open Xbox Neighborhood from an elevated process.\r\n"
-
                 L"Close this window and run open-xbox-neighborhood.cmd without admin.",
-
                 L"Xbox Neighborhood",
-
                 MB_OK | MB_ICONWARNING);
-
             return HRESULT_FROM_WIN32(ERROR_ELEVATION_REQUIRED);
-
         }
-
-
 
         // Win10/11 hide namespace folders in the nav pane unless this is set.
         {
@@ -97,13 +86,30 @@ namespace
             }
         }
 
-        // Open Explorer in folder-tree mode (/e,/root) so the namespace appears in the
-        // side navigation pane like the legacy Xbox Neighborhood view.
+        wchar_t args[512] = {};
+        if (relativePathAnsi == nullptr || relativePathAnsi[0] == '\0')
+        {
+            StringCchPrintfW(
+                args,
+                ARRAYSIZE(args),
+                L"/e,/root,::{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}");
+        }
+        else
+        {
+            wchar_t relativeWide[384] = {};
+            MultiByteToWideChar(CP_ACP, 0, relativePathAnsi, -1, relativeWide, ARRAYSIZE(relativeWide));
+            StringCchPrintfW(
+                args,
+                ARRAYSIZE(args),
+                L"/e,/root,::{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}\\%s",
+                relativeWide);
+        }
+
         const HINSTANCE result = ShellExecuteW(
             nullptr,
             L"open",
             L"explorer.exe",
-            L"/e,/root,::{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}",
+            args,
             nullptr,
             SW_SHOWNORMAL);
 
@@ -116,12 +122,27 @@ namespace
         const HRESULT hrShell = HRESULT_FROM_WIN32(GetLastError());
         ShellTraceHr("ShellExecute explorer.exe /e", hrShell);
 
-        // Fallback: shell:: binding without an explicit Explorer frame.
+        wchar_t shellPath[512] = {};
+        if (relativePathAnsi == nullptr || relativePathAnsi[0] == '\0')
+        {
+            StringCchCopyW(shellPath, ARRAYSIZE(shellPath), L"shell:::{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}");
+        }
+        else
+        {
+            wchar_t relativeWide[384] = {};
+            MultiByteToWideChar(CP_ACP, 0, relativePathAnsi, -1, relativeWide, ARRAYSIZE(relativeWide));
+            StringCchPrintfW(
+                shellPath,
+                ARRAYSIZE(shellPath),
+                L"shell:::{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}\\%s",
+                relativeWide);
+        }
+
         ShellTraceLine(".. fallback shell:::");
         const HINSTANCE fallback = ShellExecuteW(
             nullptr,
             nullptr,
-            L"shell:::{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}",
+            shellPath,
             nullptr,
             nullptr,
             SW_SHOWNORMAL);
@@ -135,7 +156,50 @@ namespace
         const HRESULT hr = HRESULT_FROM_WIN32(GetLastError());
         ShellTraceHr("ShellExecute shell:::", hr);
         return hr;
+    }
 
+    HRESULT OpenNamespaceViaShell()
+    {
+        return OpenShellNamespacePath(nullptr);
+    }
+
+    bool TryParseXboxUrl(LPCSTR cmdLine, char* relativePath, size_t relativePathChars)
+    {
+        if (!cmdLine || !relativePath || relativePathChars == 0)
+            return false;
+
+        relativePath[0] = '\0';
+
+        while (*cmdLine == ' ' || *cmdLine == '\t')
+            ++cmdLine;
+
+        static constexpr char kProtocol[] = "xbox://";
+        if (_strnicmp(cmdLine, kProtocol, sizeof(kProtocol) - 1) != 0)
+            return false;
+
+        cmdLine += sizeof(kProtocol) - 1;
+        while (*cmdLine == '/')
+            ++cmdLine;
+
+        if (*cmdLine == '\0')
+            return true;
+
+        size_t write = 0;
+        for (size_t i = 0; cmdLine[i] != '\0'; ++i)
+        {
+            char ch = cmdLine[i];
+            if (ch == '/')
+                ch = '\\';
+            if (write + 1 >= relativePathChars)
+                return false;
+            relativePath[write++] = ch;
+        }
+
+        while (write > 0 && relativePath[write - 1] == '\\')
+            --write;
+
+        relativePath[write] = '\0';
+        return true;
     }
 
 }
@@ -154,5 +218,25 @@ extern "C" void CALLBACK OpenNamespace(HWND hwnd, HINSTANCE /*instance*/, LPSTR 
 
         ShowOpenFailure(hr);
 
+}
+
+extern "C" void CALLBACK LaunchExplorer(HWND hwnd, HINSTANCE /*instance*/, LPSTR cmdLine, int /*showCmd*/)
+{
+    UNREFERENCED_PARAMETER(hwnd);
+
+    char relativePath[512] = {};
+    if (!TryParseXboxUrl(cmdLine, relativePath, ARRAYSIZE(relativePath)))
+    {
+        MessageBoxA(
+            hwnd,
+            cmdLine ? cmdLine : "(null)",
+            "Xbox Neighborhood - invalid xbox:// URL",
+            MB_OK | MB_ICONERROR);
+        return;
+    }
+
+    const HRESULT hr = OpenShellNamespacePath(relativePath[0] == '\0' ? nullptr : relativePath);
+    if (FAILED(hr))
+        ShowOpenFailure(hr);
 }
 

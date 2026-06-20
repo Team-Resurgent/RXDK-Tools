@@ -257,11 +257,14 @@ STDMETHODIMP CXboxFolderProxy::ParseDisplayName(HWND hwnd, LPBC pbc, LPWSTR pszD
 {
     XB_TRACE_SCOPE("ParseDisplayName");
 
-    if (UsesNativeRootListing())
-
-        return NativeFolderOps::ParseRootDisplayName(pszDisplayName, pchEaten, ppidl, pdwAttributes);
-
-
+    HRESULT hr = NativeFolderOps::ParseRelativeDisplayName(
+        m_folderPidl,
+        pszDisplayName,
+        pchEaten,
+        ppidl,
+        pdwAttributes);
+    if (SUCCEEDED(hr))
+        return hr;
 
     RH(EnsureInner());
 

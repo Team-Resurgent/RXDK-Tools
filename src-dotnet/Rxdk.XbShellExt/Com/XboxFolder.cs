@@ -78,7 +78,48 @@ public sealed class XboxFolder : IShellFolder, IShellFolder2, IPersistFolder, IP
         pchEaten = 0;
         ppidl = 0;
         pdwAttributes = 0;
-        return HResults.NotImpl;
+
+        ManagedTrace.Line($"XboxFolder.ParseDisplayName parent='{_fullPath}' name='{pszDisplayName}'");
+        try
+        {
+            if (string.IsNullOrWhiteSpace(pszDisplayName))
+                return HResults.InvalidArg;
+
+            if (!DisplayNameParser.TryParseRelative(_fullPath, pszDisplayName, out var parsed))
+                return HResults.InvalidArg;
+
+            ppidl = parsed.RelativePidl;
+            pchEaten = parsed.CharsEaten;
+
+            if (pdwAttributes != 0)
+            {
+                var validate = DisplayNameParser.WantsValidation(pdwAttributes);
+                if (!DisplayNameParser.TryResolveAttributes(
+                        _fullPath,
+                        parsed.Segments,
+                        parsed.TrailingSlash,
+                        validate,
+                        ref pdwAttributes))
+                {
+                    PidlHelper.Free(ppidl);
+                    ppidl = 0;
+                    return HResults.FileNotFound;
+                }
+            }
+
+            return HResults.Ok;
+        }
+        catch (Exception ex)
+        {
+            ManagedTrace.Line($"XboxFolder.ParseDisplayName threw {ex.GetType().Name}: {ex.Message}");
+            if (ppidl != 0)
+            {
+                PidlHelper.Free(ppidl);
+                ppidl = 0;
+            }
+
+            return HResults.Fail;
+        }
     }
 
     public int EnumObjects(nint hwnd, uint grfFlags, out IEnumIDList? ppEnumIDList)
