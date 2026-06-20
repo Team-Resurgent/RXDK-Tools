@@ -24,3 +24,4 @@
 #define IDI_FOLDER 219
 #define IDI_XBE 220
 #define ICON_INDEX(rsrcId) (rsrcId - IDI_BASE)
+#define IDI_MAIN_INDEX ICON_INDEX(IDI_MAIN)

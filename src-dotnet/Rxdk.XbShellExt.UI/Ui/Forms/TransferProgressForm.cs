@@ -19,7 +19,6 @@ public sealed partial class TransferProgressForm : Form
             ShellModernChrome.Apply(this);
         cancelButton.Click += (_, _) => OnCancelClicked();
         FormClosing += OnFormClosing;
-        ShellDialogLayout.ConfigureButton(cancelButton);
         DesignPreview.ApplyIfDesignTime(() =>
         {
             titleLabel.Text = "Copying from Xbox";

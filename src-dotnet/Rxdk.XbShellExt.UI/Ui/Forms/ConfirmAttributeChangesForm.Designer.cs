@@ -9,7 +9,7 @@ partial class ConfirmAttributeChangesForm
     private Label questionLabel = null!;
     private RadioButton folderOnlyRadio = null!;
     private RadioButton recursiveRadio = null!;
-    private Panel buttonPanel = null!;
+    private FlowLayoutPanel buttonPanel = null!;
     private Button okButton = null!;
     private Button cancelButton = null!;
 
@@ -28,7 +28,7 @@ partial class ConfirmAttributeChangesForm
         questionLabel = new Label();
         folderOnlyRadio = new RadioButton();
         recursiveRadio = new RadioButton();
-        buttonPanel = new Panel();
+        buttonPanel = new FlowLayoutPanel();
         okButton = new Button();
         cancelButton = new Button();
         buttonPanel.SuspendLayout();
@@ -67,14 +67,24 @@ partial class ConfirmAttributeChangesForm
         recursiveRadio.Location = new Point(36, 178);
         recursiveRadio.Size = new Size(340, 24);
 
+        buttonPanel.AutoSize = false;
         buttonPanel.Dock = DockStyle.Bottom;
+        buttonPanel.FlowDirection = FlowDirection.RightToLeft;
         buttonPanel.Height = ShellDialogLayout.ButtonBarHeight;
+        buttonPanel.Margin = Padding.Empty;
         buttonPanel.Padding = new Padding(0, ShellDialogLayout.ButtonBarPaddingTop, ShellDialogLayout.ButtonBarPaddingRight, ShellDialogLayout.ButtonBarPaddingBottom);
+        buttonPanel.WrapContents = false;
 
+        okButton.AutoSize = false;
         okButton.DialogResult = DialogResult.OK;
+        okButton.Margin = new Padding(ShellDialogLayout.ButtonSpacing, 0, 0, 0);
+        okButton.Size = ShellDialogLayout.ButtonSize;
         okButton.Text = "OK";
 
+        cancelButton.AutoSize = false;
         cancelButton.DialogResult = DialogResult.Cancel;
+        cancelButton.Margin = new Padding(ShellDialogLayout.ButtonSpacing, 0, 0, 0);
+        cancelButton.Size = ShellDialogLayout.ButtonSize;
         cancelButton.Text = "Cancel";
 
         buttonPanel.Controls.Add(cancelButton);

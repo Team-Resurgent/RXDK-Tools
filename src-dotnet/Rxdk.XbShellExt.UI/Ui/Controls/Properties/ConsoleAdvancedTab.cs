@@ -9,7 +9,6 @@ public sealed partial class ConsoleAdvancedTab : UserControl
     public ConsoleAdvancedTab()
     {
         InitializeComponent();
-        ShellDialogLayout.ConfigureButton(rebootButton);
         DesignPreview.ApplyIfDesignTime(() =>
             statusLabel.Text = "Reboot is available when connected to a development kit.");
     }

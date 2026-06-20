@@ -1,5 +1,7 @@
 namespace Rxdk.XbShellExt.Ui.Forms;
 
+using Rxdk.XbShellExt.Ui;
+
 partial class TransferProgressForm
 {
     private Label titleLabel = null!;
@@ -58,8 +60,9 @@ partial class TransferProgressForm
         fileProgressBar.Size = new Size(320, 18);
         fileProgressBar.Style = ProgressBarStyle.Continuous;
 
+        cancelButton.AutoSize = false;
         cancelButton.Location = new Point(338, 126);
-        cancelButton.Size = new Size(70, 26);
+        cancelButton.Size = ShellDialogLayout.ButtonSize;
         cancelButton.Text = "Cancel";
 
         Controls.Add(cancelButton);

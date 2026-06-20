@@ -120,14 +120,14 @@ namespace NativeFolderOps
         const size_t segmentLen = strlen(segment) + 1;
         const USHORT cb = static_cast<USHORT>(sizeof(USHORT) + segmentLen);
         const size_t total = cb + sizeof(USHORT);
-        auto* pidl = static_cast<LPITEMIDLIST>(CoTaskMemAlloc(total));
+        auto* pidl = static_cast<ITEMIDLIST*>(CoTaskMemAlloc(total));
         if (!pidl)
             return nullptr;
 
         pidl->mkid.cb = cb;
         memcpy(pidl->mkid.abID, segment, segmentLen);
-        reinterpret_cast<LPITEMIDLIST>(reinterpret_cast<LPBYTE>(pidl) + cb)->mkid.cb = 0;
-        return pidl;
+        reinterpret_cast<ITEMIDLIST*>(reinterpret_cast<LPBYTE>(pidl) + cb)->mkid.cb = 0;
+        return reinterpret_cast<LPITEMIDLIST>(pidl);
     }
 
     std::string GetLastSegment(LPCITEMIDLIST pidl)
@@ -682,7 +682,7 @@ namespace NativeFolderOps
         // new[]-allocated buffer -- never the std::vector storage or a stack
         // array (either would corrupt the heap on the enumerator's release).
         const size_t count = pidls.size();
-        LPITEMIDLIST* items = new (std::nothrow) LPITEMIDLIST[count ? count : 1];
+        LPITEMIDLIST* items = new (std::nothrow) LPITEMIDLIST[count ? count : 1]();
         if (!items)
             return E_OUTOFMEMORY;
         for (size_t i = 0; i < count; ++i)
@@ -723,13 +723,16 @@ namespace NativeFolderOps
             if (!segment.empty())
             {
                 CComHeapPtr<ITEMIDLIST> segmentPidl;
-                segmentPidl.Attach(CreateSimplePidl(segment.c_str()));
-                if (!segmentPidl)
+                LPITEMIDLIST segmentRaw = CreateSimplePidl(segment.c_str());
+                if (!segmentRaw)
                 {
                     if (combined)
                         CoTaskMemFree(combined);
                     return nullptr;
                 }
+
+                segmentPidl.Free();
+                segmentPidl.Attach(static_cast<ITEMIDLIST*>(static_cast<void*>(segmentRaw)));
 
                 CComHeapPtr<ITEMIDLIST> next;
                 AttachShellPidl(

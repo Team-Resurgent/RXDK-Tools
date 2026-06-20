@@ -7,7 +7,7 @@ partial class AddConsoleWizardForm
 {
     private ShellWizardChrome chrome = null!;
     private Label statusLabel = null!;
-    private Panel buttonPanel = null!;
+    private FlowLayoutPanel buttonPanel = null!;
     private Button cancelButton = null!;
     private Button nextButton = null!;
     private Button backButton = null!;
@@ -16,10 +16,10 @@ partial class AddConsoleWizardForm
     {
         chrome = new ShellWizardChrome();
         statusLabel = new Label();
-        buttonPanel = new Panel();
-        backButton = new Button();
-        nextButton = new Button();
+        buttonPanel = new FlowLayoutPanel();
         cancelButton = new Button();
+        nextButton = new Button();
+        backButton = new Button();
         buttonPanel.SuspendLayout();
         SuspendLayout();
         // 
@@ -28,7 +28,7 @@ partial class AddConsoleWizardForm
         chrome.Dock = DockStyle.Fill;
         chrome.Location = new Point(0, 0);
         chrome.Name = "chrome";
-        chrome.Size = new Size(538, 284);
+        chrome.Size = new Size(544, 311);
         chrome.TabIndex = 0;
         // 
         // statusLabel
@@ -36,55 +36,61 @@ partial class AddConsoleWizardForm
         statusLabel.AutoSize = true;
         statusLabel.Dock = DockStyle.Bottom;
         statusLabel.ForeColor = Color.DarkRed;
-        statusLabel.Location = new Point(0, 284);
+        statusLabel.Location = new Point(0, 311);
         statusLabel.MaximumSize = new Size(520, 0);
         statusLabel.Name = "statusLabel";
         statusLabel.Padding = new Padding(12, 0, 12, 4);
-        statusLabel.Size = new Size(24, 29);
+        statusLabel.Size = new Size(24, 19);
         statusLabel.TabIndex = 1;
         // 
         // buttonPanel
         // 
-        buttonPanel.Controls.Add(backButton);
-        buttonPanel.Controls.Add(nextButton);
         buttonPanel.Controls.Add(cancelButton);
+        buttonPanel.Controls.Add(nextButton);
+        buttonPanel.Controls.Add(backButton);
         buttonPanel.Dock = DockStyle.Bottom;
-        buttonPanel.Location = new Point(0, 313);
+        buttonPanel.FlowDirection = FlowDirection.RightToLeft;
+        buttonPanel.Location = new Point(0, 330);
+        buttonPanel.Margin = new Padding(0);
         buttonPanel.Name = "buttonPanel";
         buttonPanel.Padding = new Padding(0, 10, 12, 10);
-        buttonPanel.Size = new Size(538, 52);
+        buttonPanel.Size = new Size(544, 52);
         buttonPanel.TabIndex = 2;
-        // 
-        // backButton
-        // 
-        backButton.Location = new Point(122, 8);
-        backButton.Name = "backButton";
-        backButton.Size = new Size(75, 36);
-        backButton.TabIndex = 0;
-        backButton.Text = "&Back";
-        // 
-        // nextButton
-        // 
-        nextButton.Location = new Point(212, 11);
-        nextButton.Name = "nextButton";
-        nextButton.Size = new Size(75, 33);
-        nextButton.TabIndex = 1;
-        nextButton.Text = "&Next";
+        buttonPanel.WrapContents = false;
         // 
         // cancelButton
         // 
         cancelButton.DialogResult = DialogResult.Cancel;
-        cancelButton.Location = new Point(433, 8);
+        cancelButton.Location = new Point(457, 10);
+        cancelButton.Margin = new Padding(8, 0, 0, 0);
         cancelButton.Name = "cancelButton";
-        cancelButton.Size = new Size(75, 36);
+        cancelButton.Size = new Size(75, 23);
         cancelButton.TabIndex = 2;
         cancelButton.Text = "Cancel";
+        // 
+        // nextButton
+        // 
+        nextButton.Location = new Point(374, 10);
+        nextButton.Margin = new Padding(8, 0, 0, 0);
+        nextButton.Name = "nextButton";
+        nextButton.Size = new Size(75, 23);
+        nextButton.TabIndex = 1;
+        nextButton.Text = "&Next";
+        // 
+        // backButton
+        // 
+        backButton.Location = new Point(291, 10);
+        backButton.Margin = new Padding(8, 0, 0, 0);
+        backButton.Name = "backButton";
+        backButton.Size = new Size(75, 23);
+        backButton.TabIndex = 0;
+        backButton.Text = "&Back";
         // 
         // AddConsoleWizardForm
         // 
         AutoScaleMode = AutoScaleMode.None;
         CancelButton = cancelButton;
-        ClientSize = new Size(538, 365);
+        ClientSize = new Size(544, 382);
         Controls.Add(chrome);
         Controls.Add(statusLabel);
         Controls.Add(buttonPanel);

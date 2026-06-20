@@ -45,12 +45,6 @@ public sealed partial class PropertiesForm : ShellDialogForm
         applyButton.Click += (_, _) => ApplyPendingChanges(closeAfterApply: false);
         cancelButton.Click += (_, _) => Close();
 
-        ShellDialogLayout.ConfigureButton(okButton);
-        ShellDialogLayout.ConfigureButton(cancelButton);
-        ShellDialogLayout.ConfigureButton(applyButton);
-        buttonPanel.Resize += (_, _) => ShellDialogLayout.PositionButtons(buttonPanel, applyButton, cancelButton, okButton);
-        ShellDialogLayout.PositionButtons(buttonPanel, applyButton, cancelButton, okButton);
-
         BuildTabs(initialTab);
         ClientSize = GetClientSizeForKind(_session.Context.Kind);
         FormClosed += (_, _) => _session.Dispose();

@@ -16,6 +16,7 @@ try {
     }
 
     Write-Host 'Repairing navigation pane registration...'
+    Repair-XbShellExtRegistry -ModulePath $shellDll
     Repair-XbShellExtNavPaneUserState -Clsid '{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}' -ModulePath $shellDll
     Enable-ExplorerNavPaneShowAllFolders
 
