@@ -37,10 +37,18 @@ jobs:
           dotnet-version: '8.0.x'
 
       - name: Restore NuGet packages
-        run: dotnet restore RXDKNeighborhood.sln -r win-x64
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          # Restore managed projects only. Rxdk.XbShellExt.Shell is native C++ (vcxproj) and
+          # is not a NuGet/SDK project — dotnet restore on the .sln emits NU1503 for it.
+          dotnet restore src-dotnet/Rxdk.XbShellExt/Rxdk.XbShellExt.csproj -r win-x64
+          Get-ChildItem -Path src-dotnet -Recurse -Filter *.csproj |
+            Where-Object { $_.Name -ne 'Rxdk.XbShellExt.csproj' } |
+            ForEach-Object { dotnet restore $_.FullName }
 
       - name: Build RXDKNeighborhood.sln
-        run: msbuild RXDKNeighborhood.sln /p:Configuration=Release /p:Platform=x64 /m /v:m
+        run: msbuild RXDKNeighborhood.sln /p:Configuration=Release /p:Platform=x64 /p:RestoreDuringBuild=false /m /v:m
 
       - name: Build Xbox Neighborhood installer
         shell: pwsh
@@ -58,6 +66,13 @@ jobs:
 
       - name: Publish xbWatson
         run: dotnet publish src-dotnet/Rxdk.XbWatson/Rxdk.XbWatson.csproj -c Release -r win-x64 -o artifacts/managed/win-x64/xbwatson
+
+      - name: Publish file tools (xbcp, xbdir, xbmkdir, xbecopy)
+        run: |
+          dotnet publish src-dotnet/Rxdk.XbCp/Rxdk.XbCp.csproj -c Release -r win-x64 -o artifacts/managed/win-x64/xbcp
+          dotnet publish src-dotnet/Rxdk.XbDir/Rxdk.XbDir.csproj -c Release -r win-x64 -o artifacts/managed/win-x64/xbdir
+          dotnet publish src-dotnet/Rxdk.XbMkdir/Rxdk.XbMkdir.csproj -c Release -r win-x64 -o artifacts/managed/win-x64/xbmkdir
+          dotnet publish src-dotnet/Rxdk.XbeCopy/Rxdk.XbeCopy.csproj -c Release -r win-x64 -o artifacts/managed/win-x64/xbecopy
 
       - name: Upload Xbox Neighborhood installer
         uses: actions/upload-artifact@v4
@@ -87,6 +102,10 @@ jobs:
             '|------|',
             '| `artifacts/managed/win-x64/xbset/xbset.exe` |',
             '| `artifacts/managed/win-x64/xbwatson/xbwatson.exe` |',
+            '| `artifacts/managed/win-x64/xbcp/xbcp.exe` |',
+            '| `artifacts/managed/win-x64/xbdir/xbdir.exe` |',
+            '| `artifacts/managed/win-x64/xbmkdir/xbmkdir.exe` |',
+            '| `artifacts/managed/win-x64/xbecopy/xbecopy.exe` |',
             '',
             '#### Shell extension installer',
             '',
@@ -113,6 +132,13 @@ jobs:
       - name: Publish xbWatson
         run: dotnet publish src-dotnet/Rxdk.XbWatson/Rxdk.XbWatson.csproj -c Release -r linux-x64 -o artifacts/managed/linux-x64/xbwatson
 
+      - name: Publish file tools (xbcp, xbdir, xbmkdir, xbecopy)
+        run: |
+          dotnet publish src-dotnet/Rxdk.XbCp/Rxdk.XbCp.csproj -c Release -r linux-x64 -o artifacts/managed/linux-x64/xbcp
+          dotnet publish src-dotnet/Rxdk.XbDir/Rxdk.XbDir.csproj -c Release -r linux-x64 -o artifacts/managed/linux-x64/xbdir
+          dotnet publish src-dotnet/Rxdk.XbMkdir/Rxdk.XbMkdir.csproj -c Release -r linux-x64 -o artifacts/managed/linux-x64/xbmkdir
+          dotnet publish src-dotnet/Rxdk.XbeCopy/Rxdk.XbeCopy.csproj -c Release -r linux-x64 -o artifacts/managed/linux-x64/xbecopy
+
       - name: Upload managed tools (Linux)
         uses: actions/upload-artifact@v4
         with:
@@ -131,6 +157,10 @@ jobs:
             echo "|------|"
             echo "| \`artifacts/managed/linux-x64/xbset/\` |"
             echo "| \`artifacts/managed/linux-x64/xbwatson/\` |"
+            echo "| \`artifacts/managed/linux-x64/xbcp/\` |"
+            echo "| \`artifacts/managed/linux-x64/xbdir/\` |"
+            echo "| \`artifacts/managed/linux-x64/xbmkdir/\` |"
+            echo "| \`artifacts/managed/linux-x64/xbecopy/\` |"
           } >> "$GITHUB_STEP_SUMMARY"
 
   build-macos:
@@ -151,6 +181,13 @@ jobs:
       - name: Publish xbWatson
         run: dotnet publish src-dotnet/Rxdk.XbWatson/Rxdk.XbWatson.csproj -c Release -r osx-arm64 -o artifacts/managed/osx-arm64/xbwatson
 
+      - name: Publish file tools (xbcp, xbdir, xbmkdir, xbecopy)
+        run: |
+          dotnet publish src-dotnet/Rxdk.XbCp/Rxdk.XbCp.csproj -c Release -r osx-arm64 -o artifacts/managed/osx-arm64/xbcp
+          dotnet publish src-dotnet/Rxdk.XbDir/Rxdk.XbDir.csproj -c Release -r osx-arm64 -o artifacts/managed/osx-arm64/xbdir
+          dotnet publish src-dotnet/Rxdk.XbMkdir/Rxdk.XbMkdir.csproj -c Release -r osx-arm64 -o artifacts/managed/osx-arm64/xbmkdir
+          dotnet publish src-dotnet/Rxdk.XbeCopy/Rxdk.XbeCopy.csproj -c Release -r osx-arm64 -o artifacts/managed/osx-arm64/xbecopy
+
       - name: Upload managed tools (macOS)
         uses: actions/upload-artifact@v4
         with:
@@ -169,6 +206,10 @@ jobs:
             echo "|------|"
             echo "| \`artifacts/managed/osx-arm64/xbset/\` |"
             echo "| \`artifacts/managed/osx-arm64/xbwatson/\` |"
+            echo "| \`artifacts/managed/osx-arm64/xbcp/\` |"
+            echo "| \`artifacts/managed/osx-arm64/xbdir/\` |"
+            echo "| \`artifacts/managed/osx-arm64/xbmkdir/\` |"
+            echo "| \`artifacts/managed/osx-arm64/xbecopy/\` |"
           } >> "$GITHUB_STEP_SUMMARY"
 
   release:
@@ -196,7 +237,8 @@ jobs:
           mkdir -p dist/zips
           for artifact in dist/rxdk-managed-*; do
             if [[ -d "$artifact" ]]; then
-              zip -r "dist/zips/$(basename "$artifact").zip" "$artifact"
+              find "$artifact" -name '*.pdb' -delete
+              zip -r "dist/zips/$(basename "$artifact").zip" "$artifact" -x '*.pdb'
             fi
           done
           if [[ -f dist/xbox-neighborhood-setup/XboxNeighborhood-Setup.exe ]]; then
@@ -241,6 +283,6 @@ jobs:
             echo ""
             echo "- Tag: \`${{ steps.meta.outputs.tag }}\`"
             echo "- Pre-release: \`${{ steps.meta.outputs.prerelease }}\`"
-            echo "- Windows: \`XboxNeighborhood-Setup.exe\`, managed tool zips (\`xbset\`, \`xbwatson\`)"
-            echo "- Linux/macOS: managed tool zips (\`xbset\`, \`xbwatson\`)"
+            echo "- Windows: \`XboxNeighborhood-Setup.exe\`, managed tool zips (\`xbset\`, \`xbwatson\`, \`xbcp\`, \`xbdir\`, \`xbmkdir\`, \`xbecopy\`)"
+            echo "- Linux/macOS: managed tool zips (\`xbset\`, \`xbwatson\`, \`xbcp\`, \`xbdir\`, \`xbmkdir\`, \`xbecopy\`)"
           } >> "$GITHUB_STEP_SUMMARY"

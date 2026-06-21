@@ -37,6 +37,8 @@
     <SharedCommonCompile>xdk_shellfolder_view.cpp</SharedCommonCompile>
     <XbShellExtTraceDefine Condition="'$(XbShellExtTrace)'=='true'">XB_SHELL_EXT_TRACE;</XbShellExtTraceDefine>
     <XbShellExtTraceDefine Condition="'$(XbShellExtTrace)'!='true'"></XbShellExtTraceDefine>
+    <!-- Native C++ project: built by MSBuild/VC++, not NuGet restore (avoids NU1503 in mixed solutions). -->
+    <RestoreEnabled>false</RestoreEnabled>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
