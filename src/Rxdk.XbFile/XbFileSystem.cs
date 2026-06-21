@@ -155,10 +155,13 @@ internal static class XbXboxFs
             return;
 
         var parts = wire.Split('\\', StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length == 0)
+        if (parts.Length <= 1)
             return;
 
-        var current = $"{parts[0]}:\\";
+        var drive = parts[0].Length > 0 && parts[0][^1] == ':'
+            ? parts[0][..^1]
+            : parts[0];
+        var current = $"{drive}:\\";
         for (var i = 1; i < parts.Length; i++)
         {
             current = $"{current.TrimEnd('\\')}\\{parts[i]}";
