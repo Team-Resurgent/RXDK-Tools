@@ -56,22 +56,6 @@
 
       <Separator />
 
-      <MenuItem x:Name="TimestampsMenuItem" Header="_Timestamps" Click="OnToggleTimestamps">
-
-        <MenuItem.Icon>
-
-          <Panel Width="18" Height="18">
-
-            <TextBlock x:Name="TimestampsCheckMark" Text="✓" IsVisible="False"
-
-                       HorizontalAlignment="Center" VerticalAlignment="Center" />
-
-          </Panel>
-
-        </MenuItem.Icon>
-
-      </MenuItem>
-
       <MenuItem x:Name="LimitBufferMenuItem" Header="_Limit Buffer Length" Click="OnToggleLimitBuffer" HotKey="Ctrl+L">
 
         <MenuItem.Icon>
@@ -88,7 +72,23 @@
 
       </MenuItem>
 
-      <MenuItem x:Name="KernelDebugMenuItem" Header="All &amp;Kernel Debug Output" IsEnabled="False" Click="OnToggleKernelDebug">
+      <MenuItem x:Name="TimestampsMenuItem" Header="_Timestamps" Click="OnToggleTimestamps" HotKey="Ctrl+T">
+
+        <MenuItem.Icon>
+
+          <Panel Width="18" Height="18">
+
+            <TextBlock x:Name="TimestampsCheckMark" Text="✓" IsVisible="False"
+
+                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+
+          </Panel>
+
+        </MenuItem.Icon>
+
+      </MenuItem>
+
+      <MenuItem x:Name="KernelDebugMenuItem" Header="All &amp;Kernel Debug Output" IsEnabled="False" Click="OnToggleKernelDebug" HotKey="Ctrl+K">
 
         <MenuItem.Icon>
 

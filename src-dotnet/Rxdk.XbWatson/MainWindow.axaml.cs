@@ -4,6 +4,7 @@ using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
+using System.Windows.Input;
 using Rxdk.XbWatson.Core;
 using Rxdk.XbWatson.Core.BreakInfo;
 using Rxdk.XbWatson.Dialogs;
@@ -39,6 +40,8 @@ public partial class MainWindow : Window, IWatsonEventSink
             TimestampsCheckMark.IsVisible = true;
         }
 
+        RegisterKeyboardShortcuts();
+
         Opened += OnOpened;
         Closed += OnWindowClosed;
     }
@@ -47,6 +50,37 @@ public partial class MainWindow : Window, IWatsonEventSink
     {
         _logFlushTimer.Stop();
         _session.Dispose();
+    }
+
+    private void RegisterKeyboardShortcuts()
+    {
+        KeyBindings.Add(CreateShortcut(Key.S, OnSaveLog));
+        KeyBindings.Add(CreateShortcut(Key.C, OnCopy));
+        KeyBindings.Add(CreateShortcut(Key.R, OnClear));
+        KeyBindings.Add(CreateShortcut(Key.A, OnSelectAll));
+        KeyBindings.Add(CreateShortcut(Key.L, OnToggleLimitBuffer));
+        KeyBindings.Add(CreateShortcut(Key.T, OnToggleTimestamps));
+        KeyBindings.Add(CreateShortcut(Key.K, OnToggleKernelDebug));
+    }
+
+    private static KeyBinding CreateShortcut(Key key, RoutedEventHandler handler) =>
+        new()
+        {
+            Gesture = new KeyGesture(key, KeyModifiers.Control),
+            Command = new RelayCommand(() => handler(null, new RoutedEventArgs())),
+        };
+
+    private sealed class RelayCommand : ICommand
+    {
+        private readonly Action _execute;
+
+        public RelayCommand(Action execute) => _execute = execute;
+
+        public event EventHandler? CanExecuteChanged;
+
+        public bool CanExecute(object? parameter) => true;
+
+        public void Execute(object? parameter) => _execute();
     }
 
     private static bool IsTimestampsEnabledByEnvironment()
@@ -227,11 +261,14 @@ public partial class MainWindow : Window, IWatsonEventSink
 
     private void OnLogKeyDown(object? sender, KeyEventArgs e)
     {
-        if (e.Key != Key.LeftCtrl && e.Key != Key.RightCtrl && e.Key != Key.LeftAlt && e.Key != Key.RightAlt)
-        {
-            WatsonBeep.Beep();
-            e.Handled = true;
-        }
+        if (e.KeyModifiers.HasFlag(KeyModifiers.Control) || e.KeyModifiers.HasFlag(KeyModifiers.Alt))
+            return;
+
+        if (e.Key is Key.LeftCtrl or Key.RightCtrl or Key.LeftAlt or Key.RightAlt)
+            return;
+
+        WatsonBeep.Beep();
+        e.Handled = true;
     }
 
     private async void OnSaveLog(object? sender, RoutedEventArgs e)
