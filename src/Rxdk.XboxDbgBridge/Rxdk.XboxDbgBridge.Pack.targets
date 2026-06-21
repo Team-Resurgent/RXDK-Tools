@@ -3,7 +3,7 @@
   <PropertyGroup>
     <BridgeCliProject Condition="'$(BridgeCliProject)' == ''">$(MSBuildThisFileDirectory)..\Rxdk.XboxDbgBridge.Cli\Rxdk.XboxDbgBridge.Cli.csproj</BridgeCliProject>
     <BridgeToolStagingDir Condition="'$(BridgeToolStagingDir)' == ''">$([MSBuild]::NormalizeDirectory($(MSBuildProjectDirectory), 'obj', 'bridge-tools'))</BridgeToolStagingDir>
-    <BridgeRuntimes Condition="'$(BridgeRuntimes)' == ''">win-x64;linux-x64;osx-arm64</BridgeRuntimes>
+    <BridgeRuntimes Condition="'$(BridgeRuntimes)' == ''">win-x64;linux-x64;osx-x64;osx-arm64</BridgeRuntimes>
   </PropertyGroup>
 
   <Target Name="PublishXboxDbgBridgeCliTools" BeforeTargets="GenerateNuspec" Condition="'$(IsPackable)' == 'true' AND '$(SkipPublishBridgeCliTools)' != 'true'">
@@ -28,17 +28,20 @@
     <PropertyGroup>
       <_BridgeWinPath>$([MSBuild]::NormalizePath($(BridgeToolStagingDir), 'win-x64', 'xboxdbg-bridge.exe'))</_BridgeWinPath>
       <_BridgeLinuxPath>$([MSBuild]::NormalizePath($(BridgeToolStagingDir), 'linux-x64', 'xboxdbg-bridge'))</_BridgeLinuxPath>
-      <_BridgeOsxPath>$([MSBuild]::NormalizePath($(BridgeToolStagingDir), 'osx-arm64', 'xboxdbg-bridge'))</_BridgeOsxPath>
+      <_BridgeOsxX64Path>$([MSBuild]::NormalizePath($(BridgeToolStagingDir), 'osx-x64', 'xboxdbg-bridge'))</_BridgeOsxX64Path>
+      <_BridgeOsxArm64Path>$([MSBuild]::NormalizePath($(BridgeToolStagingDir), 'osx-arm64', 'xboxdbg-bridge'))</_BridgeOsxArm64Path>
     </PropertyGroup>
 
     <Error Condition="!Exists('$(_BridgeWinPath)')" Text="Failed to publish xboxdbg-bridge for win-x64 to $(_BridgeWinPath)" />
     <Error Condition="!Exists('$(_BridgeLinuxPath)')" Text="Failed to publish xboxdbg-bridge for linux-x64 to $(_BridgeLinuxPath)" />
-    <Error Condition="!Exists('$(_BridgeOsxPath)')" Text="Failed to publish xboxdbg-bridge for osx-arm64 to $(_BridgeOsxPath)" />
+    <Error Condition="!Exists('$(_BridgeOsxX64Path)')" Text="Failed to publish xboxdbg-bridge for osx-x64 to $(_BridgeOsxX64Path)" />
+    <Error Condition="!Exists('$(_BridgeOsxArm64Path)')" Text="Failed to publish xboxdbg-bridge for osx-arm64 to $(_BridgeOsxArm64Path)" />
 
     <ItemGroup>
       <_PackageFiles Include="$(_BridgeWinPath)" PackagePath="tools/win-x64/" />
       <_PackageFiles Include="$(_BridgeLinuxPath)" PackagePath="tools/linux-x64/" />
-      <_PackageFiles Include="$(_BridgeOsxPath)" PackagePath="tools/osx-arm64/" />
+      <_PackageFiles Include="$(_BridgeOsxX64Path)" PackagePath="tools/osx-x64/" />
+      <_PackageFiles Include="$(_BridgeOsxArm64Path)" PackagePath="tools/osx-arm64/" />
     </ItemGroup>
   </Target>
 </Project>

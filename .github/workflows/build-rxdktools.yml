@@ -190,14 +190,25 @@ jobs:
       - name: Test Rxdk.XbeImage
         run: dotnet test src/Rxdk.XbeImage.Tests/Rxdk.XbeImage.Tests.csproj -c Release --no-restore
 
-      - name: Publish managed tools package (single-file + .NET runtime)
+      - name: Publish managed tools package (macOS arm64)
         run: bash scripts/stage-managed-tools-package.sh osx-arm64 out/publish/managed/osx-arm64
 
-      - name: Upload managed tools (macOS)
+      - name: Publish managed tools package (macOS x64)
+        run: bash scripts/stage-managed-tools-package.sh osx-x64 out/publish/managed/osx-x64
+
+      - name: Upload managed tools (macOS arm64)
         uses: actions/upload-artifact@v4
         with:
           name: rxdk-managed-osx-arm64
           path: out/publish/managed/osx-arm64/**
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Upload managed tools (macOS x64)
+        uses: actions/upload-artifact@v4
+        with:
+          name: rxdk-managed-osx-x64
+          path: out/publish/managed/osx-x64/**
           if-no-files-found: error
           retention-days: 90
 
@@ -209,7 +220,8 @@ jobs:
             echo ""
             echo "| Path |"
             echo "|------|"
-            echo "| \`out/publish/managed/osx-arm64/tools/\` (xbset, xbcp, xbdir, xbmkdir, xbecopy, imagebld, xbox-launch, xboxdbg-bridge, xbwatson) |"
+            echo "| \`out/publish/managed/osx-arm64/tools/\` (Apple Silicon) |"
+            echo "| \`out/publish/managed/osx-x64/tools/\` (Intel Mac) |"
           } >> "$GITHUB_STEP_SUMMARY"
 
   release:
