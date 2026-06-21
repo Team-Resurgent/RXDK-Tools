@@ -46,7 +46,7 @@ public sealed partial class PropertiesForm : ShellDialogForm
         cancelButton.Click += (_, _) => Close();
 
         BuildTabs(initialTab);
-        ClientSize = GetClientSizeForKind(_session.Context.Kind);
+        Load += (_, _) => ClientSize = ScaleDesignSize(GetClientSizeForKind(_session.Context.Kind));
         FormClosed += (_, _) => _session.Dispose();
     }
 

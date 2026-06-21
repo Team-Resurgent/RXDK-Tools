@@ -70,6 +70,19 @@ public sealed class ManagedXbdmClient : IXbdmClient
         }
     }
 
+    public void ClearDefaultConsoleName()
+    {
+        lock (NameLock)
+        {
+            _defaultConsoleName = string.Empty;
+            if (OperatingSystem.IsWindows())
+            {
+                using var key = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\XboxSDK");
+                key?.SetValue("XboxName", string.Empty);
+            }
+        }
+    }
+
     public IXbdmConnection Connect(string consoleName) =>
         Connect(consoleName, BuildConnectOptions());
 

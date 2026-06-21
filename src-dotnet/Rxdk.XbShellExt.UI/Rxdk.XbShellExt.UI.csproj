@@ -7,6 +7,8 @@
     <RootNamespace>Rxdk.XbShellExt</RootNamespace>
     <AssemblyName>Rxdk.XbShellExt.UI</AssemblyName>
     <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <ApplicationUseCompatibleTextRendering>false</ApplicationUseCompatibleTextRendering>
     <UseWinFormsOutOfProcDesigner>false</UseWinFormsOutOfProcDesigner>
     <GenerateRuntimeConfigurationFile>true</GenerateRuntimeConfigurationFile>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>

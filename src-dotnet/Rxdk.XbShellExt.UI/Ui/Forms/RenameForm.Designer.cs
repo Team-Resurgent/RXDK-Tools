@@ -81,6 +81,7 @@ partial class RenameForm
         // RenameForm
         // 
         AcceptButton = okButton;
+        AutoScaleMode = AutoScaleMode.Dpi;
         CancelButton = cancelButton;
         ClientSize = new Size(360, 120);
         Controls.Add(nameLabel);

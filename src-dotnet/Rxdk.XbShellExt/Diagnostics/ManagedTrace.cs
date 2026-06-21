@@ -3,18 +3,19 @@ using System.Text;
 
 namespace Rxdk.XbShellExt.Diagnostics;
 
-// Lightweight tracer for the managed shell extension. Writes to a dedicated
-// file (NOT the native proxy's log) because .NET's FileMode.Append is not an
-// atomic OS append; interleaving with the native proxy's heavy FILE_APPEND_DATA
-// writes silently clobbers managed lines. Correlate with the native log by the
-// timestamp prefix (same HH:mm:ss.fff clock).
+// Lightweight tracer for the managed shell extension. Enabled by default; set
+// XB_SHLEXT_TRACE=0 to disable. Logs go to ProgramData (see ShellTracePaths).
 internal static class ManagedTrace
 {
-    private const string LogPath = @"C:\Temp\xb-shlext-mgd.log";
     private static readonly object Gate = new();
+    private static readonly bool Enabled = ResolveEnabled();
+    private static string? _logPath;
 
     public static void Line(string message)
     {
+        if (!Enabled)
+            return;
+
         try
         {
             var now = DateTime.Now;
@@ -24,12 +25,11 @@ internal static class ManagedTrace
 
             lock (Gate)
             {
-                var dir = Path.GetDirectoryName(LogPath);
-                if (!string.IsNullOrEmpty(dir))
-                    Directory.CreateDirectory(dir);
+                var logPath = ResolveLogPath();
+                Directory.CreateDirectory(ShellTracePaths.LogDirectory);
 
                 using var stream = new FileStream(
-                    LogPath, FileMode.Append, FileAccess.Write, FileShare.ReadWrite | FileShare.Delete);
+                    logPath, FileMode.Append, FileAccess.Write, FileShare.ReadWrite | FileShare.Delete);
                 var bytes = Encoding.UTF8.GetBytes(line);
                 stream.Write(bytes, 0, bytes.Length);
             }
@@ -38,5 +38,21 @@ internal static class ManagedTrace
         {
             // Tracing must never throw into shell call paths.
         }
+    }
+
+    private static string ResolveLogPath() =>
+        _logPath ??= ShellTracePaths.ManagedLogPath;
+
+    private static bool ResolveEnabled()
+    {
+        var env = Environment.GetEnvironmentVariable("XB_SHLEXT_TRACE");
+        if (string.Equals(env, "0", StringComparison.Ordinal) ||
+            string.Equals(env, "false", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(env, "off", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        return true;
     }
 }

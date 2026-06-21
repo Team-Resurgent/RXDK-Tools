@@ -104,6 +104,7 @@ partial class PropertiesForm
         // PropertiesForm
         // 
         AcceptButton = okButton;
+        AutoScaleMode = AutoScaleMode.Dpi;
         CancelButton = cancelButton;
         ClientSize = new Size(440, 490);
         Controls.Add(tabs);

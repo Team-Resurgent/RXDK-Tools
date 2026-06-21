@@ -6,6 +6,5 @@ public sealed partial class AddConsoleWelcomePage : AddConsoleWizardPageBase
     {
         InitializeComponent();
         BindStatusLabel(statusLabel);
-        titleLabel.Font = WizardVisuals.CreateTitleFont();
     }
 }

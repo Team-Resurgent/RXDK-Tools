@@ -37,6 +37,12 @@ public sealed class XbdmSession : IDisposable
         _client!.SetDefaultConsoleName(name);
     }
 
+    public static void ClearDefaultConsoleName()
+    {
+        EnsureInitialized();
+        _client!.ClearDefaultConsoleName();
+    }
+
     public static XbdmConnection Connect(string consoleName) =>
         Connect(consoleName, password: null);
 

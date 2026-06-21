@@ -9,6 +9,10 @@ namespace Rxdk.XbShellExt.Ui.Forms;
 
 public sealed partial class AddConsoleWizardForm : ShellDialogForm
 {
+    internal static readonly Size DesignClientSize = new(544, 382);
+
+    protected override Size? ShellDesignClientSize => DesignClientSize;
+
     private enum WizardStep
     {
         Welcome,
@@ -35,7 +39,6 @@ public sealed partial class AddConsoleWizardForm : ShellDialogForm
     {
         InitializeComponent();
         ApplyRuntimeChrome();
-        Font = WizardVisuals.CreateBodyFont();
 
         backButton.Click += (_, _) => GoBack();
         nextButton.Click += (_, _) => OnNext();

@@ -10,6 +10,8 @@ namespace Rxdk.Xbdm.KitServices.Stores;
 public class ShellExtensionConsoleStore : IConsoleStore
 {
     public const string RegistryPath = @"Software\Microsoft\XboxSDK\xbshlext\Consoles";
+    private const string DefaultConsoleRegistryPath = @"Software\Microsoft\XboxSDK";
+    private const string DefaultConsoleValueName = "XboxName";
 
     public IReadOnlyList<string> GetConsoleNames()
     {
@@ -50,9 +52,6 @@ public class ShellExtensionConsoleStore : IConsoleStore
 
     public void RemoveConsole(string name)
     {
-        if (IsDefaultConsole(name))
-            throw new InvalidOperationException("Cannot remove the default console.");
-
         using var key = OpenKey(writable: true);
         if (key == null)
             return;
@@ -71,9 +70,14 @@ public class ShellExtensionConsoleStore : IConsoleStore
         XbdmSession.SetDefaultConsoleName(name);
     }
 
+    public void ClearDefaultConsole()
+    {
+        XbdmSession.ClearDefaultConsoleName();
+    }
+
     public bool IsDefaultConsole(string name)
     {
-        var defaultName = GetDefaultConsoleName();
+        var defaultName = GetConfiguredDefaultConsoleName();
         return !string.IsNullOrWhiteSpace(defaultName) &&
                string.Equals(defaultName, name, StringComparison.OrdinalIgnoreCase);
     }
@@ -90,7 +94,17 @@ public class ShellExtensionConsoleStore : IConsoleStore
         {
         }
 
-        return GetConsoleNames().FirstOrDefault();
+        return GetConfiguredDefaultConsoleName() ?? GetConsoleNames().FirstOrDefault();
+    }
+
+    public static string? GetConfiguredDefaultConsoleName()
+    {
+        if (!OperatingSystem.IsWindows())
+            return null;
+
+        using var key = Registry.CurrentUser.OpenSubKey(DefaultConsoleRegistryPath);
+        var value = key?.GetValue(DefaultConsoleValueName) as string;
+        return string.IsNullOrWhiteSpace(value) ? null : value;
     }
 
     private static RegistryKey? OpenKey(bool writable)

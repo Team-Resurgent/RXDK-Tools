@@ -13,7 +13,7 @@ public static class ShellUiHost
         RunSta(ownerHwnd, () =>
         {
             using var form = new PropertiesForm(request, initialTab);
-            form.ShowDialog(NativeWindow.FromHandle(ownerHwnd));
+            ShowShellDialog(form, ownerHwnd);
         });
     }
 
@@ -33,11 +33,19 @@ public static class ShellUiHost
         RunSta(ownerHwnd, () =>
         {
             using var form = new AddConsoleWizardForm();
-            if (form.ShowDialog(NativeWindow.FromHandle(ownerHwnd)) == DialogResult.OK)
+            ShowShellDialog(form, ownerHwnd);
+            if (form.DialogResult == DialogResult.OK)
             {
                 ShellNotify.NotifyFolderTreeChanged();
             }
         });
+    }
+
+    private static DialogResult ShowShellDialog(ShellDialogForm form, nint ownerHwnd)
+    {
+        form.SetShellOwner(ownerHwnd);
+        form.EnsureShellDpiScaled();
+        return form.ShowDialog(NativeWindow.FromHandle(ownerHwnd));
     }
 
     private static void RunSta(nint ownerHwnd, Action action)
@@ -47,8 +55,7 @@ public static class ShellUiHost
         {
             try
             {
-                Application.EnableVisualStyles();
-                Application.SetCompatibleTextRenderingDefault(false);
+                WinFormsThreadBootstrap.EnsureInitialized();
                 action();
             }
             catch (Exception ex)

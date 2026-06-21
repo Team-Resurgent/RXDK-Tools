@@ -314,8 +314,7 @@ internal static class XboxUploadTransferSession
 
             _progressThread = new Thread(() =>
             {
-                Application.EnableVisualStyles();
-                Application.SetCompatibleTextRenderingDefault(false);
+                WinFormsThreadBootstrap.EnsureInitialized();
                 var form = new TransferProgressForm("Copying to Xbox");
                 form.Configure(1);
                 form.SetCurrentFile(initialFileLabel);

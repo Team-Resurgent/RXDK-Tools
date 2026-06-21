@@ -10,10 +10,20 @@
     <PlatformTarget>x64</PlatformTarget>
     <RuntimeIdentifier Condition="'$(Configuration)' == 'Release'">win-x64</RuntimeIdentifier>
     <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <ApplicationUseCompatibleTextRendering>false</ApplicationUseCompatibleTextRendering>
     <EnableComHosting Condition="'$(DesignTimeBuild)' != 'true' and '$(Configuration)' == 'Release'">true</EnableComHosting>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <ApplicationIcon>..\..\assets\shell\console.ico</ApplicationIcon>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(XbShellExtTrace)'=='true'">
+    <DefineConstants>$(DefineConstants);XB_SHELL_EXT_TRACE</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <DefineConstants>$(DefineConstants);XB_SHELL_EXT_TRACE</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>

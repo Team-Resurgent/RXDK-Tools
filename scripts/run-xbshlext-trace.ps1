@@ -7,14 +7,24 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
-$logPath = 'C:\Temp\xb-shlext.log'
+$logDir = Join-Path $env:ProgramData 'Xbox Neighborhood\Logs'
+$logPath = Join-Path $logDir 'xb-shlext.log'
+$mgdLogPath = Join-Path $logDir 'xb-shlext-mgd.log'
 
 Import-Module (Join-Path $PSScriptRoot 'lib\XbShellExtDev.psm1') -Force
 
 Remove-Item -LiteralPath $logPath -Force -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath $mgdLogPath -Force -ErrorAction SilentlyContinue
 
 if (-not $NoBuild) {
-    & (Resolve-MSBuildPath) (Join-Path $repoRoot 'src-dotnet\Rxdk.XbShellExt.Shell\Rxdk.XbShellExt.Shell.vcxproj') /p:Configuration=Release /p:Platform=x64 /v:m | Out-Host
+    $msbuildArgs = @(
+        (Join-Path $repoRoot 'src-dotnet\Rxdk.XbShellExt.Shell\Rxdk.XbShellExt.Shell.vcxproj'),
+        '/p:Configuration=Release',
+        '/p:Platform=x64',
+        '/p:XbShellExtTrace=true',
+        '/v:m'
+    )
+    & (Resolve-MSBuildPath) @msbuildArgs | Out-Host
     $built = Join-Path $repoRoot 'out\bin\x64\Release\Rxdk.XbShellExt.Shell.dll'
     $staged = Join-Path $repoRoot 'out\dev\xbshlext\slot-a\Rxdk.XbShellExt.Shell.dll'
     Copy-Item -Force $built $staged
@@ -42,7 +52,8 @@ if (-not $NoOpen) {
 }
 
 Write-Host ""
-Write-Host "Trace log: $logPath"
+Write-Host "Native trace log: $logPath"
+Write-Host "Managed trace log: $mgdLogPath"
 if (Test-Path -LiteralPath $logPath) {
     $lines = Get-Content -LiteralPath $logPath
     $lines | ForEach-Object { Write-Host $_ }
@@ -60,7 +71,13 @@ if (Test-Path -LiteralPath $logPath) {
     }
 }
 else {
-    Write-Host '(no log file)'
+    Write-Host '(no native log file)'
+}
+
+if (Test-Path -LiteralPath $mgdLogPath) {
+    Write-Host ''
+    Write-Host '--- managed log ---'
+    Get-Content -LiteralPath $mgdLogPath | ForEach-Object { Write-Host $_ }
 }
 
 Write-Host ""

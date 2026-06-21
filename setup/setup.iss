@@ -4,6 +4,13 @@
 #define MyAppURL "https://github.com/Team-Resurgent/XboxNeighborhood"
 #define MyAppId "F3A8C2E1-9B4D-4F6A-8E2C-1D5B7A9C0E3F"
 
+#ifndef InstallerOutputDir
+#define InstallerOutputDir "..\out\bin\x64\Release"
+#endif
+#ifndef InstallerOutputBaseName
+#define InstallerOutputBaseName "XboxNeighborhood-Setup"
+#endif
+
 [Setup]
 AppId={#MyAppId}
 AppName={#MyAppName}
@@ -16,8 +23,8 @@ DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 UsePreviousAppDir=yes
-OutputDir=..\out\bin\x64\Release
-OutputBaseFilename=XboxNeighborhood-Setup
+OutputDir={#InstallerOutputDir}
+OutputBaseFilename={#InstallerOutputBaseName}
 SetupIconFile=Icon.ico
 WizardImageFile=WizardImage.bmp
 WizardSmallImageFile=WizardSmallImage.bmp
@@ -784,6 +791,37 @@ begin
   Path := ExistingInstallPath();
   if Path <> '' then
     WizardForm.DirEdit.Text := Path;
+end;
+
+procedure AlignWizardButtons;
+var
+  Margin, Gap: Integer;
+begin
+  Margin := ScaleX(15);
+  Gap := ScaleX(8);
+
+  WizardForm.NextButton.Top := WizardForm.CancelButton.Top;
+  WizardForm.NextButton.Left :=
+    WizardForm.ClientWidth - WizardForm.NextButton.Width - Margin;
+
+  if WizardForm.CancelButton.Visible then
+  begin
+    WizardForm.CancelButton.Top := WizardForm.NextButton.Top;
+    WizardForm.CancelButton.Left :=
+      WizardForm.NextButton.Left - Gap - WizardForm.CancelButton.Width;
+  end;
+
+  if WizardForm.BackButton.Visible then
+  begin
+    WizardForm.BackButton.Top := WizardForm.NextButton.Top;
+    WizardForm.BackButton.Left :=
+      WizardForm.NextButton.Left - Gap - WizardForm.BackButton.Width;
+  end;
+end;
+
+procedure CurPageChanged(CurPageID: Integer);
+begin
+  AlignWizardButtons;
 end;
 
 function ShouldSkipPage(PageID: Integer): Boolean;
