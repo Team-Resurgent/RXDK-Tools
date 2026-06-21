@@ -6,14 +6,18 @@ namespace Rxdk.XbWatson.Dialogs;
 
 public partial class ExceptionDialog : Window
 {
-    private readonly WatsonExceptionEvent _event;
-    private readonly Func<uint, uint, uint, bool, uint, string?, Task<bool>> _saveDump;
+    private readonly WatsonExceptionEvent _event = null!;
+    private readonly Func<uint, uint, uint, bool, uint, string?, Task<bool>> _saveDump = null!;
 
-    public ExceptionDialog(WatsonExceptionEvent evt, Func<uint, uint, uint, bool, uint, string?, Task<bool>> saveDump)
+    public ExceptionDialog()
+    {
+        InitializeComponent();
+    }
+
+    public ExceptionDialog(WatsonExceptionEvent evt, Func<uint, uint, uint, bool, uint, string?, Task<bool>> saveDump) : this()
     {
         _event = evt;
         _saveDump = saveDump;
-        InitializeComponent();
         Title = $"An exception has occurred [{evt.ConsoleName}]";
         var (line1, line2) = WatsonExceptionFormatter.Format(evt.Code, evt.Address, evt.WriteViolation, evt.FaultAddress);
         Line1Text.Text = line1;

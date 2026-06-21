@@ -1,3 +1,4 @@
+using System.Runtime.Versioning;
 using Microsoft.Win32;
 using Rxdk.Xbdm.Managed;
 
@@ -7,6 +8,7 @@ namespace Rxdk.KitConfig.Stores;
 /// Legacy shell extension console list at HKCU\Software\Microsoft\XboxSDK\xbshlext\Consoles.
 /// Default value is REG_DWORD count; each console name is a value name with REG_DWORD payload.
 /// </summary>
+[SupportedOSPlatform("windows")]
 public class RegistryConsoleStore : IConsoleStore
 {
     public const string RegistryPath = @"Software\Microsoft\XboxSDK\xbshlext\Consoles";

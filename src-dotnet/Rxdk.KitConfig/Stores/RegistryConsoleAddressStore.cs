@@ -1,3 +1,4 @@
+using System.Runtime.Versioning;
 using Microsoft.Win32;
 
 namespace Rxdk.KitConfig.Stores;
@@ -6,6 +7,7 @@ namespace Rxdk.KitConfig.Stores;
 /// Maps console wire names to last-known IP addresses for connect when UDP name broadcast fails.
 /// HKCU\Software\Microsoft\XboxSDK\xbshlext\Addresses
 /// </summary>
+[SupportedOSPlatform("windows")]
 public class RegistryConsoleAddressStore : IConsoleAddressStore
 {
     public const string RegistryPath = @"Software\Microsoft\XboxSDK\xbshlext\Addresses";
