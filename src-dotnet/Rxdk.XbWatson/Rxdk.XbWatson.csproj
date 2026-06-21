@@ -8,7 +8,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>Rxdk.XbWatson</RootNamespace>
     <AssemblyName>xbwatson</AssemblyName>
-    <ApplicationIcon Condition="$([MSBuild]::IsOSPlatform('Windows'))">..\..\src\xbWatson\Icons\xbWatson.ICO</ApplicationIcon>
+    <ApplicationIcon Condition="$([MSBuild]::IsOSPlatform('Windows'))">..\..\src\xbWatson\Icons\xbWatson.ico</ApplicationIcon>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
   </PropertyGroup>
 
@@ -30,7 +30,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <AvaloniaResource Include="..\..\src\xbWatson\Icons\xbWatson.ICO" Link="Assets/xbWatson.ico" />
+    <AvaloniaResource Include="..\..\src\xbWatson\Icons\xbWatson.ico" Link="Assets/xbWatson.ico" />
     <AvaloniaResource Include="..\..\src\xbWatson\Icons\icon1.ico" Link="Assets/redx.ico" />
     <AvaloniaResource Include="..\..\src\xbWatson\about.bmp" Link="Assets/about.bmp" />
   </ItemGroup>
