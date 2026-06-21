@@ -20,7 +20,7 @@ The classic XDK shipped 32-bit utilities that no longer run on modern Windows. R
 | Neighborhood app | **`RXDKNeighborhood.exe`** — Avalonia standalone browser (`RXDKNeighborhood.sln`) |
 | File transfer | `xbcp`, `xbdir`, `xbmkdir`, `xbecopy` |
 | Build | `imagebld` (PE → signed `.xbe`) |
-| Debug | `xbox-launch`, `xbWatson`, `xboxdbg-bridge` |
+| Debug | `xbox-launch`, native `xbWatson`, **`Rxdk.XbWatson`** (cross-platform Avalonia port), `xboxdbg-bridge` |
 
 ## Contents
 
@@ -76,7 +76,27 @@ Build or publish the Avalonia app (see [RXDKNeighborhood app](#rxdkneighborhood-
 2. Select a console in the tree to browse drives
 3. Double-click folders in the list to open them; use **Up** to go back
 
-Console list is stored in `%AppData%\RXDKNeighborhood\consoles.json` (with one-time import from the legacy registry key on Windows).
+Console list persistence (shared via **`Rxdk.KitConfig`**):
+
+| OS | Console list | Default console | IP cache |
+|----|--------------|-----------------|----------|
+| Windows | `HKCU\Software\Microsoft\XboxSDK\xbshlext\Consoles` | `HKCU\Software\Microsoft\XboxSDK\XboxName` | `HKCU\...\xbshlext\Addresses` |
+| Linux / macOS | `%AppData%/RXDKNeighborhood/consoles.json` | JSON `DefaultConsole` | JSON per-console `IpAddress` |
+
+On Windows, if the registry list is empty but `consoles.json` exists, consoles are migrated into the registry once.
+
+**Cross-platform publish:**
+
+```powershell
+powershell -File scripts/publish-avalonia.ps1 -Runtime win-x64
+powershell -File scripts/publish-avalonia.ps1 -Runtime linux-x64
+```
+
+```bash
+./scripts/publish-avalonia.sh framework linux-x64
+```
+
+Published output: `out/publish/RXDKNeighborhood-<runtime>/`
 
 ## Screenshots
 
@@ -137,11 +157,11 @@ Modern **Avalonia** standalone browser (`RXDKNeighborhood.sln`) — browse kits,
 ```powershell
 dotnet run --project src-dotnet/RXDKNeighborhood/RXDKNeighborhood.csproj -c Release
 
-# Publish distributable folder
-powershell -File scripts/publish-avalonia.ps1
+# Publish distributable folder (Windows)
+powershell -File scripts/publish-avalonia.ps1 -Runtime win-x64
 ```
 
-Published output: `out/publish/RXDKNeighborhood-win-x64/`
+Published output: `out/publish/RXDKNeighborhood-<runtime>/`
 
 | Component | Location |
 |-----------|----------|
@@ -191,9 +211,11 @@ xbox-launch /dir xe:\path /title game.xbe [/cmd args] [/x console] [/reboot] [/t
 
 Subscribes to exec, break, module-load, and debug-string notifications. Useful for a deterministic “stop at main” session without opening the full Visual Studio debugger.
 
-### xbWatson (`xbWatson.exe`)
+### xbWatson (`xbWatson.exe` / `Rxdk.XbWatson`)
 
 GUI **break-notification** tool from the classic XDK. Leave it running while developing — it connects to the kit and surfaces debug events in a log window with modal dialogs for interactive cases.
+
+**Cross-platform Avalonia port:** `src-dotnet/Rxdk.XbWatson/` — managed XBDM, parity with native `src/xbWatson/` (log window, assert/RIP/exception dialogs, `XBW1.0` crash dumps, `/x` CLI).
 
 | Event | Behavior |
 |-------|----------|
@@ -204,7 +226,16 @@ GUI **break-notification** tool from the classic XDK. Leave it running while dev
 
 ```cmd
 xbWatson [/x xboxname]
+Rxdk.XbWatson [/x xboxname]
 ```
+
+```powershell
+# Publish Rxdk.XbWatson
+powershell -File scripts/publish-xbwatson.ps1 -Runtime win-x64
+powershell -File scripts/publish-xbwatson.ps1 -Runtime linux-x64
+```
+
+Native Win32 build: `RXDKTools.sln` → `out/bin/x64/Release/xbWatson.exe`. Managed port: `RXDKNeighborhood.sln` → `Rxdk.XbWatson`.
 
 Pairs well with Neighborhood or `xbox-launch` when you want visible feedback from `DbgPrint`, asserts, and crashes without a full debugger attach.
 

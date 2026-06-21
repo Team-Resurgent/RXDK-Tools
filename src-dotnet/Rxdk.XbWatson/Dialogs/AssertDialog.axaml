@@ -1,0 +1,24 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Rxdk.XbWatson.Dialogs.AssertDialog"
+        Width="360"
+        Height="220"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner">
+  <StackPanel Margin="16" Spacing="6">
+    <TextBlock x:Name="HeaderText" FontWeight="Bold" />
+    <TextBlock Text="Program: " />
+    <TextBlock x:Name="ProgramText" />
+    <TextBlock Text="File: " />
+    <TextBlock x:Name="FileText" />
+    <TextBlock Text="Line: " />
+    <TextBlock x:Name="LineText" />
+    <TextBlock Text="Expression: " />
+    <TextBlock x:Name="ExpressionText" />
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,12,0,0">
+      <Button Content="Reboot Xbox" IsDefault="True" Click="OnReboot" />
+      <Button Content="Break" Click="OnBreak" />
+      <Button Content="Continue" Click="OnContinue" />
+    </StackPanel>
+  </StackPanel>
+</Window>

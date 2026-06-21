@@ -1,10 +1,12 @@
 using System.Collections.Concurrent;
-using System.Drawing;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
+#if WINDOWS
+using System.Drawing;
+#endif
 
 namespace RXDKNeighborhood.Services;
 
@@ -69,6 +71,7 @@ public static class ShellIconService
     [SupportedOSPlatform("windows")]
     private static IImage? GetWindowsShellIcon(string name, bool isDirectory)
     {
+#if WINDOWS
         var cacheKey = $"shell:{name}:{isDirectory}";
         if (Cache.TryGetValue(cacheKey, out var cached))
             return cached;
@@ -100,6 +103,9 @@ public static class ShellIconService
         {
             DestroyIcon(info.hIcon);
         }
+#else
+        return LoadAsset("placeholder.ico");
+#endif
     }
 
     private static IImage? LoadAsset(string fileName)

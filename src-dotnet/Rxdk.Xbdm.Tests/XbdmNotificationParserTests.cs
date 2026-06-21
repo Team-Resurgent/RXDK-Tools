@@ -20,6 +20,15 @@ public sealed class XbdmNotificationParserTests
     }
 
     [Fact]
+    public void Dispatches_first_execution_notification_even_when_state_matches_default()
+    {
+        XbdmNotificationParser.ResetExecState();
+        Assert.True(XbdmNotificationParser.TryHandleNotification("execution started", out var first));
+        Assert.Equal(XbdmDebugConstants.DmnExecStart, first[0].Data);
+        Assert.False(XbdmNotificationParser.TryHandleNotification("execution started", out _));
+    }
+
+    [Fact]
     public void Parses_execution_state_change_once()
     {
         XbdmNotificationParser.ResetExecState();
@@ -69,5 +78,45 @@ public sealed class XbdmNotificationParserTests
     {
         Assert.True(XbdmNotificationParser.TryGetExternalPrefix("foo!notify data=1", out var prefix));
         Assert.Equal("foo", prefix);
+    }
+
+    [Fact]
+    public void Parses_debugstr_with_lf_suffix()
+    {
+        Assert.True(XbdmNotificationParser.TryHandleNotification(
+            "debugstr thread=0 string=Connected lf",
+            out var dispatches));
+        var debugStr = Assert.IsType<XbdmDebugStringNotification>(dispatches[0].Data);
+        Assert.Equal("Connected\n", debugStr.Text);
+    }
+
+    [Fact]
+    public void Parses_debugstr_with_spaced_value_and_lf()
+    {
+        Assert.True(XbdmNotificationParser.TryHandleNotification(
+            "debugstr thread=0 string= client: 1 lf",
+            out var dispatches));
+        var debugStr = Assert.IsType<XbdmDebugStringNotification>(dispatches[0].Data);
+        Assert.Equal("client: 1\n", debugStr.Text);
+    }
+
+    [Fact]
+    public void Parses_debugstr_http_trace_line()
+    {
+        Assert.True(XbdmNotificationParser.TryHandleNotification(
+            "debugstr thread=0 string=Header: Host: 192.168.1.188 lf",
+            out var dispatches));
+        var debugStr = Assert.IsType<XbdmDebugStringNotification>(dispatches[0].Data);
+        Assert.Equal("Header: Host: 192.168.1.188\n", debugStr.Text);
+    }
+
+    [Fact]
+    public void Parses_debugstr_quoted_value_with_spaces()
+    {
+        Assert.True(XbdmNotificationParser.TryHandleNotification(
+            "debugstr thread=0 string=\"Request: GET /api/status.json HTTP/1.1\" lf",
+            out var dispatches));
+        var debugStr = Assert.IsType<XbdmDebugStringNotification>(dispatches[0].Data);
+        Assert.Equal("Request: GET /api/status.json HTTP/1.1\n", debugStr.Text);
     }
 }

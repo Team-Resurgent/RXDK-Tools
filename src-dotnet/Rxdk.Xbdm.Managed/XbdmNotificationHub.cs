@@ -34,6 +34,8 @@ internal sealed class XbdmNotificationHub
 
     private int _sessionCount;
 
+    private uint _persistFlags;
+
 
 
     private XbdmNotificationHub(XbdmSci sci) => _sci = sci;
@@ -86,11 +88,13 @@ internal sealed class XbdmNotificationHub
 
         {
 
-            EnsureNotifier();
+            var session = new ManagedXbdmNotificationSession(flags, this);
 
             _sessionCount++;
 
-            return new ManagedXbdmNotificationSession(flags, this);
+            EnsureNotifier();
+
+            return session;
 
         }
 
@@ -116,6 +120,10 @@ internal sealed class XbdmNotificationHub
 
                 StopNotifier();
 
+            else
+
+                UpdateNotifier(excluding: session);
+
         }
 
     }
@@ -126,11 +134,51 @@ internal sealed class XbdmNotificationHub
 
     {
 
-        if (_listener is not null)
+        var flags = ComputePersistFlags();
+
+        if (_listener is null)
+
+        {
+
+            StartNotifier(flags);
 
             return;
 
+        }
 
+
+
+        if (flags != _persistFlags)
+
+            SendNotifyAt(flags);
+
+    }
+
+
+
+    private void UpdateNotifier(ManagedXbdmNotificationSession? excluding = null)
+
+    {
+
+        var flags = ComputePersistFlags(excluding);
+
+        if (flags != _persistFlags)
+
+            SendNotifyAt(flags);
+
+    }
+
+
+
+    private uint ComputePersistFlags(ManagedXbdmNotificationSession? excluding = null) =>
+
+        ManagedXbdmNotificationSession.ComputePersistFlags(this, excluding);
+
+
+
+    private void StartNotifier(uint flags)
+
+    {
 
         _listener = new TcpListener(IPAddress.Any, 0);
 
@@ -140,13 +188,33 @@ internal sealed class XbdmNotificationHub
 
         _cts = new CancellationTokenSource();
 
-
-
-        _sci.WithSession(session => session.SendCommand($"NOTIFYAT PORT={_listenPort}"));
-
-
+        SendNotifyAt(flags);
 
         _ = Task.Run(() => AcceptLoop(_cts.Token));
+
+    }
+
+
+
+    private void SendNotifyAt(uint flags)
+
+    {
+
+        _persistFlags = flags;
+
+        _sci.WithSession(session => session.SendCommand(FormatNotifyAtCommand(_listenPort, flags)));
+
+    }
+
+
+
+    internal static string FormatNotifyAtCommand(int port, uint flags)
+
+    {
+
+        var debug = (flags & XbdmDebugConstants.DmDebugSession) != 0 ? " debug" : string.Empty;
+
+        return $"NOTIFYAT PORT={port}{debug}";
 
     }
 
@@ -199,6 +267,8 @@ internal sealed class XbdmNotificationHub
         }
 
 
+
+        _persistFlags = 0;
 
         XbdmNotificationParser.ResetExecState();
 
@@ -393,6 +463,36 @@ internal sealed class ManagedXbdmNotificationSession : IXbdmNotificationSession
         lock (SessionsGate)
 
             ActiveSessions.Add(this);
+
+    }
+
+
+
+    internal static uint ComputePersistFlags(XbdmNotificationHub hub, ManagedXbdmNotificationSession? excluding = null)
+
+    {
+
+        lock (SessionsGate)
+
+        {
+
+            uint flags = 0;
+
+            foreach (var session in ActiveSessions)
+
+            {
+
+                if (session._hub != hub || session == excluding || session._disposed)
+
+                    continue;
+
+                flags |= session.Flags;
+
+            }
+
+            return flags;
+
+        }
 
     }
 

@@ -120,6 +120,109 @@ internal static class XbdmParamParser
             : null;
     }
 
+    /// <summary>
+    /// Native debugstr/rip/assert string extraction: <c>PchGetParam(sz, "string", TRUE, FALSE)</c>
+    /// plus <c>SetDmdsSuffixAndLength</c> (scan through whitespace, strip trailing lf/cr/crlf tokens).
+    /// </summary>
+    internal static bool TryGetDebugStringValue(string line, out string value)
+    {
+        value = string.Empty;
+        if (!TryGetParamValue(line, "string", true, false, out var raw))
+            return false;
+
+        var trimmed = raw.TrimStart();
+        string text;
+        if (trimmed.Length > 0 && trimmed[0] == '"')
+        {
+            Span<char> buffer = stackalloc char[4096];
+            if (!TryGetQuotedString(trimmed, buffer, out var written))
+                return false;
+            text = new string(buffer[..written]);
+        }
+        else
+        {
+            var end = raw.Length;
+            for (var i = 0; i < raw.Length; i++)
+            {
+                if (raw[i] is '\r' or '\n' or '\0')
+                {
+                    end = i;
+                    break;
+                }
+            }
+
+            end = TrimTrailingDebugStringToken(raw[..end]);
+            text = raw[..end].TrimStart().ToString();
+        }
+
+        value = ApplyDebugStringSuffix(line, text);
+        return true;
+    }
+
+    private static bool TryGetQuotedString(ReadOnlySpan<char> value, Span<char> destination, out int written)
+    {
+        written = 0;
+        destination.Clear();
+        var inQuotes = false;
+        foreach (var ch in value)
+        {
+            if (ch == '"')
+            {
+                inQuotes = !inQuotes;
+                continue;
+            }
+
+            if (!inQuotes && IsSpace(ch))
+                break;
+
+            if (written + 1 >= destination.Length)
+                return false;
+
+            destination[written++] = ch;
+        }
+
+        return true;
+    }
+
+    private static int TrimTrailingDebugStringToken(ReadOnlySpan<char> span)
+    {
+        var end = span.Length;
+        while (end > 0 && span[end - 1] is ' ' or '\t')
+            end--;
+
+        foreach (var token in new[] { "lf", "cr", "crlf" })
+        {
+            if (end < token.Length)
+                continue;
+
+            if (!span.Slice(end - token.Length, token.Length).Equals(token, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            var before = end - token.Length;
+            if (before > 0 && span[before - 1] is ' ' or '\t')
+            {
+                end = before;
+                while (end > 0 && span[end - 1] is ' ' or '\t')
+                    end--;
+            }
+
+            break;
+        }
+
+        return end;
+    }
+
+    private static string ApplyDebugStringSuffix(string line, string text)
+    {
+        if (TryGetParam(line, "crlf", false, false))
+            return text + "\r\n";
+        if (TryGetParam(line, "lf", false, false))
+            return text + "\n";
+        if (TryGetParam(line, "cr", false, false))
+            return text + "\r";
+        return text;
+    }
+
     internal static bool TryGetDwParamFromSz(ReadOnlySpan<char> value, out uint result)
     {
         result = 0;

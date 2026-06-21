@@ -1,4 +1,4 @@
-namespace Rxdk.Xbdm.KitServices.Stores;
+namespace Rxdk.KitConfig.Stores;
 
 public interface IConsoleStore
 {

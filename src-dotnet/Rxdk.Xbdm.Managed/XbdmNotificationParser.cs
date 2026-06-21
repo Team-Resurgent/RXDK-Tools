@@ -7,10 +7,15 @@ internal readonly record struct XbdmNotificationDispatch(uint Code, object? Data
 internal static class XbdmNotificationParser
 {
     private static int _execState = XbdmDebugConstants.DmnExecStart;
+    private static bool _execStateInitialized;
 
     internal static int ExecState => _execState;
 
-    internal static void ResetExecState() => _execState = XbdmDebugConstants.DmnExecStart;
+    internal static void ResetExecState()
+    {
+        _execState = XbdmDebugConstants.DmnExecStart;
+        _execStateInitialized = false;
+    }
 
     internal static bool TryHandleNotification(string line, out IReadOnlyList<XbdmNotificationDispatch> dispatches)
     {
@@ -34,7 +39,10 @@ internal static class XbdmNotificationParser
 
         if (command.Equals("debugstr", StringComparison.OrdinalIgnoreCase))
         {
-            var debugStr = ParseDebugString(payload);
+            if (!XbdmParamParser.TryGetParam(line, "string", true, false))
+                return false;
+
+            var debugStr = ParseDebugString(line);
             if (string.IsNullOrEmpty(debugStr.Text))
                 return false;
             dispatches = [new XbdmNotificationDispatch(XbdmDebugConstants.DmDebugStr | stopThread, debugStr)];
@@ -93,7 +101,10 @@ internal static class XbdmNotificationParser
         if (code == XbdmDebugConstants.DmRip)
         {
             XbdmParamParser.TryGetDwParam(payload, "thread", out var threadId);
-            data = new XbdmDebugStringNotification(threadId, XbdmParamParser.GetSzParam(payload, "string") ?? string.Empty);
+            var ripText = XbdmParamParser.TryGetDebugStringValue(line, out var ripString)
+                ? ripString
+                : string.Empty;
+            data = new XbdmDebugStringNotification(threadId, ripText);
         }
 
         dispatches = [new XbdmNotificationDispatch((uint)code | stopThread, data)];
@@ -145,9 +156,10 @@ internal static class XbdmNotificationParser
         else
             return false;
 
-        if (newState == _execState)
+        if (newState == _execState && _execStateInitialized)
             return false;
 
+        _execStateInitialized = true;
         _execState = newState;
         dispatches = [new XbdmNotificationDispatch(XbdmDebugConstants.DmExec | stopThread, newState)];
         return true;
@@ -256,7 +268,9 @@ internal static class XbdmNotificationParser
     private static XbdmDebugStringNotification ParseDebugString(string line)
     {
         XbdmParamParser.TryGetDwParam(line, "thread", out var thread);
-        var text = XbdmParamParser.GetSzParam(line, "string") ?? string.Empty;
+        var text = XbdmParamParser.TryGetDebugStringValue(line, out var debugText)
+            ? debugText
+            : string.Empty;
         return new XbdmDebugStringNotification(thread, text);
     }
 
