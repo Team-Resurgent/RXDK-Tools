@@ -1,10 +1,23 @@
 #!/usr/bin/env bash
-# Placeholder for future Linux/macOS RXDK Tools builds.
-# Enable the corresponding matrix entry in .github/workflows/build-rxdktools.yml when ready.
-
+# Publish cross-platform managed RXDK tools (xbset, Rxdk.XbWatson) for CI.
 set -euo pipefail
 
-platform="$(uname -s)"
-echo "::warning::RXDKTools CI is not implemented on ${platform} yet."
-echo "Implement this script and add the platform to the workflow matrix."
-exit 1
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+export ARTIFACT_DIR="${ARTIFACT_DIR:-artifacts/managed}"
+
+case "$(uname -s)" in
+    Linux)
+        export RUNTIME="${RUNTIME:-linux-x64}"
+        ;;
+    Darwin)
+        export RUNTIME="${RUNTIME:-osx-arm64}"
+        ;;
+    *)
+        echo "Unsupported platform for managed tools: $(uname -s)" >&2
+        exit 1
+        ;;
+esac
+
+"$SCRIPT_DIR/publish-managed-tools.sh"

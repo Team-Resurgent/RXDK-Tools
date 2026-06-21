@@ -112,3 +112,20 @@ Write-Host ''
 Write-Host 'Building Xbox Neighborhood installer...'
 & (Join-Path $repoRoot 'setup\build-installer.ps1')
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+$installerSrc = Join-Path $binDir 'XboxNeighborhood-Setup.exe'
+if (-not (Test-Path -LiteralPath $installerSrc)) {
+    throw "Installer not found: $installerSrc"
+}
+
+$installerDir = Join-Path $repoRoot 'artifacts/installer'
+if (Test-Path -LiteralPath $installerDir) {
+    Remove-Item -LiteralPath $installerDir -Recurse -Force
+}
+New-Item -ItemType Directory -Force -Path $installerDir | Out-Null
+Copy-Item -LiteralPath $installerSrc -Destination $installerDir -Force
+
+Write-Host ''
+Write-Host 'Publishing managed tools (xbset, xbWatson)...'
+& (Join-Path $repoRoot 'scripts\ci\publish-managed-tools.ps1') -Runtime win-x64
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
