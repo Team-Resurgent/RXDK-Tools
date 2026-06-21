@@ -18,7 +18,8 @@ $cliTools = @(
     @{ Project = "Rxdk.XbeCopy\Rxdk.XbeCopy.csproj"; Name = "xbecopy" },
     @{ Project = "Rxdk.ImageBld\Rxdk.ImageBld.csproj"; Name = "imagebld" },
     @{ Project = "Rxdk.XboxLaunch.Cli\Rxdk.XboxLaunch.Cli.csproj"; Name = "xbox-launch" },
-    @{ Project = "Rxdk.XboxDbgBridge.Cli\Rxdk.XboxDbgBridge.Cli.csproj"; Name = "xboxdbg-bridge" }
+    @{ Project = "Rxdk.XboxDbgBridge.Cli\Rxdk.XboxDbgBridge.Cli.csproj"; Name = "xboxdbg-bridge" },
+    @{ Project = "Rxdk.XbWatson\Rxdk.XbWatson.csproj"; Name = "xbwatson" }
 )
 
 New-Item -ItemType Directory -Force -Path $toolsDir | Out-Null
@@ -35,14 +36,16 @@ try {
         dotnet publish $project -c Release -r $Runtime -o $staging
         if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-        $publishedFiles = @(Get-ChildItem -Path $staging -File)
-        if ($publishedFiles.Count -ne 1) {
-            $names = ($publishedFiles | ForEach-Object { $_.Name }) -join ", "
-            throw "Expected exactly one published file for $($tool.Name), found: $names"
+        $publishedExe = Get-ChildItem -Path $staging -File |
+            Where-Object { $_.BaseName -eq $tool.Name } |
+            Select-Object -First 1
+        if ($null -eq $publishedExe) {
+            $names = (Get-ChildItem -Path $staging -File | ForEach-Object { $_.Name }) -join ", "
+            throw "Expected published executable '$($tool.Name)' for $($tool.Name), found: $names"
         }
 
-        $source = $publishedFiles[0].FullName
-        $extension = $publishedFiles[0].Extension
+        $source = $publishedExe.FullName
+        $extension = $publishedExe.Extension
         $destination = Join-Path $toolsDir ($tool.Name + $extension)
         Copy-Item -LiteralPath $source -Destination $destination -Force
         Write-Host "  -> $destination"
