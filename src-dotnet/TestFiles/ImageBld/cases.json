@@ -1,0 +1,16 @@
+[
+  {
+    "name": "triangle-nolibwarn",
+    "input": "../TriangleXDK.exe",
+    "golden": "TriangleNolibwarn.golden.xbe",
+    "args": ["/NOLIBWARN"],
+    "fixedTimestamp": "5F000000",
+    "exitCode": 0
+  },
+  {
+    "name": "triangle-dump",
+    "input": "../TriangleXDK.xbe",
+    "mode": "dump",
+    "exitCode": 0
+  }
+]

@@ -200,11 +200,11 @@ internal static partial class XbdmKitChecks
             Path.GetFullPath(Path.Combine(
                 AppContext.BaseDirectory,
                 "..", "..", "..", "..",
-                "Rxdk.XboxDbgBridge", "bin", "Debug", "net8.0", "xboxdbg-bridge.exe")),
+                "Rxdk.XboxDbgBridge.Cli", "bin", "Debug", "net8.0", "xboxdbg-bridge.exe")),
             Path.GetFullPath(Path.Combine(
                 AppContext.BaseDirectory,
                 "..", "..", "..", "..",
-                "Rxdk.XboxDbgBridge", "bin", "Release", "net8.0", "xboxdbg-bridge.exe")),
+                "Rxdk.XboxDbgBridge.Cli", "bin", "Release", "net8.0", "xboxdbg-bridge.exe")),
         };
 
         var exe = exeCandidates.FirstOrDefault(File.Exists);
@@ -217,11 +217,11 @@ internal static partial class XbdmKitChecks
             Path.GetFullPath(Path.Combine(
                 AppContext.BaseDirectory,
                 "..", "..", "..", "..",
-                "Rxdk.XboxDbgBridge", "bin", "Debug", "net8.0", "xboxdbg-bridge.dll")),
+                "Rxdk.XboxDbgBridge.Cli", "bin", "Debug", "net8.0", "xboxdbg-bridge.dll")),
             Path.GetFullPath(Path.Combine(
                 AppContext.BaseDirectory,
                 "..", "..", "..", "..",
-                "Rxdk.XboxDbgBridge", "bin", "Release", "net8.0", "xboxdbg-bridge.dll")),
+                "Rxdk.XboxDbgBridge.Cli", "bin", "Release", "net8.0", "xboxdbg-bridge.dll")),
         };
 
         var dll = dllCandidates.FirstOrDefault(File.Exists);

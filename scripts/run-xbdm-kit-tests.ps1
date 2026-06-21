@@ -21,7 +21,7 @@ $ErrorActionPreference = 'Stop'
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $testsProject = Join-Path $repoRoot 'src-dotnet\Rxdk.Xbdm.Tests\Rxdk.Xbdm.Tests.csproj'
-$bridgeProject = Join-Path $repoRoot 'src-dotnet\Rxdk.XboxDbgBridge\Rxdk.XboxDbgBridge.csproj'
+$bridgeProject = Join-Path $repoRoot 'src-dotnet\Rxdk.XboxDbgBridge.Cli\Rxdk.XboxDbgBridge.Cli.csproj'
 $artifactsDir = Join-Path $repoRoot 'artifacts'
 
 if ([string]::IsNullOrWhiteSpace($Console)) {

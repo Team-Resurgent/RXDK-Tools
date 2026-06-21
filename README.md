@@ -171,6 +171,31 @@ Published output: `out/publish/RXDKNeighborhood-<runtime>/`
 
 Requires **.NET 8 SDK**.
 
+### Managed CLI tools (cross-platform)
+
+Single-file, self-contained builds of **`xbset`**, **`xbcp`**, **`xbdir`**, **`xbmkdir`**, **`xbecopy`**, **`imagebld`**, **`xbox-launch`**, and **`xboxdbg-bridge`** are published together as a flat **`tools/`** bundle in CI ( **`xbwatson`** remains a separate GUI publish).
+
+```powershell
+# Windows
+powershell -File scripts/publish-managed-cli-tools.ps1 -Runtime win-x64
+
+# Linux / macOS
+./scripts/publish-managed-cli-tools.sh linux-x64
+./scripts/publish-managed-cli-tools.sh osx-arm64
+```
+
+Output: `out/publish/managed-cli-tools-<runtime>/` (one executable per tool, no sidecar DLLs).
+
+### Rxdk.XboxDbgBridge (NuGet)
+
+Tool-only **`Rxdk.XboxDbgBridge`** NuGet package: self-contained **`xboxdbg-bridge`** binaries for **win-x64**, **linux-x64**, and **osx-arm64** under `tools/<rid>/` (stdin/JSON protocol for VS Code DAP). No library reference — spawn the executable. PDB/stack/locals require **Windows**; kit control is cross-platform.
+
+```bash
+dotnet pack src-dotnet/Rxdk.XboxDbgBridge/Rxdk.XboxDbgBridge.csproj -c Release -o artifacts/nuget
+```
+
+After install, use `tools/<rid>/xboxdbg-bridge` or MSBuild `$(RxdkXboxDbgBridgeExe)` from `build/Rxdk.XboxDbgBridge.props`.
+
 ### File utilities (`xbcp`, `xbdir`, `xbmkdir`, `xbecopy`)
 
 Classic XDK command-line tools for moving data between the PC and a kit. Shared path parsing and connection helpers live in **`xbfile.lib`**.
@@ -191,7 +216,7 @@ xbecopy Debug\game.xbe E:\title\game.xbe
 
 ### Xbox Image File Builder (`imagebld`)
 
-Converts a Win32 **PE** executable into a signed **`.xbe`** title image — the same `imagebld` from the XDK build pipeline. Links **`xrsa.lib`** (built from `src/xrsa/`) instead of the old prebuilt `rsa32.lib`.
+Converts a Win32 **PE** executable into a signed **`.xbe`** title image — the same `imagebld` from the XDK build pipeline. Native build: `src/imagebld/` (links **`xrsa.lib`** from `src/xrsa/`). **Managed port:** `src-dotnet/Rxdk.ImageBld/` (`Rxdk.XbeImage` library) with parity tests against the native oracle on Windows; published as a single-file `imagebld` in CI alongside other managed tools.
 
 | Switch | Purpose |
 |--------|---------|
@@ -204,6 +229,8 @@ Converts a Win32 **PE** executable into a signed **`.xbe`** title image — the 
 ### Launch helper (`xbox-launch`)
 
 Command-line **debug launches** for scripts or CI. Reboots the kit to pending exec (if needed), sets the title path, arms an initial breakpoint, and runs until the title stops at entry.
+
+Native: `src/xbox-launch/`. **Managed port:** `src-dotnet/Rxdk.XboxLaunch.Cli/` (single-file `xbox-launch` in the CI `tools/` bundle).
 
 ```cmd
 xbox-launch /dir xe:\path /title game.xbe [/cmd args] [/x console] [/reboot] [/timeout ms]
@@ -283,7 +310,7 @@ Each `.vcxproj` lives alongside its sources under `src/`; shared headers and hel
 | `imagebld` | `imagebld.exe` | PE → XBE image builder |
 | `xbox-launch` | `xbox-launch.exe` | CLI debug launch helper |
 | `xbWatson` | `xbWatson.exe` | Break/assert/RIP notification UI |
-| `xboxdbg_bridge` | `xboxdbg-bridge.exe` | JSON debug bridge for editor integration |
+| `xboxdbg_bridge` | `xboxdbg-bridge.exe` | JSON debug bridge for editor integration (also in `Rxdk.XboxDbgBridge` NuGet) |
 
 All executables link **`xbdbgs.lib`** statically. Everything targets **x64**, including `imagebld` and full notification support in `xbdbgs`.
 

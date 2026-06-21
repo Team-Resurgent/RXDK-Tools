@@ -9,9 +9,12 @@ static int Run(string[] args)
     using var session = new DebugBridgeSession();
     session.Initialize();
 
-    string? line;
-    while (session.IsActive && (line = Console.In.ReadLine()) is not null)
+    while (session.IsActive)
     {
+        var line = Console.In.ReadLine();
+        if (line is null)
+            break;
+
         if (line.Length == 0)
             continue;
 

@@ -19,7 +19,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Rxdk.Xbdm.Managed\Rxdk.Xbdm.Managed.csproj" />
     <ProjectReference Include="..\Rxdk.Xbdm.Abstractions\Rxdk.Xbdm.Abstractions.csproj" />
-    <ProjectReference Include="..\Rxdk.XboxDbgBridge\Rxdk.XboxDbgBridge.csproj">
+    <ProjectReference Include="..\Rxdk.XboxDbgBridge.Cli\Rxdk.XboxDbgBridge.Cli.csproj">
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
     </ProjectReference>
   </ItemGroup>
@@ -31,7 +31,7 @@
   </ItemGroup>
   <Target Name="CopyXboxDbgBridgeToOutput" AfterTargets="Build">
     <PropertyGroup>
-      <XboxDbgBridgeOutDir>$(MSBuildThisFileDirectory)..\Rxdk.XboxDbgBridge\bin\$(Configuration)\net8.0\</XboxDbgBridgeOutDir>
+      <XboxDbgBridgeOutDir>$(MSBuildThisFileDirectory)..\Rxdk.XboxDbgBridge.Cli\bin\$(Configuration)\net8.0\</XboxDbgBridgeOutDir>
     </PropertyGroup>
     <ItemGroup>
       <XboxDbgBridgeOutput Include="$(XboxDbgBridgeOutDir)xboxdbg-bridge.exe" />
