@@ -13,8 +13,8 @@ runtime_dir="$package_dir/runtime"
 
 mkdir -p "$tools_dir" "$runtime_dir"
 
-"$script_dir/publish-managed-cli-tools.sh" "$runtime" "$tools_dir"
-"$script_dir/download-dotnet-runtime.sh" "$runtime" "$runtime_dir"
+bash "$script_dir/publish-managed-cli-tools.sh" "$runtime" "$tools_dir"
+bash "$script_dir/download-dotnet-runtime.sh" "$runtime" "$runtime_dir"
 
 cp "$script_dir/install-dotnet-runtime.ps1" "$package_dir/"
 cp "$script_dir/install-dotnet-runtime.cmd" "$package_dir/"
