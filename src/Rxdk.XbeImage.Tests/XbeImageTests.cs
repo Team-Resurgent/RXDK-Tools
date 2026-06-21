@@ -1,5 +1,7 @@
+using System.Globalization;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Rxdk.XbeImage;
 using Xunit;
 
@@ -295,13 +297,51 @@ public sealed class XbeImageBuilderTests
     private static string NormalizeDumpPath(string text) =>
         text.Replace('\\', '/');
 
+    private static readonly Regex DumpTimestampLineRegex = new(
+        @"^(\s+[0-9A-Fa-f]{8})( original)? time date stamp (.+)$",
+        RegexOptions.CultureInvariant | RegexOptions.Compiled);
+
     private static string NormalizeDumpBody(string text)
     {
         text = text.Replace("\r\n", "\n");
         var lines = text.Split('\n');
         if (lines.Length > 2 && lines[0].StartsWith("Dump of file", StringComparison.OrdinalIgnoreCase))
-            return string.Join('\n', lines.Skip(2));
-        return text;
+            lines = lines.Skip(2).ToArray();
+
+        for (var i = 0; i < lines.Length; i++)
+            lines[i] = NormalizeDumpTimestampLine(lines[i]);
+
+        return string.Join('\n', lines);
+    }
+
+    private static string NormalizeDumpTimestampLine(string line)
+    {
+        if (line.Length == 0)
+            return line;
+
+        var match = DumpTimestampLineRegex.Match(line);
+        if (!match.Success)
+            return line;
+
+        var suffix = match.Groups[3].Value;
+        if (suffix.Equals("invalid", StringComparison.Ordinal))
+            return line;
+
+        var hex = match.Groups[1].Value.Trim();
+        if (!uint.TryParse(hex, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var unixSeconds))
+            return line;
+
+        try
+        {
+            var utcText = DateTimeOffset.FromUnixTimeSeconds(unixSeconds)
+                .UtcDateTime
+                .ToString("ddd MMM dd HH:mm:ss yyyy", CultureInfo.InvariantCulture);
+            return $"{match.Groups[1].Value}{match.Groups[2].Value} time date stamp {utcText}";
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            return line;
+        }
     }
 }
 
