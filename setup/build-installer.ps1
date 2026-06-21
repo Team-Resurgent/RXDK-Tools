@@ -5,6 +5,12 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+$SetupDir = $PSScriptRoot
+
+# Inno Setup /D values must stay repo-relative (forward slashes). Absolute paths like
+# D:\a\... from GitHub Actions break ISCC parsing (\D: is treated as an escape prefix).
+$InnoDefaultOutputDir = '../out/bin/x64/Release'
+$InnoAltOutputDir = '../out/bin/x64/Release-alt'
 
 function Find-Iscc {
     foreach ($candidate in @(
@@ -252,9 +258,12 @@ $iscc = Ensure-Iscc
 $defaultSetupExe = Join-Path $installDir 'XboxNeighborhood-Setup.exe'
 $installerOutputDir = $installDir
 $installerOutputBaseName = 'XboxNeighborhood-Setup'
+$innoOutputDirDefine = $null
 
 if (Test-FileIsLocked $defaultSetupExe) {
-    $installerOutputDir = $env:TEMP
+    $installerOutputDir = Join-Path $RepoRoot 'out\bin\x64\Release-alt'
+    $innoOutputDirDefine = $InnoAltOutputDir
+    New-Item -ItemType Directory -Force -Path $installerOutputDir | Out-Null
     Write-Warning "Existing installer is locked: $defaultSetupExe"
     Write-Warning "Close XboxNeighborhood-Setup.exe if it is running. Building to: $installerOutputDir"
 }
@@ -263,7 +272,17 @@ elseif (Test-Path -LiteralPath $defaultSetupExe) {
 }
 
 Write-Host "Building installer with $iscc" -ForegroundColor Cyan
-& $iscc "/DInstallerOutputDir=`"$installerOutputDir`"" "/DInstallerOutputBaseName=$installerOutputBaseName" $IssPath
+$isccArgs = @("/DInstallerOutputBaseName=$installerOutputBaseName")
+if ($innoOutputDirDefine) {
+    $isccArgs = @("/DInstallerOutputDir=$innoOutputDirDefine") + $isccArgs
+}
+Push-Location -LiteralPath $SetupDir
+try {
+    & $iscc @isccArgs 'setup.iss'
+}
+finally {
+    Pop-Location
+}
 if ($LASTEXITCODE -ne 0) {
     throw "ISCC failed (exit $LASTEXITCODE)"
 }

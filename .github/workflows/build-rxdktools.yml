@@ -44,6 +44,7 @@ jobs:
 
       - name: Build Xbox Neighborhood installer
         shell: pwsh
+        working-directory: ${{ github.workspace }}
         run: ./setup/build-installer.ps1
 
       - name: Stage installer artifact
