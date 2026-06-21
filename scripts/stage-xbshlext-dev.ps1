@@ -26,9 +26,9 @@ Import-Module (Join-Path $PSScriptRoot 'lib\XbShellExtDev.psm1') -Force
 
 
 
-$shellExtProject = Join-Path $repoRoot 'src-dotnet\Rxdk.XbShellExt\Rxdk.XbShellExt.csproj'
+$shellExtProject = Join-Path $repoRoot 'src\Rxdk.XbShellExt\Rxdk.XbShellExt.csproj'
 
-$shellProxyProject = Join-Path $repoRoot 'src-dotnet\Rxdk.XbShellExt.Shell\Rxdk.XbShellExt.Shell.vcxproj'
+$shellProxyProject = Join-Path $repoRoot 'src\Rxdk.XbShellExt.Shell\Rxdk.XbShellExt.Shell.vcxproj'
 
 
 
@@ -57,7 +57,7 @@ if (-not $SkipBuild) {
 
 
 
-$buildOut = Join-Path $repoRoot "src-dotnet\Rxdk.XbShellExt\bin\$Configuration\net8.0-windows\win-x64"
+$buildOut = Join-Path $repoRoot "src\Rxdk.XbShellExt\bin\$Configuration\net8.0-windows\win-x64"
 
 if (-not (Test-Path -LiteralPath $buildOut)) {
 

@@ -4,7 +4,7 @@ set -euo pipefail
 runtime="${1:?Usage: $0 <runtime> [output-dir]}"
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "$script_dir/.." && pwd)"
-dotnet_root="$repo_root/src-dotnet"
+dotnet_root="$repo_root/src"
 tools_dir="${2:-"$repo_root/out/publish/managed-cli-tools-$runtime"}"
 temp_root="$(mktemp -d)"
 

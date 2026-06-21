@@ -45,7 +45,6 @@ The following were removed from the build/install path during the managed rewrit
 
 - `src/xbshlext-bridge/` (C++/CLI)
 - `Rxdk.XbShellExt.Interop`, `Rxdk.XbShellExt.UI`, and related TestHost projects
+- The former native C++ host-tool tree (`xbshlext`, `xbdbgs`, `imagebld`, `xrsa`, CLI tools, etc.) — replaced by managed projects under `src/`
 
-## Reference copy
-
-`src/xbshlext/` may remain in the tree as the original native implementation (property sheets, drag/drop, columns, icons, etc.). It is **not** built or staged — use it for parity reference when extending `Rxdk.XbShellExt`. Icons live in `assets/shell/`.
+Icons and shell assets live in `assets/shell/`.

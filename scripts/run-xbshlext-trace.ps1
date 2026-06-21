@@ -18,7 +18,7 @@ Remove-Item -LiteralPath $mgdLogPath -Force -ErrorAction SilentlyContinue
 
 if (-not $NoBuild) {
     $msbuildArgs = @(
-        (Join-Path $repoRoot 'src-dotnet\Rxdk.XbShellExt.Shell\Rxdk.XbShellExt.Shell.vcxproj'),
+        (Join-Path $repoRoot 'src\Rxdk.XbShellExt.Shell\Rxdk.XbShellExt.Shell.vcxproj'),
         '/p:Configuration=Release',
         '/p:Platform=x64',
         '/p:XbShellExtTrace=true',

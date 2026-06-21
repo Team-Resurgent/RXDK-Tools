@@ -7,7 +7,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent $PSScriptRoot
-$dotnetRoot = Join-Path $repoRoot "src-dotnet"
+$dotnetRoot = Join-Path $repoRoot "src"
 $toolsDir = if ($OutputDir) { $OutputDir } else { Join-Path $repoRoot "out\publish\managed-cli-tools-$Runtime" }
 
 $cliTools = @(

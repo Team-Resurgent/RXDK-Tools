@@ -10,17 +10,17 @@
 
 **Recompiled Original Xbox XDK host tools for 64-bit Windows 10 and Windows 11.**
 
-The classic XDK shipped 32-bit utilities that no longer run on modern Windows. RXDK Tools rebuilds them as **x64-native** ports. CLI tools use a statically linked **`xbdbgs.lib`** client; **Xbox Neighborhood** is a managed **`Rxdk.XbShellExt`** COM shell extension over **`Rxdk.Xbdm.Managed`**. All console-facing tools talk to kits over the **Xbox Debug Monitor (XBDM)** protocol.
+The classic XDK shipped 32-bit utilities that no longer run on modern Windows. RXDK Tools rebuilds them as **managed .NET 8** ports (cross-platform CLI tools and Windows shell integration). **Xbox Neighborhood** is a managed **`Rxdk.XbShellExt`** COM shell extension over **`Rxdk.Xbdm.Managed`**. All console-facing tools talk to kits over the **Xbox Debug Monitor (XBDM)** protocol.
 
 **What's included**
 
 | Category | Tools |
 |----------|-------|
 | Explorer | **Xbox Neighborhood** shell extension (`Rxdk.XbShellExt.comhost.dll`) |
-| Neighborhood app | **`RXDKNeighborhood.exe`** — Avalonia standalone browser (`RXDKNeighborhood.sln`) |
+| Neighborhood app | **`RXDKNeighborhood.exe`** — Avalonia standalone browser (`RXDKTools.sln`) |
 | File transfer | `xbcp`, `xbdir`, `xbmkdir`, `xbecopy` |
 | Build | `imagebld` (PE → signed `.xbe`) |
-| Debug | `xbox-launch`, native `xbWatson`, **`Rxdk.XbWatson`** (cross-platform Avalonia port), `xboxdbg-bridge` |
+| Debug | `xbox-launch`, **`Rxdk.XbWatson`** (cross-platform Avalonia), `xboxdbg-bridge` |
 
 ## Contents
 
@@ -66,7 +66,7 @@ Build **`Rxdk.XbShellExt`** (`Release | win-x64`), then stage and register local
 .\scripts\unregister-xbshlext-dev.ps1
 ```
 
-Repo-root **`register-shell-ext.cmd`** / **`unregister-shell-ext.cmd`** are convenience wrappers for the same scripts. Staged payloads: **`out/dev/xbshlext/`** (managed comhost + dependencies). Manual Explorer checks: [`artifacts/xbshlext-manual-checklist.md`](artifacts/xbshlext-manual-checklist.md).
+Repo-root **`register-shell-ext.cmd`** / **`unregister-shell-ext.cmd`** are convenience wrappers for the same scripts. Staged payloads: **`out/dev/xbshlext/`** (managed comhost + dependencies). Manual Explorer checks: [`docs/xbshlext-manual-checklist.md`](docs/xbshlext-manual-checklist.md).
 
 ## Quick start — RXDKNeighborhood app
 
@@ -130,11 +130,11 @@ The headline feature — an **Xbox Neighborhood** entry in Windows Explorer for 
 | Reboot | Warm, cold, or same-title reboot from the console context menu |
 | Capture & security | Screenshot capture and security settings from the console menu |
 
-Built as **`Rxdk.XbShellExt.comhost.dll`** with shared **`Rxdk.Xbdm.KitServices`** / **`RXDKNeighborhood.Core`** logic and WinForms UI in-process. Run **`setup/build-installer.ps1`** (or build from **`RXDKNeighborhood.sln`**) to produce **`XboxNeighborhood-Setup.exe`**.
+Built as **`Rxdk.XbShellExt.comhost.dll`** with shared **`Rxdk.Xbdm.KitServices`** / **`RXDKNeighborhood.Core`** logic and WinForms UI in-process. Run **`setup/build-installer.ps1`** (or build from **`RXDKTools.sln`**) to produce **`XboxNeighborhood-Setup.exe`**.
 
 ### RXDKNeighborhood app
 
-Modern **Avalonia** standalone browser (`RXDKNeighborhood.sln`) — browse kits, drives, and folders **without Explorer shell integration**. Uses the managed XBDM protocol stack in `Rxdk.Xbdm.Managed`.
+Modern **Avalonia** standalone browser (`RXDKTools.sln`) — browse kits, drives, and folders **without Explorer shell integration**. Uses the managed XBDM protocol stack in `Rxdk.Xbdm.Managed`.
 
 | Feature | Description |
 |---------|-------------|
@@ -155,7 +155,7 @@ Modern **Avalonia** standalone browser (`RXDKNeighborhood.sln`) — browse kits,
 **Build and run:**
 
 ```powershell
-dotnet run --project src-dotnet/RXDKNeighborhood/RXDKNeighborhood.csproj -c Release
+dotnet run --project src/RXDKNeighborhood/RXDKNeighborhood.csproj -c Release
 
 # Publish distributable folder (Windows)
 powershell -File scripts/publish-avalonia.ps1 -Runtime win-x64
@@ -165,9 +165,9 @@ Published output: `out/publish/RXDKNeighborhood-<runtime>/`
 
 | Component | Location |
 |-----------|----------|
-| Avalonia app | `src-dotnet/RXDKNeighborhood/` |
-| C# core logic | `src-dotnet/RXDKNeighborhood.Core/` |
-| Managed XBDM client | `src-dotnet/Rxdk.Xbdm.Managed/` |
+| Avalonia app | `src/RXDKNeighborhood/` |
+| C# core logic | `src/RXDKNeighborhood.Core/` |
+| Managed XBDM client | `src/Rxdk.Xbdm.Managed/` |
 
 Requires **.NET 8 SDK**.
 
@@ -191,14 +191,14 @@ Output: `out/publish/managed-cli-tools-<runtime>/` (one executable per tool, no 
 Tool-only **`Rxdk.XboxDbgBridge`** NuGet package: self-contained **`xboxdbg-bridge`** binaries for **win-x64**, **linux-x64**, and **osx-arm64** under `tools/<rid>/` (stdin/JSON protocol for VS Code DAP). No library reference — spawn the executable. PDB/stack/locals require **Windows**; kit control is cross-platform.
 
 ```bash
-dotnet pack src-dotnet/Rxdk.XboxDbgBridge/Rxdk.XboxDbgBridge.csproj -c Release -o artifacts/nuget
+dotnet pack src/Rxdk.XboxDbgBridge/Rxdk.XboxDbgBridge.csproj -c Release -o out/publish/nuget
 ```
 
 After install, use `tools/<rid>/xboxdbg-bridge` or MSBuild `$(RxdkXboxDbgBridgeExe)` from `build/Rxdk.XboxDbgBridge.props`.
 
 ### File utilities (`xbcp`, `xbdir`, `xbmkdir`, `xbecopy`)
 
-Classic XDK command-line tools for moving data between the PC and a kit. Shared path parsing and connection helpers live in **`xbfile.lib`**.
+Classic XDK command-line tools for moving data between the PC and a kit. Shared path parsing and connection helpers live in **`Rxdk.XbFile`** (`src/Rxdk.XbFile/`).
 
 | Tool | Purpose |
 |------|---------|
@@ -216,7 +216,7 @@ xbecopy Debug\game.xbe E:\title\game.xbe
 
 ### Xbox Image File Builder (`imagebld`)
 
-Converts a Win32 **PE** executable into a signed **`.xbe`** title image — the same `imagebld` from the XDK build pipeline. Native build: `src/imagebld/` (links **`xrsa.lib`** from `src/xrsa/`). **Managed port:** `src-dotnet/Rxdk.ImageBld/` (`Rxdk.XbeImage` library) with parity tests against the native oracle on Windows; published as a single-file `imagebld` in CI alongside other managed tools.
+Converts a Win32 **PE** executable into a signed **`.xbe`** title image — the same `imagebld` from the XDK build pipeline. Implementation: `src/Rxdk.ImageBld/` (`Rxdk.XbeImage` library) with golden-file tests for build and dump output; published as a single-file `imagebld` in CI alongside other managed tools.
 
 | Switch | Purpose |
 |--------|---------|
@@ -230,7 +230,7 @@ Converts a Win32 **PE** executable into a signed **`.xbe`** title image — the 
 
 Command-line **debug launches** for scripts or CI. Reboots the kit to pending exec (if needed), sets the title path, arms an initial breakpoint, and runs until the title stops at entry.
 
-Native: `src/xbox-launch/`. **Managed port:** `src-dotnet/Rxdk.XboxLaunch.Cli/` (single-file `xbox-launch` in the CI `tools/` bundle).
+Implementation: `src/Rxdk.XboxLaunch.Cli/` (single-file `xbox-launch` in the CI `tools/` bundle).
 
 ```cmd
 xbox-launch /dir xe:\path /title game.xbe [/cmd args] [/x console] [/reboot] [/timeout ms]
@@ -242,7 +242,7 @@ Subscribes to exec, break, module-load, and debug-string notifications. Useful f
 
 GUI **break-notification** tool from the classic XDK. Leave it running while developing — it connects to the kit and surfaces debug events in a log window with modal dialogs for interactive cases.
 
-**Cross-platform Avalonia port:** `src-dotnet/Rxdk.XbWatson/` — managed XBDM, parity with native `src/xbWatson/` (log window, assert/RIP/exception dialogs, `XBW1.0` crash dumps, `/x` CLI).
+**Cross-platform Avalonia port:** `src/Rxdk.XbWatson/` — managed XBDM (log window, assert/RIP/exception dialogs, `XBW1.0` crash dumps, `/x` CLI).
 
 | Event | Behavior |
 |-------|----------|
@@ -262,7 +262,7 @@ powershell -File scripts/publish-xbwatson.ps1 -Runtime win-x64
 powershell -File scripts/publish-xbwatson.ps1 -Runtime linux-x64
 ```
 
-Native Win32 build: `RXDKTools.sln` → `out/bin/x64/Release/xbWatson.exe`. Managed port: `RXDKNeighborhood.sln` → `Rxdk.XbWatson`.
+Build: `RXDKTools.sln` → `Rxdk.XbWatson`.
 
 Pairs well with Neighborhood or `xbox-launch` when you want visible feedback from `DbgPrint`, asserts, and crashes without a full debugger attach.
 
@@ -285,33 +285,28 @@ echo '{"id":1,"cmd":"ping"}' | xboxdbg-bridge.exe
 
 ## Build from source
 
-Requires **Visual Studio 2022** with **Desktop development with C++** (v145 toolset).
+Requires **Visual Studio 2022** with **Desktop development with C++** (v145 toolset) for the native shell proxy DLL, plus **.NET 8 SDK** for managed projects.
 
 1. Open **`RXDKTools.sln`**
 2. Build **`Release | x64`**
 
 | Output | Location |
 |--------|----------|
-| Executables & DLL | `out/bin/x64/Release/` |
-| Static libraries | `out/lib/x64/Release/` (`xbdbgs.lib`, `xbfile.lib`, `xrsa.lib`) |
+| Managed tools & shell extension | `out/bin/x64/Release/` (via MSBuild/dotnet publish) |
 | Neighborhood installer | `out/bin/x64/Release/XboxNeighborhood-Setup.exe` (built via `setup/build-installer.ps1`; Inno Setup installed automatically if missing) |
 
 ### Solution layout
 
-Each `.vcxproj` lives alongside its sources under `src/`; shared headers and helpers are under `shared/`.
+Managed projects live under **`src/`**. The native **`Rxdk.XbShellExt.Shell`** C++ proxy (namespace `IShellFolder` host) lives alongside them. Shared C/C++ headers and helpers used by the shell proxy are under **`shared/`**.
 
 | Project | Output | Role |
 |---------|--------|------|
-| `xbdbgs` | `xbdbgs.lib` | Static XBDM client (connection, files, notifications, debug API) |
-| `xbfile` | `xbfile.lib` | Shared path/option parsing for file CLI tools |
-| `xrsa` | `xrsa.lib` | Source-built RSA/crypto for `imagebld` signing |
 | `Rxdk.XbShellExt` | `Rxdk.XbShellExt.comhost.dll` | Managed Xbox Neighborhood shell extension |
-| `xbcp`, `xbdir`, `xbmkdir`, `xbecopy` | `*.exe` | File transfer utilities |
-| `imagebld` | `imagebld.exe` | PE → XBE image builder |
-| `xbox-launch` | `xbox-launch.exe` | CLI debug launch helper |
-| `xbWatson` | `xbWatson.exe` | Break/assert/RIP notification UI |
-| `xboxdbg_bridge` | `xboxdbg-bridge.exe` | JSON debug bridge for editor integration (also in `Rxdk.XboxDbgBridge` NuGet) |
+| `Rxdk.XbShellExt.Shell` | `Rxdk.XbShellExt.Shell.dll` | Native shell namespace proxy |
+| `Rxdk.XbCp`, `Rxdk.XbDir`, `Rxdk.XbMkdir`, `Rxdk.XbeCopy` | `*.exe` | File transfer utilities |
+| `Rxdk.ImageBld` | `imagebld.exe` | PE → XBE image builder |
+| `Rxdk.XboxLaunch.Cli` | `xbox-launch.exe` | CLI debug launch helper |
+| `Rxdk.XbWatson` | `xbwatson.exe` | Break/assert/RIP notification UI |
+| `Rxdk.XboxDbgBridge.Cli` | `xboxdbg-bridge.exe` | JSON debug bridge for editor integration (also in `Rxdk.XboxDbgBridge` NuGet) |
 
-All executables link **`xbdbgs.lib`** statically. Everything targets **x64**, including `imagebld` and full notification support in `xbdbgs`.
-
-The standalone **`RXDKNeighborhood.exe`** is built from **`RXDKNeighborhood.sln`**, not from `RXDKTools.sln` — see [RXDKNeighborhood app](#rxdkneighborhood-app).
+The standalone **`RXDKNeighborhood.exe`** Avalonia app is also in **`RXDKTools.sln`** — see [RXDKNeighborhood app](#rxdkneighborhood-app).

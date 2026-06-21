@@ -92,8 +92,8 @@ if (-not (Test-Path -LiteralPath $IssPath)) {
 $installDir = Join-Path $RepoRoot 'out\bin\x64\Release'
 New-Item -ItemType Directory -Force -Path $installDir | Out-Null
 
-$shellExtProject = Join-Path $RepoRoot 'src-dotnet\Rxdk.XbShellExt\Rxdk.XbShellExt.csproj'
-$shellProxyProject = Join-Path $RepoRoot 'src-dotnet\Rxdk.XbShellExt.Shell\Rxdk.XbShellExt.Shell.vcxproj'
+$shellExtProject = Join-Path $RepoRoot 'src\Rxdk.XbShellExt\Rxdk.XbShellExt.csproj'
+$shellProxyProject = Join-Path $RepoRoot 'src\Rxdk.XbShellExt.Shell\Rxdk.XbShellExt.Shell.vcxproj'
 
 Write-Host "Building Rxdk.XbShellExt (Release|win-x64)..." -ForegroundColor Cyan
 dotnet build $shellExtProject -c Release -r win-x64
@@ -124,7 +124,7 @@ if ($LASTEXITCODE -ne 0) {
     throw 'msbuild failed for Rxdk.XbShellExt.Shell'
 }
 
-$buildOut = Join-Path $RepoRoot 'src-dotnet\Rxdk.XbShellExt\bin\Release\net8.0-windows\win-x64'
+$buildOut = Join-Path $RepoRoot 'src\Rxdk.XbShellExt\bin\Release\net8.0-windows\win-x64'
 if (-not (Test-Path -LiteralPath $buildOut)) {
     throw "Missing build output: $buildOut"
 }

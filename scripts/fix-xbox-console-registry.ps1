@@ -8,8 +8,8 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
-$testsProject = Join-Path $repoRoot 'src-dotnet\Rxdk.Xbdm.Tests\Rxdk.Xbdm.Tests.csproj'
-$testsDll = Join-Path $repoRoot 'src-dotnet\Rxdk.Xbdm.Tests\bin\Release\net8.0\Rxdk.Xbdm.Tests.dll'
+$testsProject = Join-Path $repoRoot 'src\Rxdk.Xbdm.Tests\Rxdk.Xbdm.Tests.csproj'
+$testsDll = Join-Path $repoRoot 'src\Rxdk.Xbdm.Tests\bin\Release\net8.0\Rxdk.Xbdm.Tests.dll'
 
 Write-Host "Probing kit at $KitAddress..."
 dotnet build $testsProject -c Release -v q
