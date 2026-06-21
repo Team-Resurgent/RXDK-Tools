@@ -94,10 +94,20 @@ public sealed class XbdmNotificationParserTests
     public void Parses_debugstr_with_spaced_value_and_lf()
     {
         Assert.True(XbdmNotificationParser.TryHandleNotification(
-            "debugstr thread=0 string= client: 1 lf",
+            "debugstr thread=0 string=client: 1 lf",
             out var dispatches));
         var debugStr = Assert.IsType<XbdmDebugStringNotification>(dispatches[0].Data);
         Assert.Equal("client: 1\n", debugStr.Text);
+    }
+
+    [Fact]
+    public void Parses_debugstr_preserves_leading_indentation()
+    {
+        Assert.True(XbdmNotificationParser.TryHandleNotification(
+            "debugstr thread=0 string=    indented line lf",
+            out var dispatches));
+        var debugStr = Assert.IsType<XbdmDebugStringNotification>(dispatches[0].Data);
+        Assert.Equal("    indented line\n", debugStr.Text);
     }
 
     [Fact]

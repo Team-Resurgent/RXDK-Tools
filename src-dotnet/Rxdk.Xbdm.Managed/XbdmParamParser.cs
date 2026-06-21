@@ -130,12 +130,12 @@ internal static class XbdmParamParser
         if (!TryGetParamValue(line, "string", true, false, out var raw))
             return false;
 
-        var trimmed = raw.TrimStart();
         string text;
-        if (trimmed.Length > 0 && trimmed[0] == '"')
+        var quoteStart = IndexOfNonSpace(raw);
+        if (quoteStart >= 0 && raw[quoteStart] == '"')
         {
             Span<char> buffer = stackalloc char[4096];
-            if (!TryGetQuotedString(trimmed, buffer, out var written))
+            if (!TryGetQuotedString(raw[quoteStart..], buffer, out var written))
                 return false;
             text = new string(buffer[..written]);
         }
@@ -152,11 +152,23 @@ internal static class XbdmParamParser
             }
 
             end = TrimTrailingDebugStringToken(raw[..end]);
-            text = raw[..end].TrimStart().ToString();
+            // Native PchGetParam returns the pointer after '=' without trimming; indentation must survive.
+            text = raw[..end].ToString();
         }
 
         value = ApplyDebugStringSuffix(line, text);
         return true;
+    }
+
+    private static int IndexOfNonSpace(ReadOnlySpan<char> value)
+    {
+        for (var i = 0; i < value.Length; i++)
+        {
+            if (!IsSpace(value[i]))
+                return i;
+        }
+
+        return -1;
     }
 
     private static bool TryGetQuotedString(ReadOnlySpan<char> value, Span<char> destination, out int written)
