@@ -1,12 +1,10 @@
 using Rxdk.XbShellExt.Ui;
-using Rxdk.XbShellExt.Ui.Controls;
 
 namespace Rxdk.XbShellExt.Ui.Forms;
 
 partial class AddConsoleWizardForm
 {
-    private ShellWizardChrome chrome = null!;
-    private Label statusLabel = null!;
+    private Panel pageHost = null!;
     private FlowLayoutPanel buttonPanel = null!;
     private Button cancelButton = null!;
     private Button nextButton = null!;
@@ -14,8 +12,7 @@ partial class AddConsoleWizardForm
 
     private void InitializeComponent()
     {
-        chrome = new ShellWizardChrome();
-        statusLabel = new Label();
+        pageHost = new Panel();
         buttonPanel = new FlowLayoutPanel();
         cancelButton = new Button();
         nextButton = new Button();
@@ -23,25 +20,13 @@ partial class AddConsoleWizardForm
         buttonPanel.SuspendLayout();
         SuspendLayout();
         // 
-        // chrome
+        // pageHost
         // 
-        chrome.Dock = DockStyle.Fill;
-        chrome.Location = new Point(0, 0);
-        chrome.Name = "chrome";
-        chrome.Size = new Size(544, 311);
-        chrome.TabIndex = 0;
-        // 
-        // statusLabel
-        // 
-        statusLabel.AutoSize = true;
-        statusLabel.Dock = DockStyle.Bottom;
-        statusLabel.ForeColor = Color.DarkRed;
-        statusLabel.Location = new Point(0, 311);
-        statusLabel.MaximumSize = new Size(520, 0);
-        statusLabel.Name = "statusLabel";
-        statusLabel.Padding = new Padding(12, 0, 12, 4);
-        statusLabel.Size = new Size(24, 19);
-        statusLabel.TabIndex = 1;
+        pageHost.Dock = DockStyle.Fill;
+        pageHost.Location = new Point(0, 0);
+        pageHost.Name = "pageHost";
+        pageHost.Size = new Size(544, 330);
+        pageHost.TabIndex = 0;
         // 
         // buttonPanel
         // 
@@ -53,46 +38,45 @@ partial class AddConsoleWizardForm
         buttonPanel.Location = new Point(0, 330);
         buttonPanel.Margin = new Padding(0);
         buttonPanel.Name = "buttonPanel";
-        buttonPanel.Padding = new Padding(0, 10, 12, 10);
+        buttonPanel.Padding = new Padding(8);
         buttonPanel.Size = new Size(544, 52);
-        buttonPanel.TabIndex = 2;
+        buttonPanel.TabIndex = 1;
         buttonPanel.WrapContents = false;
         // 
         // cancelButton
         // 
         cancelButton.DialogResult = DialogResult.Cancel;
-        cancelButton.Location = new Point(457, 10);
+        cancelButton.Location = new Point(432, 8);
         cancelButton.Margin = new Padding(8, 0, 0, 0);
         cancelButton.Name = "cancelButton";
-        cancelButton.Size = new Size(75, 23);
+        cancelButton.Size = new Size(96, 36);
         cancelButton.TabIndex = 2;
         cancelButton.Text = "Cancel";
         // 
         // nextButton
         // 
-        nextButton.Location = new Point(374, 10);
+        nextButton.Location = new Point(328, 8);
         nextButton.Margin = new Padding(8, 0, 0, 0);
         nextButton.Name = "nextButton";
-        nextButton.Size = new Size(75, 23);
+        nextButton.Size = new Size(96, 36);
         nextButton.TabIndex = 1;
-        nextButton.Text = "&Next";
+        nextButton.Text = "&Next >";
         // 
         // backButton
         // 
-        backButton.Location = new Point(291, 10);
+        backButton.Location = new Point(224, 8);
         backButton.Margin = new Padding(8, 0, 0, 0);
         backButton.Name = "backButton";
-        backButton.Size = new Size(75, 23);
+        backButton.Size = new Size(96, 36);
         backButton.TabIndex = 0;
-        backButton.Text = "&Back";
+        backButton.Text = "< &Back";
         // 
         // AddConsoleWizardForm
         // 
         AutoScaleMode = AutoScaleMode.None;
         CancelButton = cancelButton;
         ClientSize = new Size(544, 382);
-        Controls.Add(chrome);
-        Controls.Add(statusLabel);
+        Controls.Add(pageHost);
         Controls.Add(buttonPanel);
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
@@ -104,6 +88,5 @@ partial class AddConsoleWizardForm
         Text = "Add New Xbox Development Kit";
         buttonPanel.ResumeLayout(false);
         ResumeLayout(false);
-        PerformLayout();
     }
 }

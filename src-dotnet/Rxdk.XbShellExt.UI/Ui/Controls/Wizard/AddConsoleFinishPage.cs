@@ -1,9 +1,8 @@
 namespace Rxdk.XbShellExt.Ui.Controls.Wizard;
 
 using Rxdk.XbShellExt.Ui;
-using Rxdk.XbShellExt.Ui.Controls;
 
-public sealed partial class AddConsoleFinishPage : UserControl
+public sealed partial class AddConsoleFinishPage : AddConsoleWizardPageBase
 {
     public Label ConsoleValueLabel => consoleValueLabel;
     public Label DefaultValueLabel => defaultValueLabel;
@@ -12,7 +11,8 @@ public sealed partial class AddConsoleFinishPage : UserControl
     public AddConsoleFinishPage()
     {
         InitializeComponent();
-        titleLabel.Font = ShellWizardChrome.CreateWizardTitleFont();
+        BindStatusLabel(statusLabel);
+        titleLabel.Font = WizardVisuals.CreateTitleFont();
         DesignPreview.ApplyIfDesignTime(() =>
         {
             consoleValueLabel.Text = $"{DesignPreview.SampleConsoleName}({DesignPreview.SampleConsoleIp})";

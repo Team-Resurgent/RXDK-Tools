@@ -65,7 +65,10 @@
     <Compile Update="Ui\Forms\TransferProgressForm.Designer.cs">
       <DependentUpon>TransferProgressForm.cs</DependentUpon>
     </Compile>
-    <Compile Update="Ui\Controls\ShellWizardChrome.cs">
+    <Compile Update="Ui\Controls\Wizard\WizardSideBannerControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Ui\Controls\Wizard\WizardTopHeaderControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
     <Compile Update="Ui\Controls\DriveUsagePieControl.cs">

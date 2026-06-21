@@ -22,49 +22,68 @@ partial class TransferProgressForm
         fileProgressBar = new ProgressBar();
         cancelButton = new Button();
         SuspendLayout();
-
-        Text = "Xbox Neighborhood";
-        FormBorderStyle = FormBorderStyle.FixedDialog;
-        MaximizeBox = false;
-        MinimizeBox = false;
-        ControlBox = true;
-        ShowInTaskbar = false;
-        StartPosition = FormStartPosition.CenterScreen;
-        TopMost = true;
-        ClientSize = new Size(420, 158);
-        AutoScaleMode = AutoScaleMode.None;
-        Font = new Font("Segoe UI", 9F);
-
-        titleLabel.AutoSize = false;
+        // 
+        // titleLabel
+        // 
         titleLabel.Location = new Point(12, 12);
+        titleLabel.Name = "titleLabel";
         titleLabel.Size = new Size(396, 18);
-
-        fileLabel.AutoSize = false;
+        titleLabel.TabIndex = 6;
+        // 
+        // fileLabel
+        // 
         fileLabel.Location = new Point(12, 34);
+        fileLabel.Name = "fileLabel";
         fileLabel.Size = new Size(396, 28);
+        fileLabel.TabIndex = 5;
         fileLabel.Text = "Preparing…";
-
+        // 
+        // filesCaptionLabel
+        // 
         filesCaptionLabel.AutoSize = true;
         filesCaptionLabel.Location = new Point(12, 68);
+        filesCaptionLabel.Name = "filesCaptionLabel";
+        filesCaptionLabel.Size = new Size(44, 15);
+        filesCaptionLabel.TabIndex = 4;
         filesCaptionLabel.Text = "Overall";
-
+        // 
+        // filesProgressBar
+        // 
         filesProgressBar.Location = new Point(12, 86);
+        filesProgressBar.Name = "filesProgressBar";
         filesProgressBar.Size = new Size(396, 18);
         filesProgressBar.Style = ProgressBarStyle.Continuous;
-
+        filesProgressBar.TabIndex = 3;
+        // 
+        // fileBytesCaptionLabel
+        // 
         fileBytesCaptionLabel.AutoSize = true;
         fileBytesCaptionLabel.Location = new Point(12, 112);
+        fileBytesCaptionLabel.Name = "fileBytesCaptionLabel";
+        fileBytesCaptionLabel.Size = new Size(66, 15);
+        fileBytesCaptionLabel.TabIndex = 2;
         fileBytesCaptionLabel.Text = "Current file";
-
+        // 
+        // fileProgressBar
+        // 
         fileProgressBar.Location = new Point(12, 130);
-        fileProgressBar.Size = new Size(320, 18);
+        fileProgressBar.Name = "fileProgressBar";
+        fileProgressBar.Size = new Size(396, 18);
         fileProgressBar.Style = ProgressBarStyle.Continuous;
-
-        cancelButton.AutoSize = false;
-        cancelButton.Location = new Point(338, 126);
-        cancelButton.Size = ShellDialogLayout.ButtonSize;
+        fileProgressBar.TabIndex = 1;
+        // 
+        // cancelButton
+        // 
+        cancelButton.Location = new Point(312, 166);
+        cancelButton.Name = "cancelButton";
+        cancelButton.Size = new Size(96, 36);
+        cancelButton.TabIndex = 0;
         cancelButton.Text = "Cancel";
-
+        // 
+        // TransferProgressForm
+        // 
+        AutoScaleMode = AutoScaleMode.None;
+        ClientSize = new Size(420, 215);
         Controls.Add(cancelButton);
         Controls.Add(fileProgressBar);
         Controls.Add(fileBytesCaptionLabel);
@@ -72,6 +91,18 @@ partial class TransferProgressForm
         Controls.Add(filesCaptionLabel);
         Controls.Add(fileLabel);
         Controls.Add(titleLabel);
+        Font = new Font("Segoe UI", 9F);
+        FormBorderStyle = FormBorderStyle.FixedDialog;
+        MaximizeBox = false;
+        MaximumSize = new Size(436, 254);
+        MinimizeBox = false;
+        MinimumSize = new Size(436, 254);
+        Name = "TransferProgressForm";
+        ShowInTaskbar = false;
+        StartPosition = FormStartPosition.CenterScreen;
+        Text = "Xbox Neighborhood";
+        TopMost = true;
         ResumeLayout(false);
+        PerformLayout();
     }
 }

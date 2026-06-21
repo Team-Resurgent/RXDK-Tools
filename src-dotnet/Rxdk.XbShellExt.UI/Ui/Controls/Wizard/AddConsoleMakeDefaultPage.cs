@@ -2,7 +2,7 @@ namespace Rxdk.XbShellExt.Ui.Controls.Wizard;
 
 using Rxdk.XbShellExt.Ui;
 
-public sealed partial class AddConsoleMakeDefaultPage : UserControl
+public sealed partial class AddConsoleMakeDefaultPage : AddConsoleWizardPageBase
 {
     public RadioButton MakeDefaultYes => makeDefaultYes;
     public RadioButton MakeDefaultNo => makeDefaultNo;
@@ -10,6 +10,9 @@ public sealed partial class AddConsoleMakeDefaultPage : UserControl
     public AddConsoleMakeDefaultPage()
     {
         InitializeComponent();
+        BindStatusLabel(statusLabel);
+        pageHeader.HeaderTitle = "Choosing this Xbox as default.";
+        pageHeader.HeaderSubtitle = "The default Xbox is used by Visual Studio, and other Xbox development tools.";
         DesignPreview.ApplyIfDesignTime(() =>
         {
             SetPrompt(DesignPreview.SampleConsoleName);
