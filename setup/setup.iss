@@ -72,8 +72,8 @@ Source: "{#PayloadDir}/console.ico"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#PayloadDir}/xbox.ico"; DestDir: "{app}"; Flags: ignoreversion
 
 [Registry]
-; Shell extension COM registration is performed in code (RegisterShellExtension) using the
-; native 64-bit registry view (HKCR64/HKLM64/HKCU64). Do not duplicate CC44/CC45 keys here:
+; Shell extension COM registration is performed in code (RegisterShellExtension) using
+; HKLM64\Software\Classes and related native 64-bit keys. Do not duplicate CC44/CC45 keys here:
 ; a 32-bit installer process writing plain HKCR can land under Wow6432Node, which 64-bit
 ; Explorer does not use for InprocServer32 — the exact failure seen on Windows 10.
 
@@ -88,27 +88,70 @@ var
 const
   UninstallRegRoot = 'Software\Microsoft\Windows\CurrentVersion\Uninstall\';
   UninstallRegKey = '{#MyAppId}_is1';
-  ShellExtClsidKey = 'SOFTWARE\Classes\CLSID\{{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}}\InprocServer32';
-  ClsidPublicRegKey = 'CLSID\{{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}}';
-  ClsidPublicInprocKey = 'CLSID\{{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}}\InprocServer32';
-  LmClassesClsidPublicInprocKey = 'Software\Classes\CLSID\{{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}}\InprocServer32';
-  LmClassesClsidPublicShellFolderKey = 'Software\Classes\CLSID\{{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}}\ShellFolder';
-  ClsidPublicShellFolderKey = 'CLSID\{{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}}\ShellFolder';
-  ClsidPublicDefaultIconKey = 'CLSID\{{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}}\DefaultIcon';
-  ClsidPublicShellKey = 'CLSID\{{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}}\shell';
-  ManagedInprocKey = 'CLSID\{{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC45}}\InprocServer32';
-  DesktopNamespaceKey = 'Software\Microsoft\Windows\CurrentVersion\Explorer\Desktop\NameSpace\{{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}}';
-  MyComputerNamespaceKey = 'Software\Microsoft\Windows\CurrentVersion\Explorer\MyComputer\NameSpace\{{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}}';
+  ClsidPublicBare = 'DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44';
+  ClsidManagedBare = 'DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC45';
+  LmClassesShellextXboxFolder1Key = 'Software\Classes\Shellext.XboxFolder.1';
+  LmClassesShellextXboxFolderKey = 'Software\Classes\Shellext.XboxFolder';
+  LmClassesXboxProtocolCommandKey = 'Software\Classes\xbox\shell\open\command';
+  LmClassesXboxKey = 'Software\Classes\xbox';
   DotNetDesktopRuntimeRegKey = 'SOFTWARE\dotnet\Setup\InstalledVersions\x64\sharedfx\Microsoft.WindowsDesktop.App';
   DotNetDesktopRuntimeFileName = '{#DotNetDesktopRuntimeExe}';
-  UserClassesClsidKey = 'Software\Classes\CLSID\{{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}}';
-  UserDesktopNamespaceKey = 'Software\Microsoft\Windows\CurrentVersion\Explorer\Desktop\NameSpace\{{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}}';
   HideDesktopIconsKey = 'Software\Microsoft\Windows\CurrentVersion\Explorer\HideDesktopIcons\NewStartPanel';
   ExplorerAdvancedKey = 'Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced';
-  ManagedClsidKey = 'CLSID\{{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC45}}';
   XboxProtocolCommandKey = 'xbox\shell\open\command';
   MyAppDisplayName = '{#MyAppName}';
-  PublicClsidBracedName = '{{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}}';
+
+function BracedClsid(const BareGuid: String): String;
+begin
+  Result := '{' + BareGuid + '}';
+end;
+
+function LmSoftwareClassesClsidKey(const BareGuid, Suffix: String): String;
+begin
+  Result := 'Software\Classes\CLSID\' + BracedClsid(BareGuid) + Suffix;
+end;
+
+function HkcrClsidKey(const BareGuid, Suffix: String): String;
+begin
+  Result := 'CLSID\' + BracedClsid(BareGuid) + Suffix;
+end;
+
+function ExplorerDesktopNamespaceKey(const BareGuid: String): String;
+begin
+  Result := 'Software\Microsoft\Windows\CurrentVersion\Explorer\Desktop\NameSpace\' + BracedClsid(BareGuid);
+end;
+
+function ExplorerMyComputerNamespaceKey(const BareGuid: String): String;
+begin
+  Result := 'Software\Microsoft\Windows\CurrentVersion\Explorer\MyComputer\NameSpace\' + BracedClsid(BareGuid);
+end;
+
+function ExplorerPerUserClsidKey(const BareGuid: String): String;
+begin
+  Result := 'Software\Microsoft\Windows\CurrentVersion\Explorer\CLSID\' + BracedClsid(BareGuid);
+end;
+
+function UserSoftwareClassesClsidKey(const BareGuid: String): String;
+begin
+  Result := 'Software\Classes\CLSID\' + BracedClsid(BareGuid);
+end;
+
+function UserDesktopNamespaceKeyForClsid(const BareGuid: String): String;
+begin
+  Result := 'Software\Microsoft\Windows\CurrentVersion\Explorer\Desktop\NameSpace\' + BracedClsid(BareGuid);
+end;
+
+procedure RequireRegString(RootKey: Integer; const SubKey, ValueName, Data: String);
+begin
+  if not RegWriteStringValue(RootKey, SubKey, ValueName, Data) then
+    RaiseException(Format('Registry write failed: %s [%s]', [SubKey, ValueName]));
+end;
+
+procedure RequireRegDWord(RootKey: Integer; const SubKey, ValueName: String; Data: Cardinal);
+begin
+  if not RegWriteDWordValue(RootKey, SubKey, ValueName, Data) then
+    RaiseException(Format('Registry write failed: %s [%s]', [SubKey, ValueName]));
+end;
 
 function DownloadFileToTmp(const Url, BaseFileName: String): Boolean;
 begin
@@ -182,28 +225,24 @@ end;
 
 function VerifyNamespaceProxyRegistration: Boolean;
 var
-  Path, WowPath, LegacyPath: String;
+  Path, WowPath, LegacyPath, InprocKey, ShellFolderKey: String;
   ShellFolderAttrs: Cardinal;
 begin
   Path := '';
   WowPath := '';
   LegacyPath := '';
+  InprocKey := LmSoftwareClassesClsidKey(ClsidPublicBare, '\InprocServer32');
+  ShellFolderKey := LmSoftwareClassesClsidKey(ClsidPublicBare, '\ShellFolder');
 
   Result :=
-    RegQueryStringValue(HKLM64, LmClassesClsidPublicInprocKey, '', Path) and
+    RegQueryStringValue(HKLM64, InprocKey, '', Path) and
     (Path <> '') and
     FileExists(Path);
 
-  if not Result then
-    Result :=
-      RegQueryStringValue(HKCR64, ClsidPublicInprocKey, '', Path) and
-      (Path <> '') and
-      FileExists(Path);
-
   if Result then
   begin
-    if not RegQueryDWordValue(HKLM64, LmClassesClsidPublicShellFolderKey, 'Attributes', ShellFolderAttrs) then
-      RegQueryDWordValue(HKCR64, ClsidPublicShellFolderKey, 'Attributes', ShellFolderAttrs);
+    if not RegQueryDWordValue(HKLM64, ShellFolderKey, 'Attributes', ShellFolderAttrs) then
+      ShellFolderAttrs := 0;
     if ShellFolderAttrs <> $A0000004 then
     begin
       Log(Format('CC44 ShellFolder Attributes invalid: 0x%.8x (expected 0xA0000004)', [ShellFolderAttrs]));
@@ -217,10 +256,10 @@ begin
     Exit;
   end;
 
-  if RegQueryStringValue(HKCR, ClsidPublicInprocKey, '', LegacyPath) and (LegacyPath <> '') then
+  if RegQueryStringValue(HKCR, HkcrClsidKey(ClsidPublicBare, '\InprocServer32'), '', LegacyPath) and (LegacyPath <> '') then
     Log('CC44 InprocServer32 found in 32-bit HKCR view (not used by 64-bit Explorer): ' + LegacyPath);
 
-  if RegQueryStringValue(HKCR, 'Wow6432Node\' + ClsidPublicInprocKey, '', WowPath) and (WowPath <> '') then
+  if RegQueryStringValue(HKCR, 'Wow6432Node\' + HkcrClsidKey(ClsidPublicBare, '\InprocServer32'), '', WowPath) and (WowPath <> '') then
     Log('CC44 InprocServer32 found under Wow6432Node (not used by 64-bit Explorer): ' + WowPath);
 
   if (Path <> '') and not FileExists(Path) then
@@ -385,9 +424,13 @@ end;
 procedure StopExplorer;
 var
   ResultCode: Integer;
+  Attempt: Integer;
 begin
-  Exec('taskkill.exe', '/F /IM explorer.exe', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-  Sleep(2000);
+  for Attempt := 0 to 2 do
+  begin
+    Exec('taskkill.exe', '/F /IM explorer.exe', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+    Sleep(1000);
+  end;
   NeedExplorerRestart := True;
 end;
 
@@ -417,14 +460,15 @@ end;
 function RunRegsvr32(const DllPath: String; Unregister: Boolean): Integer;
 var
   ResultCode: Integer;
-  Params: String;
+  Params, WorkDir: String;
 begin
   Params := '/s';
   if Unregister then
     Params := Params + ' /u';
   Params := Params + ' "' + DllPath + '"';
+  WorkDir := ExtractFilePath(DllPath);
 
-  if Exec(ExpandConstant('{sys}\regsvr32.exe'), Params, '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+  if Exec(ExpandConstant('{sys}\regsvr32.exe'), Params, WorkDir, SW_HIDE, ewWaitUntilTerminated, ResultCode) then
     Result := ResultCode
   else
     Result := 1;
@@ -432,20 +476,25 @@ end;
 
 function Regsvr32ErrorMessage(const Action: String; ExitCode: Integer): String;
 begin
-  if IsAdminInstallMode then
-    Result := Format('%s failed (exit %d).', [Action, ExitCode])
-  else
-    Result := Format('%s failed (exit %d). Setup is not running with administrator privileges.', [Action, ExitCode]);
+  Result := Format('%s failed (exit %d)', [Action, ExitCode]);
+  if ExitCode = 5 then
+    Result := Result + ' (Access Denied). Registry registration will be attempted directly.'
+  else if not IsAdminInstallMode then
+    Result := Result + '. Setup is not running with administrator privileges.';
 end;
 
 procedure CleanupErroneousShellOpenKeys;
 begin
-  if RegKeyExists(HKCR64, ClsidPublicShellKey) then
-    RegDeleteKeyIncludingSubkeys(HKCR64, ClsidPublicShellKey);
+  if RegKeyExists(HKLM64, LmSoftwareClassesClsidKey(ClsidPublicBare, '\shell')) then
+    RegDeleteKeyIncludingSubkeys(HKLM64, LmSoftwareClassesClsidKey(ClsidPublicBare, '\shell'));
+  if RegKeyExists(HKLM64, LmClassesShellextXboxFolder1Key + '\shell') then
+    RegDeleteKeyIncludingSubkeys(HKLM64, LmClassesShellextXboxFolder1Key + '\shell');
+  if RegKeyExists(HKCR64, HkcrClsidKey(ClsidPublicBare, '\shell')) then
+    RegDeleteKeyIncludingSubkeys(HKCR64, HkcrClsidKey(ClsidPublicBare, '\shell'));
   if RegKeyExists(HKCR64, 'Shellext.XboxFolder.1\shell') then
     RegDeleteKeyIncludingSubkeys(HKCR64, 'Shellext.XboxFolder.1\shell');
-  if RegKeyExists(HKCR, ClsidPublicShellKey) then
-    RegDeleteKeyIncludingSubkeys(HKCR, ClsidPublicShellKey);
+  if RegKeyExists(HKCR, HkcrClsidKey(ClsidPublicBare, '\shell')) then
+    RegDeleteKeyIncludingSubkeys(HKCR, HkcrClsidKey(ClsidPublicBare, '\shell'));
   if RegKeyExists(HKCR, 'Shellext.XboxFolder.1\shell') then
     RegDeleteKeyIncludingSubkeys(HKCR, 'Shellext.XboxFolder.1\shell');
 end;
@@ -455,7 +504,7 @@ var
   Attrs: Cardinal;
   ExplorerClsidKey: String;
 begin
-  ExplorerClsidKey := 'Software\Microsoft\Windows\CurrentVersion\Explorer\CLSID\{{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}}';
+  ExplorerClsidKey := ExplorerPerUserClsidKey(ClsidPublicBare);
   if RegQueryDWordValue(HKCU64, ExplorerClsidKey + '\ShellFolder', 'Attributes', Attrs) then
   begin
     if (Attrs and $100000) <> 0 then
@@ -466,90 +515,115 @@ begin
 end;
 
 procedure RegisterPerUserExplorerKeys(const ShellDllPath: String);
+var
+  UserClsidKey, UserDesktopKey: String;
 begin
-  RegWriteStringValue(HKCU64, UserClassesClsidKey, '', 'Xbox Neighborhood');
-  RegWriteDWordValue(HKCU64, UserClassesClsidKey, 'System.IsPinnedToNameSpaceTree', 1);
-  RegWriteDWordValue(HKCU64, UserClassesClsidKey, 'SortOrderIndex', $50);
-  RegWriteStringValue(HKCU64, UserClassesClsidKey + '\InprocServer32', '', ShellDllPath);
-  RegWriteStringValue(HKCU64, UserClassesClsidKey + '\InprocServer32', 'ThreadingModel', 'Apartment');
-  RegWriteStringValue(HKCU64, UserDesktopNamespaceKey, '', 'Xbox Neighborhood');
-  RegWriteDWordValue(HKCU64, HideDesktopIconsKey, PublicClsidBracedName, 1);
-  RegWriteDWordValue(HKCU64, ExplorerAdvancedKey, 'NavPaneShowAllFolders', 1);
+  UserClsidKey := UserSoftwareClassesClsidKey(ClsidPublicBare);
+  UserDesktopKey := UserDesktopNamespaceKeyForClsid(ClsidPublicBare);
+  RequireRegString(HKCU64, UserClsidKey, '', 'Xbox Neighborhood');
+  RequireRegDWord(HKCU64, UserClsidKey, 'System.IsPinnedToNameSpaceTree', 1);
+  RequireRegDWord(HKCU64, UserClsidKey, 'SortOrderIndex', $50);
+  RequireRegString(HKCU64, UserClsidKey + '\InprocServer32', '', ShellDllPath);
+  RequireRegString(HKCU64, UserClsidKey + '\InprocServer32', 'ThreadingModel', 'Apartment');
+  RequireRegDWord(HKCU64, UserClsidKey + '\ShellFolder', 'Attributes', $A0000004);
+  RequireRegString(HKCU64, UserDesktopKey, '', 'Xbox Neighborhood');
+  RequireRegDWord(HKCU64, HideDesktopIconsKey, BracedClsid(ClsidPublicBare), 1);
+  RequireRegDWord(HKCU64, ExplorerAdvancedKey, 'NavPaneShowAllFolders', 1);
 end;
 
 procedure UnregisterPerUserExplorerKeys;
 begin
-  RegDeleteKeyIncludingSubkeys(HKCU64, UserClassesClsidKey);
-  RegDeleteKeyIncludingSubkeys(HKCU64, UserDesktopNamespaceKey);
-  RegDeleteValue(HKCU64, HideDesktopIconsKey, PublicClsidBracedName);
+  RegDeleteKeyIncludingSubkeys(HKCU64, UserSoftwareClassesClsidKey(ClsidPublicBare));
+  RegDeleteKeyIncludingSubkeys(HKCU64, UserDesktopNamespaceKeyForClsid(ClsidPublicBare));
+  RegDeleteValue(HKCU64, HideDesktopIconsKey, BracedClsid(ClsidPublicBare));
 end;
 
 procedure RepairManagedShellExtensionRegistry(const ComHostPath: String);
+var
+  ManagedClsidKey, ManagedInprocKey: String;
 begin
-  RegWriteStringValue(HKCR64, ManagedClsidKey, '', 'Xbox Neighborhood (Managed)');
-  RegWriteStringValue(HKCR64, ManagedInprocKey, '', ComHostPath);
-  RegWriteStringValue(HKCR64, ManagedInprocKey, 'ThreadingModel', 'Apartment');
+  ManagedClsidKey := LmSoftwareClassesClsidKey(ClsidManagedBare, '');
+  ManagedInprocKey := LmSoftwareClassesClsidKey(ClsidManagedBare, '\InprocServer32');
+  RequireRegString(HKLM64, ManagedClsidKey, '', 'Xbox Neighborhood (Managed)');
+  RequireRegString(HKLM64, ManagedInprocKey, '', ComHostPath);
+  RequireRegString(HKLM64, ManagedInprocKey, 'ThreadingModel', 'Apartment');
 end;
 
 procedure ClearShellExtensionRegistry;
+var
+  PublicClsidKey, ManagedClsidLmKey, PublicHkcrKey, ManagedHkcrKey: String;
 begin
-  RegDeleteKeyIncludingSubkeys(HKCR64, ClsidPublicRegKey);
+  PublicClsidKey := LmSoftwareClassesClsidKey(ClsidPublicBare, '');
+  ManagedClsidLmKey := LmSoftwareClassesClsidKey(ClsidManagedBare, '');
+  PublicHkcrKey := HkcrClsidKey(ClsidPublicBare, '');
+  ManagedHkcrKey := HkcrClsidKey(ClsidManagedBare, '');
+  RegDeleteKeyIncludingSubkeys(HKLM64, PublicClsidKey);
+  RegDeleteKeyIncludingSubkeys(HKLM64, LmClassesShellextXboxFolder1Key);
+  RegDeleteKeyIncludingSubkeys(HKLM64, LmClassesShellextXboxFolderKey);
+  RegDeleteKeyIncludingSubkeys(HKLM64, LmClassesXboxKey);
+  RegDeleteKeyIncludingSubkeys(HKLM64, ManagedClsidLmKey);
+  RegDeleteKeyIncludingSubkeys(HKCR64, PublicHkcrKey);
   RegDeleteKeyIncludingSubkeys(HKCR64, 'Shellext.XboxFolder.1');
   RegDeleteKeyIncludingSubkeys(HKCR64, 'Shellext.XboxFolder');
   RegDeleteKeyIncludingSubkeys(HKCR64, 'xbox');
-  RegDeleteKeyIncludingSubkeys(HKCR64, ManagedClsidKey);
-  RegDeleteValue(HKLM64, 'Software\Microsoft\Windows\CurrentVersion\Shell Extensions\Approved', '{#ClsidPublicGuid}');
-  RegDeleteKeyIncludingSubkeys(HKLM64, DesktopNamespaceKey);
-  RegDeleteKeyIncludingSubkeys(HKLM64, MyComputerNamespaceKey);
+  RegDeleteKeyIncludingSubkeys(HKCR64, ManagedHkcrKey);
+  RegDeleteValue(HKLM64, 'Software\Microsoft\Windows\CurrentVersion\Shell Extensions\Approved', ClsidPublicBare);
+  RegDeleteKeyIncludingSubkeys(HKLM64, ExplorerDesktopNamespaceKey(ClsidPublicBare));
+  RegDeleteKeyIncludingSubkeys(HKLM64, ExplorerMyComputerNamespaceKey(ClsidPublicBare));
   { Remove stale 32-bit view registrations from older installers. }
-  RegDeleteKeyIncludingSubkeys(HKCR, ClsidPublicRegKey);
+  RegDeleteKeyIncludingSubkeys(HKCR, PublicHkcrKey);
   RegDeleteKeyIncludingSubkeys(HKCR, 'Shellext.XboxFolder.1');
   RegDeleteKeyIncludingSubkeys(HKCR, 'Shellext.XboxFolder');
   RegDeleteKeyIncludingSubkeys(HKCR, 'xbox');
-  RegDeleteKeyIncludingSubkeys(HKCR, ManagedClsidKey);
-  if RegKeyExists(HKCR, 'Wow6432Node\' + ClsidPublicRegKey) then
-    RegDeleteKeyIncludingSubkeys(HKCR, 'Wow6432Node\' + ClsidPublicRegKey);
-  if RegKeyExists(HKCR, 'Wow6432Node\' + ManagedClsidKey) then
-    RegDeleteKeyIncludingSubkeys(HKCR, 'Wow6432Node\' + ManagedClsidKey);
+  RegDeleteKeyIncludingSubkeys(HKCR, ManagedHkcrKey);
+  if RegKeyExists(HKCR, 'Wow6432Node\' + PublicHkcrKey) then
+    RegDeleteKeyIncludingSubkeys(HKCR, 'Wow6432Node\' + PublicHkcrKey);
+  if RegKeyExists(HKCR, 'Wow6432Node\' + ManagedHkcrKey) then
+    RegDeleteKeyIncludingSubkeys(HKCR, 'Wow6432Node\' + ManagedHkcrKey);
 end;
 
 procedure RepairShellExtensionRegistry(const InstallDir, ShellDllPath: String);
 var
   IconPath, XboxCommand, ClsidValue: String;
+  PublicClsidKey, PublicInprocKey, PublicShellFolderKey, PublicDefaultIconKey: String;
 begin
-  ClsidValue := PublicClsidBracedName;
+  ClsidValue := BracedClsid(ClsidPublicBare);
+  PublicClsidKey := LmSoftwareClassesClsidKey(ClsidPublicBare, '');
+  PublicInprocKey := LmSoftwareClassesClsidKey(ClsidPublicBare, '\InprocServer32');
+  PublicShellFolderKey := LmSoftwareClassesClsidKey(ClsidPublicBare, '\ShellFolder');
+  PublicDefaultIconKey := LmSoftwareClassesClsidKey(ClsidPublicBare, '\DefaultIcon');
 
-  RegWriteStringValue(HKCR64, ClsidPublicRegKey, '', 'Xbox Neighborhood');
-  RegWriteStringValue(HKCR64, ClsidPublicRegKey, 'ProgID', 'Shellext.XboxFolder.1');
-  RegWriteStringValue(HKCR64, ClsidPublicRegKey, 'VersionIndependentProgID', 'Shellext.XboxFolder');
-  RegWriteDWordValue(HKCR64, ClsidPublicRegKey, 'System.IsPinnedToNameSpaceTree', 1);
-  RegWriteDWordValue(HKCR64, ClsidPublicRegKey, 'SortOrderIndex', $50);
-  RegWriteStringValue(HKCR64, ClsidPublicInprocKey, '', ShellDllPath);
-  RegWriteStringValue(HKCR64, ClsidPublicInprocKey, 'ThreadingModel', 'Apartment');
-  RegWriteDWordValue(HKCR64, ClsidPublicShellFolderKey, 'Attributes', $A0000004);
+  RequireRegString(HKLM64, PublicClsidKey, '', 'Xbox Neighborhood');
+  RequireRegString(HKLM64, PublicClsidKey, 'ProgID', 'Shellext.XboxFolder.1');
+  RequireRegString(HKLM64, PublicClsidKey, 'VersionIndependentProgID', 'Shellext.XboxFolder');
+  RequireRegDWord(HKLM64, PublicClsidKey, 'System.IsPinnedToNameSpaceTree', 1);
+  RequireRegDWord(HKLM64, PublicClsidKey, 'SortOrderIndex', $50);
+  RequireRegString(HKLM64, PublicInprocKey, '', ShellDllPath);
+  RequireRegString(HKLM64, PublicInprocKey, 'ThreadingModel', 'Apartment');
+  RequireRegDWord(HKLM64, PublicShellFolderKey, 'Attributes', $A0000004);
 
   IconPath := InstallDir + '\xbox.ico';
   if FileExists(IconPath) then
-    RegWriteStringValue(HKCR64, ClsidPublicDefaultIconKey, '', IconPath)
+    RequireRegString(HKLM64, PublicDefaultIconKey, '', IconPath)
   else
-    RegWriteStringValue(HKCR64, ClsidPublicDefaultIconKey, '', ShellDllPath + ',13');
+    RequireRegString(HKLM64, PublicDefaultIconKey, '', ShellDllPath + ',13');
 
-  RegWriteStringValue(HKCR64, 'Shellext.XboxFolder.1', '', 'Xbox Neighborhood');
-  RegWriteStringValue(HKCR64, 'Shellext.XboxFolder.1', 'CLSID', ClsidValue);
-  RegWriteStringValue(HKCR64, 'Shellext.XboxFolder', '', 'Xbox Neighborhood');
-  RegWriteStringValue(HKCR64, 'Shellext.XboxFolder', 'CLSID', ClsidValue);
-  RegWriteStringValue(HKCR64, 'Shellext.XboxFolder', 'CurVer', 'Shellext.XboxFolder.1');
+  RequireRegString(HKLM64, LmClassesShellextXboxFolder1Key, '', 'Xbox Neighborhood');
+  RequireRegString(HKLM64, LmClassesShellextXboxFolder1Key, 'CLSID', ClsidValue);
+  RequireRegString(HKLM64, LmClassesShellextXboxFolderKey, '', 'Xbox Neighborhood');
+  RequireRegString(HKLM64, LmClassesShellextXboxFolderKey, 'CLSID', ClsidValue);
+  RequireRegString(HKLM64, LmClassesShellextXboxFolderKey, 'CurVer', 'Shellext.XboxFolder.1');
 
   CleanupErroneousShellOpenKeys;
 
-  RegWriteStringValue(HKLM64, DesktopNamespaceKey, '', 'Xbox Neighborhood');
-  RegWriteStringValue(HKLM64, MyComputerNamespaceKey, '', 'Xbox Neighborhood');
-  RegWriteStringValue(HKLM64, 'Software\Microsoft\Windows\CurrentVersion\Shell Extensions\Approved', '{#ClsidPublicGuid}', 'Xbox Namespace Shell Extension');
+  RequireRegString(HKLM64, ExplorerDesktopNamespaceKey(ClsidPublicBare), '', 'Xbox Neighborhood');
+  RequireRegString(HKLM64, ExplorerMyComputerNamespaceKey(ClsidPublicBare), '', 'Xbox Neighborhood');
+  RequireRegString(HKLM64, 'Software\Microsoft\Windows\CurrentVersion\Shell Extensions\Approved', ClsidPublicBare, 'Xbox Namespace Shell Extension');
 
-  RegWriteStringValue(HKCR64, 'xbox', '', 'URL:Xbox Namespace Extension');
-  RegWriteStringValue(HKCR64, 'xbox', 'URL Protocol', '');
+  RequireRegString(HKLM64, LmClassesXboxKey, '', 'URL:Xbox Namespace Extension');
+  RequireRegString(HKLM64, LmClassesXboxKey, 'URL Protocol', '');
   XboxCommand := ExpandConstant('{sys}') + '\rundll32.exe' + ' "' + ShellDllPath + '",LaunchExplorer %1';
-  RegWriteStringValue(HKCR64, XboxProtocolCommandKey, '', XboxCommand);
+  RequireRegString(HKLM64, LmClassesXboxProtocolCommandKey, '', XboxCommand);
 end;
 
 function ResolveComHostPath(const InstallDir: String): String;
@@ -581,14 +655,12 @@ begin
   StopExplorer;
   try
     ClearShellExtensionRegistry;
-    { Register CC44 through native 64-bit regsvr32 (ShellFolder.rgs). This is the same
-      mechanism that reliably registers CC45 via the comhost and avoids Inno Setup
-      HKCR64 writes that can fail to persist on some Windows 10 systems. }
     ResultCode := RunRegsvr32(ShellDll, False);
     if ResultCode <> 0 then
-      RaiseException(Regsvr32ErrorMessage('regsvr32 (Rxdk.XbShellExt.Shell.dll)', ResultCode));
+      Log(Regsvr32ErrorMessage('regsvr32 (Rxdk.XbShellExt.Shell.dll)', ResultCode))
+    else
+      Log('regsvr32 (Rxdk.XbShellExt.Shell.dll) succeeded.');
 
-    { Idempotent repair for icon path, Approved, namespace pins, and xbox:// handler. }
     RepairShellExtensionRegistry(InstallDir, ShellDll);
     RepairNavPaneUserState;
     RegisterPerUserExplorerKeys(ShellDll);
@@ -597,11 +669,13 @@ begin
       RaiseException(
         'The namespace shell extension proxy (CC44) was not registered in the native 64-bit registry. ' +
         'Rxdk.XbShellExt.Shell.dll must be registered under HKLM\\Software\\Classes\\CLSID\\' +
-        PublicClsidBracedName + '\\InprocServer32.');
+        BracedClsid(ClsidPublicBare) + '\\InprocServer32.');
 
     ResultCode := RunRegsvr32(ComHost, False);
     if ResultCode <> 0 then
-      RaiseException(Regsvr32ErrorMessage('regsvr32', ResultCode));
+      Log(Regsvr32ErrorMessage('regsvr32 (Rxdk.XbShellExt.comhost.dll)', ResultCode))
+    else
+      Log('regsvr32 (Rxdk.XbShellExt.comhost.dll) succeeded.');
 
     RepairManagedShellExtensionRegistry(ComHost);
   finally
@@ -719,23 +793,12 @@ begin
 end;
 
 function GetRegisteredDllPath: String;
+var
+  InprocKey: String;
 begin
   Result := '';
-  if RegQueryStringValue(HKLM64, LmClassesClsidPublicInprocKey, '', Result) then
-  begin
-    if FileExists(Result) then
-      Exit;
-    Result := '';
-  end;
-
-  if RegQueryStringValue(HKCR64, ClsidPublicInprocKey, '', Result) then
-  begin
-    if FileExists(Result) then
-      Exit;
-    Result := '';
-  end;
-
-  if RegQueryStringValue(HKLM64, ShellExtClsidKey, '', Result) then
+  InprocKey := LmSoftwareClassesClsidKey(ClsidPublicBare, '\InprocServer32');
+  if RegQueryStringValue(HKLM64, InprocKey, '', Result) then
   begin
     if FileExists(Result) then
       Exit;
