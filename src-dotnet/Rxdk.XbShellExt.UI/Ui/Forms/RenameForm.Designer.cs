@@ -19,60 +19,80 @@ partial class RenameForm
 
     private void InitializeComponent()
     {
-        components = new System.ComponentModel.Container();
         nameLabel = new Label();
         nameTextBox = new TextBox();
         buttonPanel = new FlowLayoutPanel();
-        okButton = new Button();
         cancelButton = new Button();
+        okButton = new Button();
         buttonPanel.SuspendLayout();
         SuspendLayout();
-
-        Text = "Rename";
-        FormBorderStyle = FormBorderStyle.FixedDialog;
-        MaximizeBox = false;
-        MinimizeBox = false;
-        ShowInTaskbar = false;
-        StartPosition = FormStartPosition.CenterParent;
-        ClientSize = new Size(360, 120);
-        AcceptButton = okButton;
-        CancelButton = cancelButton;
-
+        // 
+        // nameLabel
+        // 
         nameLabel.AutoSize = true;
         nameLabel.Location = new Point(12, 16);
+        nameLabel.Name = "nameLabel";
+        nameLabel.Size = new Size(42, 15);
+        nameLabel.TabIndex = 0;
         nameLabel.Text = "Name:";
-
+        // 
+        // nameTextBox
+        // 
         nameTextBox.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
         nameTextBox.Location = new Point(12, 40);
+        nameTextBox.Name = "nameTextBox";
         nameTextBox.Size = new Size(336, 23);
-
-        buttonPanel.AutoSize = false;
-        buttonPanel.Dock = DockStyle.Bottom;
-        buttonPanel.FlowDirection = FlowDirection.RightToLeft;
-        buttonPanel.Height = ShellDialogLayout.ButtonBarHeight;
-        buttonPanel.Margin = Padding.Empty;
-        buttonPanel.Padding = new Padding(0, ShellDialogLayout.ButtonBarPaddingTop, ShellDialogLayout.ButtonBarPaddingRight, ShellDialogLayout.ButtonBarPaddingBottom);
-        buttonPanel.WrapContents = false;
-
-        okButton.AutoSize = false;
-        okButton.DialogResult = DialogResult.OK;
-        okButton.Margin = new Padding(ShellDialogLayout.ButtonSpacing, 0, 0, 0);
-        okButton.Size = ShellDialogLayout.ButtonSize;
-        okButton.Text = "OK";
-
-        cancelButton.AutoSize = false;
-        cancelButton.DialogResult = DialogResult.Cancel;
-        cancelButton.Margin = new Padding(ShellDialogLayout.ButtonSpacing, 0, 0, 0);
-        cancelButton.Size = ShellDialogLayout.ButtonSize;
-        cancelButton.Text = "Cancel";
-
+        nameTextBox.TabIndex = 1;
+        // 
+        // buttonPanel
+        // 
         buttonPanel.Controls.Add(cancelButton);
         buttonPanel.Controls.Add(okButton);
-
+        buttonPanel.Dock = DockStyle.Bottom;
+        buttonPanel.FlowDirection = FlowDirection.RightToLeft;
+        buttonPanel.Location = new Point(0, 68);
+        buttonPanel.Margin = new Padding(0);
+        buttonPanel.Name = "buttonPanel";
+        buttonPanel.Padding = new Padding(8);
+        buttonPanel.Size = new Size(360, 52);
+        buttonPanel.TabIndex = 2;
+        buttonPanel.WrapContents = false;
+        // 
+        // cancelButton
+        // 
+        cancelButton.DialogResult = DialogResult.Cancel;
+        cancelButton.Location = new Point(248, 8);
+        cancelButton.Margin = new Padding(8, 0, 0, 0);
+        cancelButton.Name = "cancelButton";
+        cancelButton.Size = new Size(96, 36);
+        cancelButton.TabIndex = 0;
+        cancelButton.Text = "Cancel";
+        // 
+        // okButton
+        // 
+        okButton.DialogResult = DialogResult.OK;
+        okButton.Location = new Point(144, 8);
+        okButton.Margin = new Padding(8, 0, 0, 0);
+        okButton.Name = "okButton";
+        okButton.Size = new Size(96, 36);
+        okButton.TabIndex = 1;
+        okButton.Text = "OK";
+        // 
+        // RenameForm
+        // 
+        AcceptButton = okButton;
+        CancelButton = cancelButton;
+        ClientSize = new Size(360, 120);
         Controls.Add(nameLabel);
         Controls.Add(nameTextBox);
         Controls.Add(buttonPanel);
-
+        FormBorderStyle = FormBorderStyle.FixedDialog;
+        MaximizeBox = false;
+        MinimizeBox = false;
+        Name = "RenameForm";
+        ShowInTaskbar = false;
+        StartPosition = FormStartPosition.CenterParent;
+        Text = "Rename";
         buttonPanel.ResumeLayout(false);
         ResumeLayout(false);
         PerformLayout();

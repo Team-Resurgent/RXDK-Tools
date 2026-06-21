@@ -3,7 +3,7 @@ using Rxdk.XbShellExt.Ui;
 
 namespace Rxdk.XbShellExt.Ui.Controls.Wizard;
 
-public sealed partial class AddConsoleAccessDeniedPage : UserControl
+public sealed partial class AddConsoleAccessDeniedPage : AddConsoleWizardPageBase
 {
     public TextBox PasswordTextBox => passwordTextBox;
     public CheckBox PrivReadCheck => privReadCheck;
@@ -15,6 +15,9 @@ public sealed partial class AddConsoleAccessDeniedPage : UserControl
     public AddConsoleAccessDeniedPage()
     {
         InitializeComponent();
+        BindStatusLabel(statusLabel);
+        pageHeader.HeaderTitle = "This machine does not have access to the specified Xbox Development Kit.";
+        pageHeader.HeaderSubtitle = "If you know the Administrator password, you may give this machine access now.";
         DesignPreview.ApplyIfDesignTime(() => SetDesiredAccess(DesignPreview.SampleDesiredAccess));
     }
 

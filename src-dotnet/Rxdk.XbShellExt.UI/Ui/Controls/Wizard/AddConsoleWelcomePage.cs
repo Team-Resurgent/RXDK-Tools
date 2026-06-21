@@ -1,12 +1,11 @@
 namespace Rxdk.XbShellExt.Ui.Controls.Wizard;
 
-using Rxdk.XbShellExt.Ui.Controls;
-
-public sealed partial class AddConsoleWelcomePage : UserControl
+public sealed partial class AddConsoleWelcomePage : AddConsoleWizardPageBase
 {
     public AddConsoleWelcomePage()
     {
         InitializeComponent();
-        titleLabel.Font = ShellWizardChrome.CreateWizardTitleFont();
+        BindStatusLabel(statusLabel);
+        titleLabel.Font = WizardVisuals.CreateTitleFont();
     }
 }

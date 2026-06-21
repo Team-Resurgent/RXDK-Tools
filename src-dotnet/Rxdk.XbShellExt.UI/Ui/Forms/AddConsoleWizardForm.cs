@@ -1,5 +1,4 @@
 using Rxdk.XbShellExt.Ui;
-using Rxdk.XbShellExt.Ui.Controls;
 using Rxdk.XbShellExt.Ui.Controls.Wizard;
 using Rxdk.Xbdm;
 using Rxdk.Xbdm.KitServices.Models;
@@ -30,11 +29,13 @@ public sealed partial class AddConsoleWizardForm : ShellDialogForm
     private readonly AddConsoleMakeDefaultPage _makeDefaultPage = new();
     private readonly AddConsoleFinishPage _finishPage = new();
 
+    private IAddConsoleWizardPage? _currentPage;
+
     public AddConsoleWizardForm()
     {
         InitializeComponent();
         ApplyRuntimeChrome();
-        Font = ShellWizardChrome.CreateWizardBodyFont();
+        Font = WizardVisuals.CreateBodyFont();
 
         backButton.Click += (_, _) => GoBack();
         nextButton.Click += (_, _) => OnNext();
@@ -68,11 +69,8 @@ public sealed partial class AddConsoleWizardForm : ShellDialogForm
 
     private void ApplyDesignPreview()
     {
-        chrome.ShowInnerPageLayout(
-            "Specifying an Xbox Development Kit",
-            "The wizard needs to know which Xbox Development Kit to add.");
         _getNamePage.SetConsoleName(DesignPreview.SampleConsoleName);
-        chrome.ContentHost.Controls.Add(_getNamePage);
+        ShowPage(_getNamePage);
         backButton.Enabled = true;
         nextButton.Enabled = true;
     }
@@ -80,50 +78,41 @@ public sealed partial class AddConsoleWizardForm : ShellDialogForm
     private void ShowStep(WizardStep step)
     {
         _step = step;
-        statusLabel.Text = string.Empty;
-        statusLabel.Padding = new Padding(
-            step is WizardStep.Welcome or WizardStep.Finish ? ShellWizardChrome.BannerWidth + 12 : 12,
-            0,
-            12,
-            4);
-        chrome.ContentHost.Controls.Clear();
 
         switch (step)
         {
         case WizardStep.Welcome:
-            chrome.ShowWelcomeOrFinishLayout();
-            chrome.ContentHost.Controls.Add(_welcomePage);
+            ShowPage(_welcomePage);
             break;
         case WizardStep.GetName:
-            chrome.ShowInnerPageLayout(
-                "Specifying an Xbox Development Kit",
-                "The wizard needs to know which Xbox Development Kit to add.");
             _getNamePage.SetConsoleName(_state.ConsoleName);
-            chrome.ContentHost.Controls.Add(_getNamePage);
+            ShowPage(_getNamePage);
             break;
         case WizardStep.AccessDenied:
-            chrome.ShowInnerPageLayout(
-                "This machine does not have access to the specified Xbox Development Kit.",
-                "If you know the Administrator password, you may give this machine access now.");
             _accessDeniedPage.SetDesiredAccess(_state.DesiredAccess);
-            chrome.ContentHost.Controls.Add(_accessDeniedPage);
+            ShowPage(_accessDeniedPage);
             break;
         case WizardStep.MakeDefault:
-            chrome.ShowInnerPageLayout(
-                "Choosing this Xbox as default.",
-                "The default Xbox is used by Visual Studio, and other Xbox development tools.");
             _makeDefaultPage.SetPrompt(_state.ConsoleName);
             _makeDefaultPage.SetMakeDefault(_state.MakeDefault);
-            chrome.ContentHost.Controls.Add(_makeDefaultPage);
+            ShowPage(_makeDefaultPage);
             break;
         case WizardStep.Finish:
-            chrome.ShowWelcomeOrFinishLayout();
             PopulateFinishPage();
-            chrome.ContentHost.Controls.Add(_finishPage);
+            ShowPage(_finishPage);
             break;
         }
 
         UpdateWizardButtons();
+    }
+
+    private void ShowPage(AddConsoleWizardPageBase page)
+    {
+        _currentPage = page;
+        page.ClearStatus();
+        pageHost.Controls.Clear();
+        page.Dock = DockStyle.Fill;
+        pageHost.Controls.Add(page);
     }
 
     private void PopulateFinishPage()
@@ -207,7 +196,7 @@ public sealed partial class AddConsoleWizardForm : ShellDialogForm
                 _state.ConsoleName = _getNamePage.NameTextBox.Text?.Trim() ?? "";
                 if (string.IsNullOrWhiteSpace(_state.ConsoleName))
                 {
-                    statusLabel.Text = "Enter a console name or IP address.";
+                    _currentPage?.SetStatus("Enter a console name or IP address.");
                     UpdateWizardButtons();
                     return;
                 }
@@ -255,7 +244,7 @@ public sealed partial class AddConsoleWizardForm : ShellDialogForm
         }
         catch (Exception ex)
         {
-            statusLabel.Text = ex.Message;
+            _currentPage?.SetStatus(ex.Message);
         }
     }
 
