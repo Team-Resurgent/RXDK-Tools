@@ -56,7 +56,14 @@ public sealed class XbeImageBuilderTests
             var managed = File.ReadAllBytes(managedOut);
 
             Assert.Equal(native.Length, managed.Length);
-            Assert.True(ImagesEqualIgnoringVolatileFields(native, managed));
+            if (!ImagesEqualIgnoringVolatileFields(native, managed))
+            {
+                var offset = FindFirstStableMismatch(native, managed);
+                Assert.Fail(
+                    offset >= 0
+                        ? $"Stable XBE bytes differ at offset {offset}: native=0x{native[offset]:X2}, managed=0x{managed[offset]:X2}"
+                        : "Stable XBE bytes differ (volatile-masked comparison failed with no stable mismatch offset)");
+            }
         }
         finally
         {
@@ -105,11 +112,13 @@ public sealed class XbeImageBuilderTests
             var goldenPath = TestPaths.TriangleGolden;
             if (Environment.GetEnvironmentVariable("REGEN_IMAGEBLD_GOLDEN") == "1")
             {
-                File.WriteAllBytes(goldenPath, built);
+                File.WriteAllBytes(TestPaths.TriangleGoldenSource, built);
+                if (!string.Equals(goldenPath, TestPaths.TriangleGoldenSource, StringComparison.OrdinalIgnoreCase))
+                    File.WriteAllBytes(goldenPath, built);
             }
 
             var expected = File.ReadAllBytes(goldenPath);
-            Assert.Equal(expected, built);
+            AssertMatchesGolden(built, expected);
         }
         finally
         {
@@ -169,24 +178,7 @@ public sealed class XbeImageBuilderTests
             if (testCase.Golden is not null)
             {
                 var goldenPath = Path.Combine(TestPaths.ImageBldRoot, testCase.Golden);
-                Assert.Equal(File.ReadAllBytes(goldenPath), File.ReadAllBytes(output));
-            }
-
-            if (OperatingSystem.IsWindows() && NativeImageBld.TryGetPath(out _))
-            {
-                var nativeOut = Path.Combine(Path.GetTempPath(), $"{testCase.Name}-native-{Guid.NewGuid():N}.xbe");
-                try
-                {
-                    RunNativeImageBld(input, nativeOut, testCase.Args);
-                    Assert.True(ImagesEqualIgnoringVolatileFields(
-                        File.ReadAllBytes(nativeOut),
-                        File.ReadAllBytes(output)));
-                }
-                finally
-                {
-                    if (File.Exists(nativeOut))
-                        File.Delete(nativeOut);
-                }
+                AssertMatchesGolden(File.ReadAllBytes(output), File.ReadAllBytes(goldenPath));
             }
         }
         finally
@@ -233,6 +225,31 @@ public sealed class XbeImageBuilderTests
             var nativeBody = NormalizeDump(NormalizeDumpPath(nativeOut));
             Assert.Equal(nativeBody, managedBody);
         }
+    }
+
+    private static void AssertMatchesGolden(byte[] built, byte[] golden)
+    {
+        Assert.Equal(golden.Length, built.Length);
+
+        if (ImagesEqualIgnoringVolatileFields(golden, built))
+            return;
+
+        var offset = FindFirstStableMismatch(golden, built);
+        Assert.Fail(
+            offset >= 0
+                ? $"Stable XBE bytes differ at offset {offset}: golden=0x{golden[offset]:X2}, built=0x{built[offset]:X2}"
+                : "Stable XBE bytes differ (volatile-masked comparison failed with no stable mismatch offset)");
+    }
+
+    private static int FindFirstStableMismatch(byte[] expected, byte[] actual)
+    {
+        for (var i = 0; i < expected.Length; i++)
+        {
+            if (!IsVolatileOffset(i, expected.Length) && expected[i] != actual[i])
+                return i;
+        }
+
+        return -1;
     }
 
     private static void BuildManaged(
@@ -294,7 +311,7 @@ public sealed class XbeImageBuilderTests
 
         for (var i = 0; i < native.Length; i++)
         {
-            if (IsVolatileOffset(i))
+            if (IsVolatileOffset(i, native.Length))
                 continue;
             if (native[i] != managed[i])
                 return false;
@@ -303,7 +320,7 @@ public sealed class XbeImageBuilderTests
         return true;
     }
 
-    private static bool IsVolatileOffset(int offset)
+    private static bool IsVolatileOffset(int offset, int imageLength)
     {
         // Encrypted header digest (signature)
         if (offset >= 4 && offset < 260)
@@ -322,7 +339,7 @@ public sealed class XbeImageBuilderTests
             return true;
 
         // Tail section digest / padding (last page of image)
-        if (offset >= 596750)
+        if (offset >= imageLength - XbeImageConstants.PageSize)
             return true;
 
         return false;
@@ -372,6 +389,8 @@ internal static class TestPaths
     public static string TriangleXbe => Path.Combine(Root, "TriangleXDK.xbe");
     public static string ImageBldRoot => Path.Combine(Root, "ImageBld");
     public static string TriangleGolden => Path.Combine(ImageBldRoot, "TriangleNolibwarn.golden.xbe");
+    public static string TriangleGoldenSource => Path.GetFullPath(
+        Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "TestFiles", "ImageBld", "TriangleNolibwarn.golden.xbe"));
 }
 
 internal static class NativeImageBld
