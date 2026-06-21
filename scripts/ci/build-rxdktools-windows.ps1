@@ -1,9 +1,8 @@
-# Build RXDKTools.sln (Release|x64) and stage *.exe for CI artifacts.
+# Build RXDKNeighborhood.sln (Release|x64) and stage installer + managed tool artifacts for CI.
 param(
     [string]$Configuration = 'Release',
     [string]$Platform = 'x64',
-    [string]$Solution = 'RXDKTools.sln',
-    [string]$ArtifactDir = 'artifacts/rxdk-tools'
+    [string]$Solution = 'RXDKNeighborhood.sln'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -69,44 +68,7 @@ Write-Host "Building $Solution ($Configuration|$Platform)..."
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 $binDir = Join-Path $repoRoot "out\bin\$Platform\$Configuration"
-if (-not (Test-Path -LiteralPath $binDir)) {
-    throw "Output directory not found: $binDir"
-}
-
-$stagingDir = Join-Path $repoRoot $ArtifactDir
-if (Test-Path -LiteralPath $stagingDir) {
-    Remove-Item -LiteralPath $stagingDir -Recurse -Force
-}
-New-Item -ItemType Directory -Force -Path $stagingDir | Out-Null
-
-$exes = @(Get-ChildItem -Path $binDir -Filter '*.exe' -File)
-if ($exes.Count -eq 0) {
-    throw "No .exe files found in $binDir"
-}
-
-$exes | Copy-Item -Destination $stagingDir -Force
-
-$bridgeProject = Join-Path $repoRoot 'src-dotnet\Rxdk.XboxDbgBridge\Rxdk.XboxDbgBridge.csproj'
-if (Test-Path -LiteralPath $bridgeProject) {
-    Write-Host ''
-    Write-Host "Publishing managed xboxdbg-bridge ($Configuration|win-x64)..."
-    dotnet publish $bridgeProject `
-        -c $Configuration `
-        -r win-x64 `
-        --self-contained true `
-        -p:PublishSingleFile=true `
-        -p:IncludeNativeLibrariesForSelfExtract=true `
-        -o $stagingDir
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-    Copy-Item -Path (Join-Path $stagingDir 'xboxdbg-bridge.exe') -Destination $binDir -Force
-}
-
-Write-Host ''
-Write-Host "Staged $($exes.Count) executable(s) in $stagingDir"
-Get-ChildItem -Path $stagingDir -Filter '*.exe' -File |
-    Sort-Object Name |
-    ForEach-Object { Write-Host ("  {0,-28} {1,12:N0} bytes" -f $_.Name, $_.Length) }
+New-Item -ItemType Directory -Force -Path $binDir | Out-Null
 
 Write-Host ''
 Write-Host 'Building Xbox Neighborhood installer...'
