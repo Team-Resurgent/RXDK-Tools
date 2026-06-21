@@ -6,12 +6,16 @@ namespace Rxdk.XbWatson.Dialogs;
 
 public partial class AssertDialog : Window
 {
-    private readonly WatsonAssertEvent _event;
+    private readonly WatsonAssertEvent _event = null!;
 
-    public AssertDialog(WatsonAssertEvent evt)
+    public AssertDialog()
+    {
+        InitializeComponent();
+    }
+
+    public AssertDialog(WatsonAssertEvent evt) : this()
     {
         _event = evt;
-        InitializeComponent();
         var display = WatsonAssertParser.Parse(evt.AssertText, evt.LaunchPath);
         Title = $"Xbox Assertion Failed - {Path.GetFileName(display.TitleProgram)} [{evt.ConsoleName}]";
 

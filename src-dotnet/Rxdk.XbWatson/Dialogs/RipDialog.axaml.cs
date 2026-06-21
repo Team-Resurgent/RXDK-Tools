@@ -6,14 +6,18 @@ namespace Rxdk.XbWatson.Dialogs;
 
 public partial class RipDialog : Window
 {
-    private readonly WatsonRipEvent _event;
-    private readonly Func<uint, uint, uint, bool, uint, string?, Task<bool>> _saveDump;
+    private readonly WatsonRipEvent _event = null!;
+    private readonly Func<uint, uint, uint, bool, uint, string?, Task<bool>> _saveDump = null!;
 
-    public RipDialog(WatsonRipEvent evt, Func<uint, uint, uint, bool, uint, string?, Task<bool>> saveDump)
+    public RipDialog()
+    {
+        InitializeComponent();
+    }
+
+    public RipDialog(WatsonRipEvent evt, Func<uint, uint, uint, bool, uint, string?, Task<bool>> saveDump) : this()
     {
         _event = evt;
         _saveDump = saveDump;
-        InitializeComponent();
         Title = $"An exception has occurred [{evt.ConsoleName}]";
         CaptionText.Text = "A fatal error has occurred on the Xbox";
         BodyText.Text = $"A RIP error has occurred on the Xbox\nThe error description was: {evt.RipText}";

@@ -13,17 +13,21 @@ namespace Rxdk.XbWatson;
 public partial class MainWindow : Window, IWatsonEventSink
 {
     private readonly WatsonLogBuffer _logBuffer = new();
-    private readonly WatsonSession _session;
-    private readonly string _consoleName;
+    private readonly WatsonSession _session = null!;
+    private readonly string _consoleName = null!;
     private readonly object _logGate = new();
-    private readonly DispatcherTimer _logFlushTimer;
+    private readonly DispatcherTimer _logFlushTimer = null!;
     private bool _logDirty;
 
-    public MainWindow(string consoleName)
+    public MainWindow()
+    {
+        InitializeComponent();
+    }
+
+    public MainWindow(string consoleName) : this()
     {
         _consoleName = consoleName;
         _session = new WatsonSession(this);
-        InitializeComponent();
         Title = $"xbWatson - Log Window [{_consoleName}]";
 
         _logFlushTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(50) };

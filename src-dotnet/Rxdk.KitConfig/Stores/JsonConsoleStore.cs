@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Runtime.Versioning;
 using Microsoft.Win32;
 using Rxdk.KitConfig.Models;
 using Rxdk.Xbdm.Managed;
@@ -141,9 +142,16 @@ public class JsonConsoleStore : IConsoleStore
 
     internal ConsoleRegistryData TryMigrateFromLegacyRegistry()
     {
-        var data = new ConsoleRegistryData();
         if (!OperatingSystem.IsWindows())
-            return data;
+            return new ConsoleRegistryData();
+
+        return TryMigrateFromLegacyRegistryWindows();
+    }
+
+    [SupportedOSPlatform("windows")]
+    private static ConsoleRegistryData TryMigrateFromLegacyRegistryWindows()
+    {
+        var data = new ConsoleRegistryData();
 
         try
         {

@@ -1,3 +1,4 @@
+using System.Runtime.Versioning;
 using Rxdk.KitConfig.Models;
 using Rxdk.KitConfig.Stores;
 
@@ -34,6 +35,7 @@ public sealed class KitConfigProvider
         return new KitConfigProvider(jsonStore, new JsonConsoleAddressStore(jsonStore));
     }
 
+    [SupportedOSPlatform("windows")]
     private static void MigrateJsonToRegistryIfNeeded(
         RegistryConsoleStore registryConsoles,
         RegistryConsoleAddressStore registryAddresses)
