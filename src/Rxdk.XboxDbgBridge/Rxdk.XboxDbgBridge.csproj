@@ -9,7 +9,7 @@
     <IsPackable>true</IsPackable>
     <PackageId>Rxdk.XboxDbgBridge</PackageId>
     <Title>RXDK Xbox Debug Bridge</Title>
-    <Description>Cross-platform xboxdbg-bridge executables (win-x64, linux-x64, osx-arm64) for original Xbox kit debugging via stdin/JSON. For VS Code DAP and editor integration. PDB/stack/locals require Windows.</Description>
+    <Description>Cross-platform xboxdbg-bridge executables (win-x64, linux-x64, osx-x64, osx-arm64) for original Xbox kit debugging via stdin/JSON. For VS Code DAP and editor integration. PDB/stack/locals require Windows.</Description>
     <PackageTags>xbox;xdk;xbdm;debug;dap;vscode;xboxdbg-bridge</PackageTags>
     <Version>0.1.0</Version>
     <!-- Tool-only NuGet: framework-dependent single-file bridge binaries, no library reference needed. -->

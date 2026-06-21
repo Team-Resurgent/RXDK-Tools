@@ -195,6 +195,7 @@ powershell -File scripts/stage-managed-tools-package.ps1 -Runtime win-x64
 ```bash
 ./scripts/stage-managed-tools-package.sh linux-x64
 ./scripts/stage-managed-tools-package.sh osx-arm64
+./scripts/stage-managed-tools-package.sh osx-x64
 ```
 
 ```powershell
@@ -204,13 +205,14 @@ powershell -File scripts/publish-managed-cli-tools.ps1 -Runtime win-x64
 # Linux / macOS
 ./scripts/publish-managed-cli-tools.sh linux-x64
 ./scripts/publish-managed-cli-tools.sh osx-arm64
+./scripts/publish-managed-cli-tools.sh osx-x64
 ```
 
 Output: `out/publish/managed-cli-tools-<runtime>/` (one executable per tool; requires **.NET 8 runtime**).
 
 ### Rxdk.XboxDbgBridge (NuGet)
 
-Tool-only **`Rxdk.XboxDbgBridge`** NuGet package: framework-dependent single-file **`xboxdbg-bridge`** binaries for **win-x64**, **linux-x64**, and **osx-arm64** under `tools/<rid>/` (stdin/JSON protocol for VS Code DAP). No library reference — spawn the executable. Requires the **.NET 8 runtime**. PDB/stack/locals require **Windows**; kit control is cross-platform.
+Tool-only **`Rxdk.XboxDbgBridge`** NuGet package: framework-dependent single-file **`xboxdbg-bridge`** binaries for **win-x64**, **linux-x64**, **osx-x64**, and **osx-arm64** under `tools/<rid>/` (stdin/JSON protocol for VS Code DAP). No library reference — spawn the executable. Requires the **.NET 8 runtime**. PDB/stack/locals require **Windows**; kit control is cross-platform.
 
 ```bash
 dotnet pack src/Rxdk.XboxDbgBridge/Rxdk.XboxDbgBridge.csproj -c Release -o out/publish/nuget

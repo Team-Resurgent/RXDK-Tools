@@ -8,7 +8,8 @@ This package ships **framework-dependent single-file executables** — no librar
 |-----|-----------------|
 | Windows x64 | `tools/win-x64/xboxdbg-bridge.exe` |
 | Linux x64 | `tools/linux-x64/xboxdbg-bridge` |
-| macOS arm64 | `tools/osx-arm64/xboxdbg-bridge` |
+| macOS x64 (Intel) | `tools/osx-x64/xboxdbg-bridge` |
+| macOS arm64 (Apple Silicon) | `tools/osx-arm64/xboxdbg-bridge` |
 
 MSBuild imports `build/Rxdk.XboxDbgBridge.props`, which sets `$(RxdkXboxDbgBridgeExe)` to the matching binary.
 
