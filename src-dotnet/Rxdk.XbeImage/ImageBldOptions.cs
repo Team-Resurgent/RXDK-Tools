@@ -84,6 +84,9 @@ public sealed class ImageBldOptions
     /// <summary>When set, overrides the image header timestamp (for deterministic tests).</summary>
     public uint? FixedTimeDateStamp { get; set; }
 
+    /// <summary>When set, embeds this path in debug headers instead of the resolved input path (for cross-platform golden tests).</summary>
+    public string? CanonicalDebugSourcePath { get; set; }
+
     public bool ShowUsage { get; set; }
 
     private static byte[] DefaultTestKey()

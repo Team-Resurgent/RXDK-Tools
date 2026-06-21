@@ -48,6 +48,7 @@ public sealed class XbeImageBuilder
         private readonly string _outputPath;
         private byte[] _inputImage = Array.Empty<byte>();
         private string _inputFullPath = string.Empty;
+        private string _debugSourcePath = string.Empty;
         private string _inputFilePart = string.Empty;
         private FileStream? _outputStream;
         private ImageNtHeaders32 _ntHeaders;
@@ -74,7 +75,10 @@ public sealed class XbeImageBuilder
         public void OpenInputOutputFiles()
         {
             _inputFullPath = Path.GetFullPath(_inputPath);
-            _inputFilePart = Path.GetFileName(_inputFullPath);
+            _debugSourcePath = string.IsNullOrWhiteSpace(_options.CanonicalDebugSourcePath)
+                ? _inputFullPath
+                : _options.CanonicalDebugSourcePath;
+            _inputFilePart = Path.GetFileName(_debugSourcePath);
             _inputImage = File.ReadAllBytes(_inputFullPath);
             _outputStream = new FileStream(_outputPath, FileMode.Create, FileAccess.ReadWrite, FileShare.None);
         }
@@ -432,7 +436,7 @@ public sealed class XbeImageBuilder
         private void AddDebugPaths()
         {
             _xbe.DebugPathsHeader.VirtualSize =
-                (uint)((_inputFullPath.Length + 1) * sizeof(byte) + (_inputFilePart.Length + 1) * sizeof(char));
+                (uint)((_debugSourcePath.Length + 1) * sizeof(byte) + (_inputFilePart.Length + 1) * sizeof(char));
             _xbe.Headers.Add(_xbe.DebugPathsHeader);
         }
 
@@ -568,7 +572,7 @@ public sealed class XbeImageBuilder
                 _xbe.ImageHeader.DebugPathName = _xbe.DebugPathsHeader.VirtualAddress +
                                                  (uint)((_inputFilePart.Length + 1) * sizeof(char));
                 _xbe.ImageHeader.DebugFileName = _xbe.ImageHeader.DebugPathName +
-                                                 (uint)(_inputFullPath.Length - _inputFilePart.Length);
+                                                 (uint)(_debugSourcePath.Length - _inputFilePart.Length);
             }
 
             if (_xbe.MicrosoftLogoHeader.VirtualSize != 0)
@@ -802,7 +806,7 @@ public sealed class XbeImageBuilder
             }
 
             WriteOutputFile(MemoryMarshal.AsBytes(fileNameUnicode.AsSpan()));
-            WriteOutputFile(Encoding.ASCII.GetBytes(_inputFullPath + "\0"));
+            WriteOutputFile(Encoding.ASCII.GetBytes(_debugSourcePath + "\0"));
         }
 
         internal void WriteMicrosoftLogoHeader() =>

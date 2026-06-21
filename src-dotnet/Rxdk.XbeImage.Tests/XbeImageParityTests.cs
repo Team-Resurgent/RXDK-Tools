@@ -263,8 +263,7 @@ public sealed class XbeImageBuilderTests
             var argv = new List<string> { $"/IN:{pe}", $"/OUT:{output}" };
             argv.AddRange(extraArgs);
             var parsedOptions = ImageBldOptionsParser.Parse(argv.ToArray(), expandLegacyArgv: false);
-            if (fixedTimestamp is not null)
-                parsedOptions.FixedTimeDateStamp = fixedTimestamp;
+            ApplyDeterministicTestOptions(parsedOptions, fixedTimestamp);
             new XbeImageBuilder().Build(parsedOptions);
             return;
         }
@@ -276,7 +275,15 @@ public sealed class XbeImageBuilderTests
             NoWarnLibraryApproval = true,
             FixedTimeDateStamp = fixedTimestamp,
         };
+        ApplyDeterministicTestOptions(options, fixedTimestamp);
         new XbeImageBuilder().Build(options);
+    }
+
+    private static void ApplyDeterministicTestOptions(ImageBldOptions options, uint? fixedTimestamp)
+    {
+        options.CanonicalDebugSourcePath = TestPaths.CanonicalDebugSourcePath;
+        if (fixedTimestamp is not null)
+            options.FixedTimeDateStamp = fixedTimestamp;
     }
 
     private static void RunNativeImageBld(string pe, string output, IReadOnlyList<string>? extraArgs = null)
@@ -391,6 +398,7 @@ internal static class TestPaths
     public static string TriangleGolden => Path.Combine(ImageBldRoot, "TriangleNolibwarn.golden.xbe");
     public static string TriangleGoldenSource => Path.GetFullPath(
         Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "TestFiles", "ImageBld", "TriangleNolibwarn.golden.xbe"));
+    public const string CanonicalDebugSourcePath = "C:\\TriangleXDK.exe";
 }
 
 internal static class NativeImageBld
