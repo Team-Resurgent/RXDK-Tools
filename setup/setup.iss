@@ -72,36 +72,10 @@ Source: "{#PayloadDir}/console.ico"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#PayloadDir}/xbox.ico"; DestDir: "{app}"; Flags: ignoreversion
 
 [Registry]
-; CC44 namespace shell extension (native proxy)
-Root: HKCR; Subkey: "CLSID\{{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}}"; ValueType: string; ValueName: ""; ValueData: "Xbox Neighborhood"; Flags: uninsdeletekey
-Root: HKCR; Subkey: "CLSID\{{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}}"; ValueType: string; ValueName: "ProgID"; ValueData: "Shellext.XboxFolder.1"
-Root: HKCR; Subkey: "CLSID\{{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}}"; ValueType: string; ValueName: "VersionIndependentProgID"; ValueData: "Shellext.XboxFolder"
-Root: HKCR; Subkey: "CLSID\{{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}}"; ValueType: dword; ValueName: "System.IsPinnedToNameSpaceTree"; ValueData: "1"
-Root: HKCR; Subkey: "CLSID\{{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}}"; ValueType: dword; ValueName: "SortOrderIndex"; ValueData: "$50"
-Root: HKCR; Subkey: "CLSID\{{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}}\InprocServer32"; ValueType: string; ValueName: ""; ValueData: "{app}\Rxdk.XbShellExt.Shell.dll"
-Root: HKCR; Subkey: "CLSID\{{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}}\InprocServer32"; ValueType: string; ValueName: "ThreadingModel"; ValueData: "Apartment"
-Root: HKCR; Subkey: "CLSID\{{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}}\ShellFolder"; ValueType: dword; ValueName: "Attributes"; ValueData: "$a0000004"
-Root: HKCR; Subkey: "CLSID\{{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}}\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\xbox.ico"
-
-Root: HKCR; Subkey: "Shellext.XboxFolder.1"; ValueType: string; ValueName: ""; ValueData: "Xbox Neighborhood"; Flags: uninsdeletekey
-Root: HKCR; Subkey: "Shellext.XboxFolder.1"; ValueType: string; ValueName: "CLSID"; ValueData: "{#ClsidPublicBraced}"
-
-Root: HKCR; Subkey: "Shellext.XboxFolder"; ValueType: string; ValueName: ""; ValueData: "Xbox Neighborhood"; Flags: uninsdeletekey
-Root: HKCR; Subkey: "Shellext.XboxFolder"; ValueType: string; ValueName: "CLSID"; ValueData: "{#ClsidPublicBraced}"
-Root: HKCR; Subkey: "Shellext.XboxFolder"; ValueType: string; ValueName: "CurVer"; ValueData: "Shellext.XboxFolder.1"
-
-Root: HKCR; Subkey: "xbox"; ValueType: string; ValueName: ""; ValueData: "URL:Xbox Namespace Extension"; Flags: uninsdeletekey
-Root: HKCR; Subkey: "xbox"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""
-Root: HKCR; Subkey: "xbox\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{sys}\rundll32.exe"" ""{app}\Rxdk.XbShellExt.Shell.dll"",LaunchExplorer %1"
-
-Root: HKLM; Subkey: "Software\Microsoft\Windows\CurrentVersion\Explorer\Desktop\NameSpace\{{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}}"; ValueType: string; ValueName: ""; ValueData: "Xbox Neighborhood"; Flags: uninsdeletekey
-Root: HKLM; Subkey: "Software\Microsoft\Windows\CurrentVersion\Explorer\MyComputer\NameSpace\{{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}}"; ValueType: string; ValueName: ""; ValueData: "Xbox Neighborhood"; Flags: uninsdeletekey
-Root: HKLM; Subkey: "Software\Microsoft\Windows\CurrentVersion\Shell Extensions\Approved"; ValueType: string; ValueName: "{#ClsidPublicGuid}"; ValueData: "Xbox Namespace Shell Extension"; Flags: uninsdeletevalue
-
-; CC45 managed coclass (also registered by regsvr32 on comhost.dll)
-Root: HKCR; Subkey: "CLSID\{{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC45}}"; ValueType: string; ValueName: ""; ValueData: "Xbox Neighborhood (Managed)"; Flags: uninsdeletekey
-Root: HKCR; Subkey: "CLSID\{{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC45}}\InprocServer32"; ValueType: string; ValueName: ""; ValueData: "{app}\Rxdk.XbShellExt.comhost.dll"
-Root: HKCR; Subkey: "CLSID\{{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC45}}\InprocServer32"; ValueType: string; ValueName: "ThreadingModel"; ValueData: "Apartment"
+; Shell extension COM registration is performed in code (RegisterShellExtension) using the
+; native 64-bit registry view (HKCR64/HKLM64/HKCU64). Do not duplicate CC44/CC45 keys here:
+; a 32-bit installer process writing plain HKCR can land under Wow6432Node, which 64-bit
+; Explorer does not use for InprocServer32 — the exact failure seen on Windows 10.
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{sys}\rundll32.exe"; Parameters: """{app}\Rxdk.XbShellExt.Shell.dll"",OpenNamespace"; WorkingDir: "{app}"; IconFilename: "{app}\xbox.ico"
@@ -206,14 +180,33 @@ end;
 
 function VerifyNamespaceProxyRegistration: Boolean;
 var
-  Path: String;
+  Path, WowPath, LegacyPath: String;
 begin
+  Path := '';
+  WowPath := '';
+  LegacyPath := '';
+
   Result :=
-    RegQueryStringValue(HKCR, ClsidPublicInprocKey, '', Path) and
+    RegQueryStringValue(HKCR64, ClsidPublicInprocKey, '', Path) and
     (Path <> '') and
     FileExists(Path);
-  if not Result then
-    Log('CC44 namespace proxy is missing or points to a non-existent file: ' + Path);
+
+  if Result then
+  begin
+    Log('CC44 namespace proxy verified in native 64-bit registry: ' + Path);
+    Exit;
+  end;
+
+  if RegQueryStringValue(HKCR, ClsidPublicInprocKey, '', LegacyPath) and (LegacyPath <> '') then
+    Log('CC44 InprocServer32 found in 32-bit HKCR view (not used by 64-bit Explorer): ' + LegacyPath);
+
+  if RegQueryStringValue(HKCR, 'Wow6432Node\' + ClsidPublicInprocKey, '', WowPath) and (WowPath <> '') then
+    Log('CC44 InprocServer32 found under Wow6432Node (not used by 64-bit Explorer): ' + WowPath);
+
+  if (Path <> '') and not FileExists(Path) then
+    Log('CC44 InprocServer32 path does not exist: ' + Path)
+  else
+    Log('CC44 InprocServer32 is missing from native 64-bit HKCR.');
 end;
 
 function DotNetDesktopSharedDir: String;
@@ -427,6 +420,10 @@ end;
 
 procedure CleanupErroneousShellOpenKeys;
 begin
+  if RegKeyExists(HKCR64, ClsidPublicShellKey) then
+    RegDeleteKeyIncludingSubkeys(HKCR64, ClsidPublicShellKey);
+  if RegKeyExists(HKCR64, 'Shellext.XboxFolder.1\shell') then
+    RegDeleteKeyIncludingSubkeys(HKCR64, 'Shellext.XboxFolder.1\shell');
   if RegKeyExists(HKCR, ClsidPublicShellKey) then
     RegDeleteKeyIncludingSubkeys(HKCR, ClsidPublicShellKey);
   if RegKeyExists(HKCR, 'Shellext.XboxFolder.1\shell') then
@@ -439,39 +436,61 @@ var
   ExplorerClsidKey: String;
 begin
   ExplorerClsidKey := 'Software\Microsoft\Windows\CurrentVersion\Explorer\CLSID\{{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}}';
-  if RegQueryDWordValue(HKCU, ExplorerClsidKey + '\ShellFolder', 'Attributes', Attrs) then
+  if RegQueryDWordValue(HKCU64, ExplorerClsidKey + '\ShellFolder', 'Attributes', Attrs) then
   begin
     if (Attrs and $100000) <> 0 then
-      RegDeleteKeyIncludingSubkeys(HKCU, ExplorerClsidKey + '\ShellFolder');
+      RegDeleteKeyIncludingSubkeys(HKCU64, ExplorerClsidKey + '\ShellFolder');
   end
-  else if RegKeyExists(HKCU, ExplorerClsidKey + '\ShellFolder') then
-    RegDeleteKeyIncludingSubkeys(HKCU, ExplorerClsidKey + '\ShellFolder');
+  else if RegKeyExists(HKCU64, ExplorerClsidKey + '\ShellFolder') then
+    RegDeleteKeyIncludingSubkeys(HKCU64, ExplorerClsidKey + '\ShellFolder');
 end;
 
 procedure RegisterPerUserExplorerKeys(const ShellDllPath: String);
 begin
-  RegWriteStringValue(HKCU, UserClassesClsidKey, '', 'Xbox Neighborhood');
-  RegWriteDWordValue(HKCU, UserClassesClsidKey, 'System.IsPinnedToNameSpaceTree', 1);
-  RegWriteDWordValue(HKCU, UserClassesClsidKey, 'SortOrderIndex', $50);
-  RegWriteStringValue(HKCU, UserClassesClsidKey + '\InprocServer32', '', ShellDllPath);
-  RegWriteStringValue(HKCU, UserClassesClsidKey + '\InprocServer32', 'ThreadingModel', 'Apartment');
-  RegWriteStringValue(HKCU, UserDesktopNamespaceKey, '', 'Xbox Neighborhood');
-  RegWriteDWordValue(HKCU, HideDesktopIconsKey, PublicClsidBracedName, 1);
-  RegWriteDWordValue(HKCU, ExplorerAdvancedKey, 'NavPaneShowAllFolders', 1);
+  RegWriteStringValue(HKCU64, UserClassesClsidKey, '', 'Xbox Neighborhood');
+  RegWriteDWordValue(HKCU64, UserClassesClsidKey, 'System.IsPinnedToNameSpaceTree', 1);
+  RegWriteDWordValue(HKCU64, UserClassesClsidKey, 'SortOrderIndex', $50);
+  RegWriteStringValue(HKCU64, UserClassesClsidKey + '\InprocServer32', '', ShellDllPath);
+  RegWriteStringValue(HKCU64, UserClassesClsidKey + '\InprocServer32', 'ThreadingModel', 'Apartment');
+  RegWriteStringValue(HKCU64, UserDesktopNamespaceKey, '', 'Xbox Neighborhood');
+  RegWriteDWordValue(HKCU64, HideDesktopIconsKey, PublicClsidBracedName, 1);
+  RegWriteDWordValue(HKCU64, ExplorerAdvancedKey, 'NavPaneShowAllFolders', 1);
 end;
 
 procedure UnregisterPerUserExplorerKeys;
 begin
-  RegDeleteKeyIncludingSubkeys(HKCU, UserClassesClsidKey);
-  RegDeleteKeyIncludingSubkeys(HKCU, UserDesktopNamespaceKey);
-  RegDeleteValue(HKCU, HideDesktopIconsKey, PublicClsidBracedName);
+  RegDeleteKeyIncludingSubkeys(HKCU64, UserClassesClsidKey);
+  RegDeleteKeyIncludingSubkeys(HKCU64, UserDesktopNamespaceKey);
+  RegDeleteValue(HKCU64, HideDesktopIconsKey, PublicClsidBracedName);
 end;
 
 procedure RepairManagedShellExtensionRegistry(const ComHostPath: String);
 begin
-  RegWriteStringValue(HKCR, ManagedClsidKey, '', 'Xbox Neighborhood (Managed)');
-  RegWriteStringValue(HKCR, ManagedInprocKey, '', ComHostPath);
-  RegWriteStringValue(HKCR, ManagedInprocKey, 'ThreadingModel', 'Apartment');
+  RegWriteStringValue(HKCR64, ManagedClsidKey, '', 'Xbox Neighborhood (Managed)');
+  RegWriteStringValue(HKCR64, ManagedInprocKey, '', ComHostPath);
+  RegWriteStringValue(HKCR64, ManagedInprocKey, 'ThreadingModel', 'Apartment');
+end;
+
+procedure ClearShellExtensionRegistry;
+begin
+  RegDeleteKeyIncludingSubkeys(HKCR64, ClsidPublicRegKey);
+  RegDeleteKeyIncludingSubkeys(HKCR64, 'Shellext.XboxFolder.1');
+  RegDeleteKeyIncludingSubkeys(HKCR64, 'Shellext.XboxFolder');
+  RegDeleteKeyIncludingSubkeys(HKCR64, 'xbox');
+  RegDeleteKeyIncludingSubkeys(HKCR64, ManagedClsidKey);
+  RegDeleteValue(HKLM64, 'Software\Microsoft\Windows\CurrentVersion\Shell Extensions\Approved', '{#ClsidPublicGuid}');
+  RegDeleteKeyIncludingSubkeys(HKLM64, DesktopNamespaceKey);
+  RegDeleteKeyIncludingSubkeys(HKLM64, MyComputerNamespaceKey);
+  { Remove stale 32-bit view registrations from older installers. }
+  RegDeleteKeyIncludingSubkeys(HKCR, ClsidPublicRegKey);
+  RegDeleteKeyIncludingSubkeys(HKCR, 'Shellext.XboxFolder.1');
+  RegDeleteKeyIncludingSubkeys(HKCR, 'Shellext.XboxFolder');
+  RegDeleteKeyIncludingSubkeys(HKCR, 'xbox');
+  RegDeleteKeyIncludingSubkeys(HKCR, ManagedClsidKey);
+  if RegKeyExists(HKCR, 'Wow6432Node\' + ClsidPublicRegKey) then
+    RegDeleteKeyIncludingSubkeys(HKCR, 'Wow6432Node\' + ClsidPublicRegKey);
+  if RegKeyExists(HKCR, 'Wow6432Node\' + ManagedClsidKey) then
+    RegDeleteKeyIncludingSubkeys(HKCR, 'Wow6432Node\' + ManagedClsidKey);
 end;
 
 procedure RepairShellExtensionRegistry(const InstallDir, ShellDllPath: String);
@@ -480,37 +499,37 @@ var
 begin
   ClsidValue := PublicClsidBracedName;
 
-  RegWriteStringValue(HKCR, ClsidPublicRegKey, '', 'Xbox Neighborhood');
-  RegWriteStringValue(HKCR, ClsidPublicRegKey, 'ProgID', 'Shellext.XboxFolder.1');
-  RegWriteStringValue(HKCR, ClsidPublicRegKey, 'VersionIndependentProgID', 'Shellext.XboxFolder');
-  RegWriteDWordValue(HKCR, ClsidPublicRegKey, 'System.IsPinnedToNameSpaceTree', 1);
-  RegWriteDWordValue(HKCR, ClsidPublicRegKey, 'SortOrderIndex', $50);
-  RegWriteStringValue(HKCR, ClsidPublicInprocKey, '', ShellDllPath);
-  RegWriteStringValue(HKCR, ClsidPublicInprocKey, 'ThreadingModel', 'Apartment');
-  RegWriteDWordValue(HKCR, ClsidPublicShellFolderKey, 'Attributes', $A0000004);
+  RegWriteStringValue(HKCR64, ClsidPublicRegKey, '', 'Xbox Neighborhood');
+  RegWriteStringValue(HKCR64, ClsidPublicRegKey, 'ProgID', 'Shellext.XboxFolder.1');
+  RegWriteStringValue(HKCR64, ClsidPublicRegKey, 'VersionIndependentProgID', 'Shellext.XboxFolder');
+  RegWriteDWordValue(HKCR64, ClsidPublicRegKey, 'System.IsPinnedToNameSpaceTree', 1);
+  RegWriteDWordValue(HKCR64, ClsidPublicRegKey, 'SortOrderIndex', $50);
+  RegWriteStringValue(HKCR64, ClsidPublicInprocKey, '', ShellDllPath);
+  RegWriteStringValue(HKCR64, ClsidPublicInprocKey, 'ThreadingModel', 'Apartment');
+  RegWriteDWordValue(HKCR64, ClsidPublicShellFolderKey, 'Attributes', $A0000004);
 
   IconPath := InstallDir + '\xbox.ico';
   if FileExists(IconPath) then
-    RegWriteStringValue(HKCR, ClsidPublicDefaultIconKey, '', IconPath)
+    RegWriteStringValue(HKCR64, ClsidPublicDefaultIconKey, '', IconPath)
   else
-    RegWriteStringValue(HKCR, ClsidPublicDefaultIconKey, '', ShellDllPath + ',13');
+    RegWriteStringValue(HKCR64, ClsidPublicDefaultIconKey, '', ShellDllPath + ',13');
 
-  RegWriteStringValue(HKCR, 'Shellext.XboxFolder.1', '', 'Xbox Neighborhood');
-  RegWriteStringValue(HKCR, 'Shellext.XboxFolder.1', 'CLSID', ClsidValue);
-  RegWriteStringValue(HKCR, 'Shellext.XboxFolder', '', 'Xbox Neighborhood');
-  RegWriteStringValue(HKCR, 'Shellext.XboxFolder', 'CLSID', ClsidValue);
-  RegWriteStringValue(HKCR, 'Shellext.XboxFolder', 'CurVer', 'Shellext.XboxFolder.1');
+  RegWriteStringValue(HKCR64, 'Shellext.XboxFolder.1', '', 'Xbox Neighborhood');
+  RegWriteStringValue(HKCR64, 'Shellext.XboxFolder.1', 'CLSID', ClsidValue);
+  RegWriteStringValue(HKCR64, 'Shellext.XboxFolder', '', 'Xbox Neighborhood');
+  RegWriteStringValue(HKCR64, 'Shellext.XboxFolder', 'CLSID', ClsidValue);
+  RegWriteStringValue(HKCR64, 'Shellext.XboxFolder', 'CurVer', 'Shellext.XboxFolder.1');
 
   CleanupErroneousShellOpenKeys;
 
-  RegWriteStringValue(HKLM, DesktopNamespaceKey, '', 'Xbox Neighborhood');
-  RegWriteStringValue(HKLM, MyComputerNamespaceKey, '', 'Xbox Neighborhood');
-  RegWriteStringValue(HKLM, 'Software\Microsoft\Windows\CurrentVersion\Shell Extensions\Approved', '{#ClsidPublicGuid}', 'Xbox Namespace Shell Extension');
+  RegWriteStringValue(HKLM64, DesktopNamespaceKey, '', 'Xbox Neighborhood');
+  RegWriteStringValue(HKLM64, MyComputerNamespaceKey, '', 'Xbox Neighborhood');
+  RegWriteStringValue(HKLM64, 'Software\Microsoft\Windows\CurrentVersion\Shell Extensions\Approved', '{#ClsidPublicGuid}', 'Xbox Namespace Shell Extension');
 
-  RegWriteStringValue(HKCR, 'xbox', '', 'URL:Xbox Namespace Extension');
-  RegWriteStringValue(HKCR, 'xbox', 'URL Protocol', '');
+  RegWriteStringValue(HKCR64, 'xbox', '', 'URL:Xbox Namespace Extension');
+  RegWriteStringValue(HKCR64, 'xbox', 'URL Protocol', '');
   XboxCommand := ExpandConstant('{sys}') + '\rundll32.exe' + ' "' + ShellDllPath + '",LaunchExplorer %1';
-  RegWriteStringValue(HKCR, XboxProtocolCommandKey, '', XboxCommand);
+  RegWriteStringValue(HKCR64, XboxProtocolCommandKey, '', XboxCommand);
 end;
 
 function ResolveComHostPath(const InstallDir: String): String;
@@ -541,6 +560,7 @@ begin
 
   StopExplorer;
   try
+    ClearShellExtensionRegistry;
     { CC44 is pure registry (Shell.dll DllRegisterServer is a no-op). Write it
       before regsvr32 so a comhost failure cannot leave the namespace missing. }
     RepairShellExtensionRegistry(InstallDir, ShellDll);
@@ -549,8 +569,8 @@ begin
 
     if not VerifyNamespaceProxyRegistration then
       RaiseException(
-        'The namespace shell extension proxy (CC44) was not registered. ' +
-        'Rxdk.XbShellExt.Shell.dll must be registered under HKCR\\CLSID\\' + PublicClsidBracedName + '\\InprocServer32.');
+        'The namespace shell extension proxy (CC44) was not registered in the native 64-bit registry. ' +
+        'Rxdk.XbShellExt.Shell.dll must be registered under HKCR64\\CLSID\\' + PublicClsidBracedName + '\\InprocServer32.');
 
     ResultCode := RunRegsvr32(ComHost, False);
     if ResultCode <> 0 then
@@ -577,6 +597,7 @@ begin
     ResultCode := RunRegsvr32(ComHost, True);
     if ResultCode <> 0 then
       Log(Regsvr32ErrorMessage('regsvr32 /u', ResultCode));
+    ClearShellExtensionRegistry;
   finally
     StartExplorer;
   end;
@@ -666,10 +687,18 @@ end;
 function GetRegisteredDllPath: String;
 begin
   Result := '';
-  if RegQueryStringValue(HKLM, ShellExtClsidKey, '', Result) then
+  if RegQueryStringValue(HKCR64, ClsidPublicInprocKey, '', Result) then
   begin
-    if not FileExists(Result) then
-      Result := '';
+    if FileExists(Result) then
+      Exit;
+    Result := '';
+  end;
+
+  if RegQueryStringValue(HKLM64, ShellExtClsidKey, '', Result) then
+  begin
+    if FileExists(Result) then
+      Exit;
+    Result := '';
   end;
 end;
 
