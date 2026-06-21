@@ -127,6 +127,13 @@ public sealed class XbCopyService
                 return;
         }
 
+        if (_options.EnsureDestDir && !PathExistsAsDirectory(dst))
+        {
+            var parent = ParentPath(dst);
+            if (parent is not null)
+                EnsureDirectory(parent);
+        }
+
         if (!_options.Quiet)
             Console.WriteLine($"{src.DisplayPath} => {dst.DisplayPath}");
 
@@ -302,5 +309,20 @@ public sealed class XbCopyService
             XbXboxFs.EnsureDirectoryTree(_session!.Connection, path);
         else
             XbLocalFs.EnsureDirectory(path);
+    }
+
+    private static XbPath? ParentPath(XbPath path)
+    {
+        if (path.IsXbox)
+        {
+            var wire = path.WirePath.TrimEnd('\\');
+            var idx = wire.LastIndexOf('\\');
+            if (idx <= 2)
+                return null;
+            return XbPath.Parse("x" + wire[..idx]);
+        }
+
+        var parent = Path.GetDirectoryName(path.LocalFullPath);
+        return parent is null ? null : XbPath.Parse(parent);
     }
 }
