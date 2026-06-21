@@ -78,7 +78,7 @@ public sealed class XbeImageBuilder
             _debugSourcePath = string.IsNullOrWhiteSpace(_options.CanonicalDebugSourcePath)
                 ? _inputFullPath
                 : _options.CanonicalDebugSourcePath;
-            _inputFilePart = Path.GetFileName(_debugSourcePath);
+            _inputFilePart = Path.GetFileName(_inputFullPath);
             _inputImage = File.ReadAllBytes(_inputFullPath);
             _outputStream = new FileStream(_outputPath, FileMode.Create, FileAccess.ReadWrite, FileShare.None);
         }
