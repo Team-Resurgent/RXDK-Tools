@@ -1,4 +1,4 @@
-# Publish single-file self-contained managed CLI tools to a flat tools directory.
+# Publish single-file framework-dependent managed CLI tools to a flat tools directory.
 param(
     [Parameter(Mandatory = $true)]
     [string]$Runtime,
@@ -32,7 +32,7 @@ try {
         $staging = Join-Path $tempRoot $tool.Name
         New-Item -ItemType Directory -Force -Path $staging | Out-Null
 
-        Write-Host "Publishing $($tool.Name) (single-file, $Runtime)..."
+        Write-Host "Publishing $($tool.Name) (single-file framework-dependent, $Runtime)..."
         dotnet publish $project -c Release -r $Runtime -o $staging
         if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
@@ -57,4 +57,4 @@ finally {
     }
 }
 
-Write-Host "Published $($cliTools.Count) single-file tools to: $toolsDir"
+Write-Host "Published $($cliTools.Count) single-file framework-dependent tools to: $toolsDir"

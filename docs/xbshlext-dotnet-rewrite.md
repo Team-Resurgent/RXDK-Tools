@@ -8,7 +8,7 @@ Explorer loads `Rxdk.XbShellExt.comhost.dll` (CLSID `{DB15FEDD-96B8-4DA9-97E0-7E
 |-------|---------|
 | COM namespace (`IShellFolder`, context menu) | `Rxdk.XbShellExt` |
 | Kit protocol + registry | `Rxdk.Xbdm.Managed`, `Rxdk.Xbdm.KitServices` |
-| Properties / browser helpers | `RXDKNeighborhood.Core` |
+| Properties / browser helpers | `Rxdk.XbNeighborhood.Core` |
 | UI | WinForms in-process (STA thread) |
 | Icons | `assets/shell/*.ico` |
 

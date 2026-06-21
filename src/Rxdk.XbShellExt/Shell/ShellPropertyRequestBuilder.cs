@@ -1,11 +1,11 @@
-using RXDKNeighborhood.Core.Models;
+using Rxdk.XbNeighborhood.Core.Models;
 using Rxdk.Xbdm.KitServices.Services;
 
 namespace Rxdk.XbShellExt.Shell;
 
 internal static class ShellPropertyRequestBuilder
 {
-    public static RXDKNeighborhood.Core.Services.PropertyRequest? BuildPropertyRequest(string folderPath, IReadOnlyList<string> selectionPaths)
+    public static Rxdk.XbNeighborhood.Core.Services.PropertyRequest? BuildPropertyRequest(string folderPath, IReadOnlyList<string> selectionPaths)
     {
         if (selectionPaths.Count == 0)
             return null;
@@ -20,7 +20,7 @@ internal static class ShellPropertyRequestBuilder
 
             if (self.Kind == XboxItemKind.Console)
             {
-                return RXDKNeighborhood.Core.Services.PropertyRequest.FromSelection(
+                return Rxdk.XbNeighborhood.Core.Services.PropertyRequest.FromSelection(
                     targetConsole,
                     folderPath,
                     Array.Empty<FileSelectionItem>());
@@ -29,7 +29,7 @@ internal static class ShellPropertyRequestBuilder
             if (self.Kind == XboxItemKind.Volume)
             {
                 var letter = FormattingHelper.NormalizeDriveLetter(self.Segment);
-                return RXDKNeighborhood.Core.Services.PropertyRequest.FromSelection(
+                return Rxdk.XbNeighborhood.Core.Services.PropertyRequest.FromSelection(
                     targetConsole,
                     WirePathService.GetParentDisplayPath(folderPath) ?? targetConsole,
                     [
@@ -64,14 +64,14 @@ internal static class ShellPropertyRequestBuilder
             ? firstPath
             : WirePathService.GetConsoleNameFromDisplayPath(firstPath);
 
-        return RXDKNeighborhood.Core.Services.PropertyRequest.FromSelection(consoleName, folderPath, items);
+        return Rxdk.XbNeighborhood.Core.Services.PropertyRequest.FromSelection(consoleName, folderPath, items);
     }
 
-    public static RXDKNeighborhood.Core.Services.PropertyRequest? BuildSecurityRequest(string selectionPath)
+    public static Rxdk.XbNeighborhood.Core.Services.PropertyRequest? BuildSecurityRequest(string selectionPath)
     {
         if (string.IsNullOrEmpty(selectionPath))
             return null;
 
-        return RXDKNeighborhood.Core.Services.PropertyRequest.FromSelection(selectionPath, selectionPath, Array.Empty<FileSelectionItem>());
+        return Rxdk.XbNeighborhood.Core.Services.PropertyRequest.FromSelection(selectionPath, selectionPath, Array.Empty<FileSelectionItem>());
     }
 }

@@ -6,7 +6,7 @@ using Rxdk.XbShellExt.Shell;
 
 using Rxdk.XbShellExt.Ui;
 
-using RXDKNeighborhood.Core.Models;
+using Rxdk.XbNeighborhood.Core.Models;
 
 using Rxdk.Xbdm.KitServices.Services;
 
@@ -600,10 +600,10 @@ internal sealed class XboxContextMenu : IContextMenu, IShellExtInit, IObjectWith
 
 
 
-    private RXDKNeighborhood.Core.Services.PropertyRequest? BuildPropertyRequest() =>
+    private Rxdk.XbNeighborhood.Core.Services.PropertyRequest? BuildPropertyRequest() =>
         ShellPropertyRequestBuilder.BuildPropertyRequest(_folderPath, _selectionPaths);
 
-    private RXDKNeighborhood.Core.Services.PropertyRequest? BuildSecurityRequest() =>
+    private Rxdk.XbNeighborhood.Core.Services.PropertyRequest? BuildSecurityRequest() =>
         _selectionPaths.Count == 1
             ? ShellPropertyRequestBuilder.BuildSecurityRequest(_selectionPaths[0])
             : null;

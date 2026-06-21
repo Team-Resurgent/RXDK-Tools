@@ -58,9 +58,9 @@ jobs:
         working-directory: ${{ github.workspace }}
         run: ./setup/build-installer.ps1
 
-      - name: Publish managed CLI tools (single-file bundle)
+      - name: Publish managed tools package (single-file + .NET runtime)
         shell: pwsh
-        run: ./scripts/publish-managed-cli-tools.ps1 -Runtime win-x64 -OutputDir out/publish/managed/win-x64/tools
+        run: ./scripts/stage-managed-tools-package.ps1 -Runtime win-x64 -OutputDir out/publish/managed/win-x64
 
       - name: Upload Xbox Neighborhood installer
         uses: actions/upload-artifact@v4
@@ -89,6 +89,7 @@ jobs:
             '| Path |',
             '|------|',
             '| `out/publish/managed/win-x64/tools/xbset.exe` |',
+            '| `out/publish/managed/win-x64/install-dotnet-runtime.cmd` |',
             '| `out/publish/managed/win-x64/tools/xbcp.exe` |',
             '| `out/publish/managed/win-x64/tools/xbdir.exe` |',
             '| `out/publish/managed/win-x64/tools/xbmkdir.exe` |',
@@ -138,8 +139,8 @@ jobs:
             -c Release -o out/publish/nuget --no-restore \
             -p:PackageVersion="$VERSION"
 
-      - name: Publish managed CLI tools (single-file bundle)
-        run: bash scripts/publish-managed-cli-tools.sh linux-x64 out/publish/managed/linux-x64/tools
+      - name: Publish managed tools package (single-file + .NET runtime)
+        run: bash scripts/stage-managed-tools-package.sh linux-x64 out/publish/managed/linux-x64
 
       - name: Upload NuGet packages
         uses: actions/upload-artifact@v4
@@ -189,8 +190,8 @@ jobs:
       - name: Test Rxdk.XbeImage
         run: dotnet test src/Rxdk.XbeImage.Tests/Rxdk.XbeImage.Tests.csproj -c Release --no-restore
 
-      - name: Publish managed CLI tools (single-file bundle)
-        run: bash scripts/publish-managed-cli-tools.sh osx-arm64 out/publish/managed/osx-arm64/tools
+      - name: Publish managed tools package (single-file + .NET runtime)
+        run: bash scripts/stage-managed-tools-package.sh osx-arm64 out/publish/managed/osx-arm64
 
       - name: Upload managed tools (macOS)
         uses: actions/upload-artifact@v4

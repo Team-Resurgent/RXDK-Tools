@@ -21,7 +21,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rxdk.Xbdm.KitServices", "sr
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rxdk.KitConfig", "src\Rxdk.KitConfig\Rxdk.KitConfig.csproj", "{5ACD00D6-7750-46BE-A807-9E323934F51E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RXDKNeighborhood.Core", "src\RXDKNeighborhood.Core\RXDKNeighborhood.Core.csproj", "{E199D0D2-7D08-4B6E-A807-B272F1CF2B92}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rxdk.XbNeighborhood.Core", "src\Rxdk.XbNeighborhood.Core\Rxdk.XbNeighborhood.Core.csproj", "{E199D0D2-7D08-4B6E-A807-B272F1CF2B92}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rxdk.XbFile", "src\Rxdk.XbFile\Rxdk.XbFile.csproj", "{3B2DB0B0-3B14-49E8-8447-59E9ED30B9C8}"
 EndProject
@@ -39,7 +39,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rxdk.XbShellExt.UI", "src\R
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Rxdk.XbShellExt.Shell", "src\Rxdk.XbShellExt.Shell\Rxdk.XbShellExt.Shell.vcxproj", "{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RXDKNeighborhood", "src\RXDKNeighborhood\RXDKNeighborhood.csproj", "{81ED172E-E997-443C-BD11-E785CFE27891}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rxdk.XbNeighborhood", "src\Rxdk.XbNeighborhood\Rxdk.XbNeighborhood.csproj", "{81ED172E-E997-443C-BD11-E785CFE27891}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rxdk.XbWatson", "src\Rxdk.XbWatson\Rxdk.XbWatson.csproj", "{06375162-A33A-4743-80B1-4067971CB844}"
 EndProject

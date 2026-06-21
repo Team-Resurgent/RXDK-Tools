@@ -236,7 +236,14 @@ internal static class XbdmSecurity
     private static string SecuritySeedPath()
     {
         var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-        return Path.Combine(appData, "RXDKNeighborhood", "xbdm_security_seed.bin");
+        const string folder = "Rxdk.XbNeighborhood";
+        const string legacyFolder = "RXDKNeighborhood";
+        var configDir = Path.Combine(appData, folder);
+        var legacyDir = Path.Combine(appData, legacyFolder);
+        if (!Directory.Exists(configDir) && Directory.Exists(legacyDir))
+            configDir = legacyDir;
+
+        return Path.Combine(configDir, "xbdm_security_seed.bin");
     }
 
     private static uint[] ToUIntArray(byte[] bytes)

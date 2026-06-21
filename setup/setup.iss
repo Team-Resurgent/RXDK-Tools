@@ -62,7 +62,8 @@ Source: "{#PayloadDir}/Rxdk.XbShellExt.Shell.dll"; DestDir: "{app}"; Flags: igno
 Source: "{#PayloadDir}/Rxdk.XbShellExt.comhost.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#PayloadDir}/Rxdk.XbShellExt.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#PayloadDir}/Rxdk.XbShellExt.UI.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#PayloadDir}/RXDKNeighborhood.Core.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#PayloadDir}/Rxdk.XbNeighborhood.Core.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#PayloadDir}/Rxdk.KitConfig.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#PayloadDir}/Rxdk.Xbdm.KitServices.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#PayloadDir}/Rxdk.Xbdm.Managed.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#PayloadDir}/Rxdk.Xbdm.Abstractions.dll"; DestDir: "{app}"; Flags: ignoreversion

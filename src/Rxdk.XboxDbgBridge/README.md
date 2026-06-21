@@ -2,7 +2,7 @@
 
 Cross-platform **xboxdbg-bridge** for original Xbox kit debugging (stdin/JSON protocol used by VS Code DAP and other editors).
 
-This package ships **self-contained executables only** — no library reference is required. Spawn the binary for your OS/runtime:
+This package ships **framework-dependent single-file executables** — no library reference is required. Spawn the binary for your OS/runtime (**.NET 8 runtime** must be installed):
 
 | RID | Path in package |
 |-----|-----------------|

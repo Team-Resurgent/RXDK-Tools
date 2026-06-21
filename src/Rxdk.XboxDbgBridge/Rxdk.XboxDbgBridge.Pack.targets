@@ -1,5 +1,5 @@
 <Project>
-  <!-- Publishes self-contained xboxdbg-bridge for each RID into the NuGet package tools/ folder. -->
+  <!-- Publishes framework-dependent single-file xboxdbg-bridge for each RID into the NuGet package tools/ folder. -->
   <PropertyGroup>
     <BridgeCliProject Condition="'$(BridgeCliProject)' == ''">$(MSBuildThisFileDirectory)..\Rxdk.XboxDbgBridge.Cli\Rxdk.XboxDbgBridge.Cli.csproj</BridgeCliProject>
     <BridgeToolStagingDir Condition="'$(BridgeToolStagingDir)' == ''">$([MSBuild]::NormalizeDirectory($(MSBuildProjectDirectory), 'obj', 'bridge-tools'))</BridgeToolStagingDir>

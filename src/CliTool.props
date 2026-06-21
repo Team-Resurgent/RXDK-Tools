@@ -1,0 +1,5 @@
+<Project>
+  <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Windows'))">
+    <ApplicationIcon>$(MSBuildThisFileDirectory)..\assets\xbox-dark.ico</ApplicationIcon>
+  </PropertyGroup>
+</Project>

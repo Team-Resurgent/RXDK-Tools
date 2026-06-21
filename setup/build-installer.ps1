@@ -133,7 +133,8 @@ $managedFiles = @(
     'Rxdk.XbShellExt.comhost.dll',
     'Rxdk.XbShellExt.dll',
     'Rxdk.XbShellExt.UI.dll',
-    'RXDKNeighborhood.Core.dll',
+    'Rxdk.XbNeighborhood.Core.dll',
+    'Rxdk.KitConfig.dll',
     'Rxdk.Xbdm.KitServices.dll',
     'Rxdk.Xbdm.Managed.dll',
     'Rxdk.Xbdm.Abstractions.dll',
@@ -157,15 +158,16 @@ if ($shellProxyOut -ne $shellProxyDest) {
     Copy-Item -LiteralPath $shellProxyOut -Destination $shellProxyDest -Force
 }
 
-Copy-Item -LiteralPath (Join-Path $RepoRoot 'assets\shell\console.ico') -Destination (Join-Path $installDir 'console.ico') -Force
-Copy-Item -LiteralPath (Join-Path $RepoRoot 'assets\shell\xbox.ico') -Destination (Join-Path $installDir 'xbox.ico') -Force
+Copy-Item -LiteralPath (Join-Path $RepoRoot 'assets\console.ico') -Destination (Join-Path $installDir 'console.ico') -Force
+Copy-Item -LiteralPath (Join-Path $RepoRoot 'assets\xbox-light.ico') -Destination (Join-Path $installDir 'xbox.ico') -Force
 
 $requiredStaged = @(
     'Rxdk.XbShellExt.Shell.dll',
     'Rxdk.XbShellExt.comhost.dll',
     'Rxdk.XbShellExt.dll',
     'Rxdk.XbShellExt.UI.dll',
-    'RXDKNeighborhood.Core.dll',
+    'Rxdk.XbNeighborhood.Core.dll',
+    'Rxdk.KitConfig.dll',
     'Rxdk.Xbdm.KitServices.dll',
     'Rxdk.Xbdm.Managed.dll',
     'Rxdk.Xbdm.Abstractions.dll',
@@ -217,11 +219,11 @@ function Copy-InnoWizardBitmap {
 
 Write-Host 'Staging Inno Setup wizard bitmaps...' -ForegroundColor Cyan
 Copy-InnoWizardBitmap `
-    -Source (Join-Path $RepoRoot 'assets\shell\xwmark.bmp') `
+    -Source (Join-Path $RepoRoot 'assets\xwmark.bmp') `
     -Destination (Join-Path $PSScriptRoot 'WizardImage.bmp') `
     -Width 164 -Height 314
 Copy-InnoWizardBitmap `
-    -Source (Join-Path $RepoRoot 'assets\shell\xheader.bmp') `
+    -Source (Join-Path $RepoRoot 'assets\xheader.bmp') `
     -Destination (Join-Path $PSScriptRoot 'WizardSmallImage.bmp') `
     -Width 55 -Height 55
 
