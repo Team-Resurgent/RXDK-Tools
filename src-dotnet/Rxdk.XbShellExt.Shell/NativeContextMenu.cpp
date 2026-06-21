@@ -488,8 +488,9 @@ namespace
 
         __xbTraceScope.Note("managed UI action=%d hr=0x%08X", static_cast<int>(data->action), hr);
         if (SUCCEEDED(hr) &&
-            data->action == ManagedUiAction::ContextCommand &&
-            ShouldRefreshFolderAfterContextCommand(data->commandId))
+            (data->action == ManagedUiAction::AddXbox ||
+             (data->action == ManagedUiAction::ContextCommand &&
+              ShouldRefreshFolderAfterContextCommand(data->commandId))))
         {
             NotifyFolderContentsChanged(data->folderPidl, nullptr);
         }

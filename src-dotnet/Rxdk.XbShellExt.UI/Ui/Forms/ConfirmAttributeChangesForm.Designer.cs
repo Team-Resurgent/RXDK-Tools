@@ -40,6 +40,7 @@ partial class ConfirmAttributeChangesForm
         MinimizeBox = false;
         ShowInTaskbar = false;
         StartPosition = FormStartPosition.CenterParent;
+        AutoScaleMode = AutoScaleMode.Dpi;
         ClientSize = new Size(400, 280);
         AcceptButton = okButton;
         CancelButton = cancelButton;

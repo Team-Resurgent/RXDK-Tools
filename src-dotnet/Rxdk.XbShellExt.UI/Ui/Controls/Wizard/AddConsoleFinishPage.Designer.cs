@@ -146,10 +146,11 @@ partial class AddConsoleFinishPage
         // titleLabel
         // 
         titleLabel.AutoSize = true;
+        titleLabel.Font = new Font("Verdana", 12F, FontStyle.Bold);
         titleLabel.Location = new Point(8, 10);
         titleLabel.MaximumSize = new Size(360, 0);
         titleLabel.Name = "titleLabel";
-        titleLabel.Size = new Size(274, 15);
+        titleLabel.Size = new Size(355, 36);
         titleLabel.TabIndex = 0;
         titleLabel.Text = "Completing the Add Xbox Development Kit Wizard";
         // 

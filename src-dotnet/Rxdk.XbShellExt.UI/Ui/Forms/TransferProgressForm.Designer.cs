@@ -82,7 +82,7 @@ partial class TransferProgressForm
         // 
         // TransferProgressForm
         // 
-        AutoScaleMode = AutoScaleMode.None;
+        AutoScaleMode = AutoScaleMode.Dpi;
         ClientSize = new Size(420, 215);
         Controls.Add(cancelButton);
         Controls.Add(fileProgressBar);
@@ -94,9 +94,7 @@ partial class TransferProgressForm
         Font = new Font("Segoe UI", 9F);
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
-        MaximumSize = new Size(436, 254);
         MinimizeBox = false;
-        MinimumSize = new Size(436, 254);
         Name = "TransferProgressForm";
         ShowInTaskbar = false;
         StartPosition = FormStartPosition.CenterScreen;

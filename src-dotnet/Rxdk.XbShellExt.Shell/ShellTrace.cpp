@@ -9,19 +9,72 @@ namespace
     CRITICAL_SECTION g_traceLock;
     bool g_traceReady = false;
 
-    constexpr wchar_t kTracePath[] = L"C:\\Temp\\xb-shlext.log";
+    constexpr wchar_t kLogFolderName[] = L"Xbox Neighborhood\\Logs";
+    constexpr wchar_t kNativeLogName[] = L"xb-shlext.log";
+
+    wchar_t g_tracePath[MAX_PATH] = {};
+    bool g_tracePathReady = false;
 
     void* g_moduleBase = nullptr;
     LONG g_crashLogged = 0;
 
+    bool ShellTraceEnabled()
+    {
+        static int state = -1;
+        if (state < 0)
+        {
+            wchar_t buf[16] = {};
+            const DWORD n = GetEnvironmentVariableW(L"XB_SHLEXT_TRACE", buf, _countof(buf));
+            if (n > 0 &&
+                (buf[0] == L'0' ||
+                 _wcsicmp(buf, L"false") == 0 ||
+                 _wcsicmp(buf, L"off") == 0))
+            {
+                state = 0;
+            }
+            else
+            {
+                state = 1;
+            }
+        }
+
+        return state != 0;
+    }
+
+    bool EnsureTracePath()
+    {
+        if (g_tracePathReady)
+            return g_tracePath[0] != L'\0';
+
+        g_tracePathReady = true;
+        g_tracePath[0] = L'\0';
+
+        wchar_t programData[MAX_PATH] = {};
+        if (FAILED(SHGetFolderPathW(nullptr, CSIDL_COMMON_APPDATA, nullptr, SHGFP_TYPE_CURRENT, programData)))
+            return false;
+
+        wchar_t logDir[MAX_PATH] = {};
+        if (FAILED(StringCchPrintfW(logDir, _countof(logDir), L"%s\\%s", programData, kLogFolderName)))
+            return false;
+
+        SHCreateDirectoryExW(nullptr, logDir, nullptr);
+
+        if (FAILED(StringCchPrintfW(g_tracePath, _countof(g_tracePath), L"%s\\%s", logDir, kNativeLogName)))
+        {
+            g_tracePath[0] = L'\0';
+            return false;
+        }
+
+        return true;
+    }
+
     void WriteRaw(const char* text)
     {
-        if (!text)
+        if (!text || !EnsureTracePath())
             return;
 
-        CreateDirectoryW(L"C:\\Temp", nullptr);
         HANDLE file = CreateFileW(
-            kTracePath,
+            g_tracePath,
             FILE_APPEND_DATA,
             FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
             nullptr,
@@ -60,9 +113,11 @@ namespace
 
 void ShellTraceClear()
 {
-    CreateDirectoryW(L"C:\\Temp", nullptr);
+    if (!ShellTraceEnabled() || !EnsureTracePath())
+        return;
+
     HANDLE file = CreateFileW(
-        kTracePath,
+        g_tracePath,
         GENERIC_WRITE,
         FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
         nullptr,
@@ -75,7 +130,7 @@ void ShellTraceClear()
 
 void ShellTraceInit()
 {
-    if (g_traceReady)
+    if (!ShellTraceEnabled() || g_traceReady)
         return;
 
     InitializeCriticalSection(&g_traceLock);
@@ -86,6 +141,9 @@ void ShellTraceInit()
 
 void ShellTraceSetModule(void* moduleBase)
 {
+    if (!ShellTraceEnabled())
+        return;
+
     g_moduleBase = moduleBase;
 }
 
@@ -93,7 +151,7 @@ namespace
 {
     LONG CALLBACK CrashVectoredHandler(EXCEPTION_POINTERS* info)
     {
-        if (!info || !info->ExceptionRecord)
+        if (!ShellTraceEnabled() || !info || !info->ExceptionRecord)
             return EXCEPTION_CONTINUE_SEARCH;
 
         const DWORD code = info->ExceptionRecord->ExceptionCode;
@@ -131,6 +189,9 @@ namespace
 
 void ShellTraceInstallCrashLogger()
 {
+    if (!ShellTraceEnabled())
+        return;
+
     static bool installed = false;
     if (installed)
         return;
@@ -140,7 +201,7 @@ void ShellTraceInstallCrashLogger()
 
 void ShellTraceLine(const char* fmt, ...)
 {
-    if (!fmt)
+    if (!fmt || !ShellTraceEnabled())
         return;
 
     if (!g_traceReady)
@@ -173,11 +234,17 @@ void ShellTraceLine(const char* fmt, ...)
 
 void ShellTraceHr(const char* scope, HRESULT hr)
 {
+    if (!ShellTraceEnabled())
+        return;
+
     ShellTraceLine("%s hr=0x%08X", scope, static_cast<unsigned>(hr));
 }
 
 void ShellTraceGuid(const char* scope, REFIID riid)
 {
+    if (!ShellTraceEnabled())
+        return;
+
     LPOLESTR iidStr = nullptr;
     if (SUCCEEDED(StringFromCLSID(riid, &iidStr)) && iidStr)
     {
@@ -194,5 +261,8 @@ void ShellTraceGuid(const char* scope, REFIID riid)
 
 void ShellTraceMsg(const char* scope, UINT uMsg)
 {
+    if (!ShellTraceEnabled())
+        return;
+
     ShellTraceLine("%s uMsg=%u", scope, uMsg);
 }

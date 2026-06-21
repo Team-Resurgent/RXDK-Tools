@@ -174,6 +174,51 @@ foreach ($name in $requiredStaged) {
     }
 }
 
+function Copy-InnoWizardBitmap {
+    param(
+        [string]$Source,
+        [string]$Destination,
+        [int]$Width,
+        [int]$Height
+    )
+
+    Add-Type -AssemblyName System.Drawing
+    $src = [System.Drawing.Image]::FromFile($Source)
+    $bmp = $null
+    try {
+        if (($src.Width -eq $Width) -and ($src.Height -eq $Height)) {
+            Copy-Item -LiteralPath $Source -Destination $Destination -Force
+            return
+        }
+
+        $bmp = New-Object System.Drawing.Bitmap $Width, $Height
+        $graphics = [System.Drawing.Graphics]::FromImage($bmp)
+        try {
+            $graphics.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+            $graphics.DrawImage($src, 0, 0, $Width, $Height)
+        }
+        finally {
+            $graphics.Dispose()
+        }
+
+        $bmp.Save($Destination, [System.Drawing.Imaging.ImageFormat]::Bmp)
+    }
+    finally {
+        $src.Dispose()
+        if ($null -ne $bmp) { $bmp.Dispose() }
+    }
+}
+
+Write-Host 'Staging Inno Setup wizard bitmaps...' -ForegroundColor Cyan
+Copy-InnoWizardBitmap `
+    -Source (Join-Path $RepoRoot 'assets\shell\xwmark.bmp') `
+    -Destination (Join-Path $PSScriptRoot 'WizardImage.bmp') `
+    -Width 164 -Height 314
+Copy-InnoWizardBitmap `
+    -Source (Join-Path $RepoRoot 'assets\shell\xheader.bmp') `
+    -Destination (Join-Path $PSScriptRoot 'WizardSmallImage.bmp') `
+    -Width 55 -Height 55
+
 foreach ($required in @('Icon.ico', 'WizardImage.bmp', 'WizardSmallImage.bmp')) {
     $path = Join-Path $PSScriptRoot $required
     if (-not (Test-Path -LiteralPath $path)) {
@@ -181,13 +226,58 @@ foreach ($required in @('Icon.ico', 'WizardImage.bmp', 'WizardSmallImage.bmp')) 
     }
 }
 
+function Test-FileIsLocked {
+    param([string]$Path)
+
+    if (-not (Test-Path -LiteralPath $Path)) {
+        return $false
+    }
+
+    try {
+        $stream = [System.IO.File]::Open(
+            $Path,
+            [System.IO.FileMode]::Open,
+            [System.IO.FileAccess]::ReadWrite,
+            [System.IO.FileShare]::None)
+        $stream.Close()
+        return $false
+    }
+    catch {
+        return $true
+    }
+}
+
 $iscc = Ensure-Iscc
 
+$defaultSetupExe = Join-Path $installDir 'XboxNeighborhood-Setup.exe'
+$installerOutputDir = $installDir
+$installerOutputBaseName = 'XboxNeighborhood-Setup'
+
+if (Test-FileIsLocked $defaultSetupExe) {
+    $installerOutputDir = $env:TEMP
+    Write-Warning "Existing installer is locked: $defaultSetupExe"
+    Write-Warning "Close XboxNeighborhood-Setup.exe if it is running. Building to: $installerOutputDir"
+}
+elseif (Test-Path -LiteralPath $defaultSetupExe) {
+    Remove-Item -LiteralPath $defaultSetupExe -Force -ErrorAction SilentlyContinue
+}
+
 Write-Host "Building installer with $iscc" -ForegroundColor Cyan
-& $iscc $IssPath
+& $iscc "/DInstallerOutputDir=`"$installerOutputDir`"" "/DInstallerOutputBaseName=$installerOutputBaseName" $IssPath
 if ($LASTEXITCODE -ne 0) {
     throw "ISCC failed (exit $LASTEXITCODE)"
 }
 
-$output = Join-Path $installDir 'XboxNeighborhood-Setup.exe'
+$output = Join-Path $installerOutputDir "$installerOutputBaseName.exe"
+if ($installerOutputDir -ne $installDir -and (Test-Path -LiteralPath $output)) {
+    try {
+        Copy-Item -LiteralPath $output -Destination $defaultSetupExe -Force
+        Remove-Item -LiteralPath $output -Force
+        $output = $defaultSetupExe
+    }
+    catch {
+        Write-Warning "Built installer at $output but could not replace locked $defaultSetupExe"
+    }
+}
+
 Write-Host "Installer: $output" -ForegroundColor Green

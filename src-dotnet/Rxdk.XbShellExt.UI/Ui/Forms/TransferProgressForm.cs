@@ -3,7 +3,7 @@ namespace Rxdk.XbShellExt.Ui.Forms;
 using System.ComponentModel;
 using Rxdk.XbShellExt.Ui;
 
-public sealed partial class TransferProgressForm : Form
+public sealed partial class TransferProgressForm : ShellDialogForm
 {
     private bool _cancelRequested;
     private bool _failedMode;
@@ -15,8 +15,7 @@ public sealed partial class TransferProgressForm : Form
     public TransferProgressForm()
     {
         InitializeComponent();
-        if (LicenseManager.UsageMode != LicenseUsageMode.Designtime)
-            ShellModernChrome.Apply(this);
+        ApplyRuntimeChrome();
         cancelButton.Click += (_, _) => OnCancelClicked();
         FormClosing += OnFormClosing;
         DesignPreview.ApplyIfDesignTime(() =>
@@ -96,7 +95,7 @@ public sealed partial class TransferProgressForm : Form
         fileLabel.Text = message;
         cancelButton.Text = "Close";
         cancelButton.Enabled = true;
-        ClientSize = new Size(420, 148);
+        ClientSize = ScaleDesignSize(new Size(420, 148));
         BringToFront();
         Activate();
         PumpMessages();

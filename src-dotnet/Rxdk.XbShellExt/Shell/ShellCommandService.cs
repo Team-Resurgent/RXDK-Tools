@@ -58,7 +58,7 @@ internal static class ShellCommandService
                     ExecuteSetDefault(selectionPath ?? folderPath, host);
                     break;
                 case ShellContextCommand.RemoveConsole:
-                    ExecuteRemoveConsole(selectionPath ?? folderPath, host);
+                    ExecuteRemoveConsole(selectionPath ?? folderPath, host, folderPidl);
                     break;
                 case ShellContextCommand.RebootWarm:
                     ExecuteReboot(selectionPath ?? folderPath, cold: false, sameTitle: false, host);
@@ -175,12 +175,26 @@ internal static class ShellCommandService
         host.ShowInfo($"'{consolePath}' is now the default console.");
     }
 
-    private static void ExecuteRemoveConsole(string consolePath, ShellFileOperationHost host)
+    private static void ExecuteRemoveConsole(string consolePath, ShellFileOperationHost host, nint folderPidl)
     {
         if (string.IsNullOrWhiteSpace(consolePath) || consolePath.Contains('\\'))
             throw new InvalidOperationException("Select a console to remove.");
 
-        new ShellExtensionConsoleStore().RemoveConsole(consolePath);
+        var store = new ShellExtensionConsoleStore();
+        var isDefault = store.IsDefaultConsole(consolePath);
+        if (!host.ConfirmRemoveConsole(consolePath, isDefault))
+            return;
+
+        if (isDefault)
+            store.ClearDefaultConsole();
+
+        store.RemoveConsole(consolePath);
+
+        if (folderPidl != 0)
+            ShellFolderNotify.RefreshFolder(folderPidl);
+        else
+            ShellFolderNotify.RefreshDisplayFolder(consolePath);
+
         host.ShowInfo($"Removed console '{consolePath}'.");
     }
 

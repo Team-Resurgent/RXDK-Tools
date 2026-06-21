@@ -80,9 +80,7 @@ partial class AddConsoleWizardForm
         Controls.Add(buttonPanel);
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
-        MaximumSize = new Size(560, 421);
         MinimizeBox = false;
-        MinimumSize = new Size(560, 421);
         Name = "AddConsoleWizardForm";
         StartPosition = FormStartPosition.CenterParent;
         Text = "Add New Xbox Development Kit";

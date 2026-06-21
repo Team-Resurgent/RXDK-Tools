@@ -10,6 +10,22 @@ public sealed class ShellFileOperationHost : IFileOperationHost
 
     public ShellFileOperationHost(nint ownerHwnd) => _ownerHwnd = ownerHwnd;
 
+    public bool ConfirmRemoveConsole(string consoleName, bool isDefault)
+    {
+        var message = isDefault
+            ? $"You are attempting to delete your default Xbox console. Many Xbox tools will not function without a default Xbox console.{Environment.NewLine}{Environment.NewLine}Are you sure you want to delete '{consoleName}'?"
+            : $"Are you sure that you want to remove '{consoleName}' from Xbox Neighborhood?";
+
+        var result = MessageBox.Show(
+            NativeWindow.FromHandle(_ownerHwnd),
+            message,
+            "Remove Xbox Console",
+            MessageBoxButtons.YesNo,
+            MessageBoxIcon.Warning);
+
+        return result == DialogResult.Yes;
+    }
+
     public Task<bool> ConfirmDeleteAsync(IReadOnlyList<FileSelectionItem> items)
     {
         var message = FormatDeleteMessage(items);
@@ -48,6 +64,8 @@ public sealed class ShellFileOperationHost : IFileOperationHost
     public Task<string?> PromptRenameAsync(string currentName)
     {
         using var form = new RenameForm(currentName);
+        form.SetShellOwner(_ownerHwnd);
+        form.EnsureShellDpiScaled();
         return Task.FromResult(
             form.ShowDialog(NativeWindow.FromHandle(_ownerHwnd)) == DialogResult.OK
                 ? form.NewName

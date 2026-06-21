@@ -12,7 +12,6 @@ public sealed partial class AddConsoleFinishPage : AddConsoleWizardPageBase
     {
         InitializeComponent();
         BindStatusLabel(statusLabel);
-        titleLabel.Font = WizardVisuals.CreateTitleFont();
         DesignPreview.ApplyIfDesignTime(() =>
         {
             consoleValueLabel.Text = $"{DesignPreview.SampleConsoleName}({DesignPreview.SampleConsoleIp})";

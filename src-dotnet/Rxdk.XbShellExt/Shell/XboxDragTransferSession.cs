@@ -733,8 +733,7 @@ internal sealed class XboxDragTransferSession : IDisposable
 
         _progressThread = new Thread(() =>
         {
-            Application.EnableVisualStyles();
-            Application.SetCompatibleTextRenderingDefault(false);
+            WinFormsThreadBootstrap.EnsureInitialized();
             var form = new TransferProgressForm("Copying from Xbox");
             form.Configure(_fileCount);
             form.CancelRequested += RequestCancel;
