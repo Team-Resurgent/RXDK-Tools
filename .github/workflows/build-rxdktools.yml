@@ -90,7 +90,7 @@ jobs:
 
       - name: Publish managed tools (Linux)
         shell: bash
-        run: ./scripts/ci/build-rxdktools-unix.sh
+        run: bash ./scripts/ci/build-rxdktools-unix.sh
 
       - name: Upload managed tools (Linux)
         uses: actions/upload-artifact@v4
@@ -126,7 +126,7 @@ jobs:
 
       - name: Publish managed tools (macOS)
         shell: bash
-        run: ./scripts/ci/build-rxdktools-unix.sh
+        run: bash ./scripts/ci/build-rxdktools-unix.sh
 
       - name: Upload managed tools (macOS)
         uses: actions/upload-artifact@v4
