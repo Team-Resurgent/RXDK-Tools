@@ -37,7 +37,7 @@ jobs:
           dotnet-version: '8.0.x'
 
       - name: Restore NuGet packages
-        run: dotnet restore RXDKNeighborhood.sln
+        run: dotnet restore RXDKNeighborhood.sln -r win-x64
 
       - name: Build RXDKNeighborhood.sln
         run: msbuild RXDKNeighborhood.sln /p:Configuration=Release /p:Platform=x64 /m /v:m
