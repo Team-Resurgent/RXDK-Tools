@@ -33,12 +33,13 @@ if (-not $SkipExplorerRestart) {
     Stop-XbShellExtExplorer
 }
 
+Write-Host "Registering namespace shell extension: $shellDll"
+Invoke-XbShellExtRegsvr32 -DllPath $shellDll
+Repair-XbShellExtRegistry -ModulePath $shellDll
+
 Write-Host "Registering managed coclass: $comHost"
 Invoke-XbShellExtRegsvr32 -DllPath $comHost
 Repair-XbShellExtManagedRegistry -ModulePath $comHost
-
-Write-Host "Registering namespace shell extension: $shellDll"
-Repair-XbShellExtRegistry -ModulePath $shellDll
 Enable-ExplorerNavPaneShowAllFolders
 
 if (-not $SkipExplorerRestart) {

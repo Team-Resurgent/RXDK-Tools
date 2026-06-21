@@ -1,5 +1,14 @@
 HKCR
 {
+	Shellext.XboxFolder.1 = s 'Xbox Neighborhood'
+	{
+		CLSID = s '{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}'
+	}
+	Shellext.XboxFolder = s 'Xbox Neighborhood'
+	{
+		CLSID = s '{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}'
+		CurVer = s 'Shellext.XboxFolder.1'
+	}
 	NoRemove CLSID
 	{
 		ForceRemove {DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44} = s 'Xbox Neighborhood'
