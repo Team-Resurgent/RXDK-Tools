@@ -1,4 +1,4 @@
-# Build and publish the Avalonia RXDK Neighborhood app.
+# Publish cross-platform Rxdk.XbWatson
 param(
     [ValidateSet("framework", "self-contained")]
     [string]$Mode = "framework",
@@ -7,12 +7,8 @@ param(
 
 $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent $PSScriptRoot
-if (-not (Test-Path (Join-Path $repoRoot "RXDKNeighborhood.sln"))) {
-    $repoRoot = $PSScriptRoot
-}
-
-$project = Join-Path $repoRoot "src-dotnet\RXDKNeighborhood\RXDKNeighborhood.csproj"
-$publishDir = Join-Path $repoRoot "out\publish\RXDKNeighborhood-$Runtime"
+$project = Join-Path $repoRoot "src-dotnet\Rxdk.XbWatson\Rxdk.XbWatson.csproj"
+$publishDir = Join-Path $repoRoot "out\publish\Rxdk.XbWatson-$Runtime"
 
 $publishArgs = @(
     "publish", $project,
@@ -27,9 +23,7 @@ if ($Mode -eq "self-contained") {
     $publishArgs += @("--self-contained", "false")
 }
 
-Write-Host "Publishing Avalonia RXDKNeighborhood ($Mode, $Runtime)..."
+Write-Host "Publishing Rxdk.XbWatson ($Mode, $Runtime)..."
 dotnet @publishArgs
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-Write-Host ""
 Write-Host "Published to: $publishDir"

@@ -18,6 +18,6 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Rxdk.Xbdm.KitServices\Rxdk.Xbdm.KitServices.csproj" />
+    <ProjectReference Include="..\Rxdk.XbWatson.Core\Rxdk.XbWatson.Core.csproj" />
   </ItemGroup>
 </Project>

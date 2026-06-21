@@ -1,0 +1,16 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Rxdk.XbWatson.Dialogs.AboutDialog"
+        Title="About xbWatson"
+        Width="320"
+        Height="180"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner">
+  <Grid Margin="16" ColumnDefinitions="80,*">
+    <Image x:Name="AboutImage" Grid.Column="0" Width="64" Height="64" />
+    <StackPanel Grid.Column="1" Spacing="8">
+      <TextBlock x:Name="AboutText" />
+      <Button Content="OK" HorizontalAlignment="Right" IsDefault="True" Click="OnOk" />
+    </StackPanel>
+  </Grid>
+</Window>

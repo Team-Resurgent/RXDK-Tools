@@ -1,9 +1,9 @@
 using System.Text.Json;
 using Microsoft.Win32;
-using Rxdk.Xbdm.KitServices.Models;
+using Rxdk.KitConfig.Models;
 using Rxdk.Xbdm.Managed;
 
-namespace Rxdk.Xbdm.KitServices.Stores;
+namespace Rxdk.KitConfig.Stores;
 
 public class JsonConsoleStore : IConsoleStore
 {
@@ -14,18 +14,16 @@ public class JsonConsoleStore : IConsoleStore
 
     public JsonConsoleStore(string? configDirectory = null)
     {
-        var dir = configDirectory ?? Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "RXDKNeighborhood");
+        var dir = configDirectory ?? KitConfigPaths.GetConfigDirectory();
         Directory.CreateDirectory(dir);
-        _configPath = Path.Combine(dir, "consoles.json");
+        _configPath = Path.Combine(dir, KitConfigPaths.ConsolesFileName);
     }
 
     public ConsoleRegistryData Load()
     {
         if (!File.Exists(_configPath))
         {
-            var migrated = TryMigrateFromRegistry();
+            var migrated = TryMigrateFromLegacyRegistry();
             if (migrated.Consoles.Count > 0)
             {
                 Save(migrated);
@@ -84,7 +82,9 @@ public class JsonConsoleStore : IConsoleStore
 
         data.DefaultConsole = name;
         Save(data);
-        XbdmSession.SetDefaultConsoleName(name);
+
+        if (OperatingSystem.IsWindows())
+            XbdmSession.SetDefaultConsoleName(name);
     }
 
     public bool IsDefaultConsole(string name)
@@ -96,21 +96,50 @@ public class JsonConsoleStore : IConsoleStore
 
     public string? GetDefaultConsoleName()
     {
-        try
+        var data = Load();
+        var names = data.Consoles.Select(c => c.Name).ToArray();
+
+        if (OperatingSystem.IsWindows())
         {
-            var dmDefault = XbdmSession.GetDefaultConsoleName();
-            if (!string.IsNullOrWhiteSpace(dmDefault))
-                return dmDefault;
-        }
-        catch
-        {
-            // fall through to json default
+            try
+            {
+                XbdmSession.EnsureInitialized();
+                var dmDefault = XbdmSession.GetDefaultConsoleName();
+                if (!string.IsNullOrWhiteSpace(dmDefault) &&
+                    names.Any(n => string.Equals(n, dmDefault, StringComparison.OrdinalIgnoreCase)))
+                    return dmDefault;
+            }
+            catch
+            {
+                // fall through to json default
+            }
         }
 
-        return Load().DefaultConsole;
+        if (!string.IsNullOrWhiteSpace(data.DefaultConsole) &&
+            names.Any(n => string.Equals(n, data.DefaultConsole, StringComparison.OrdinalIgnoreCase)))
+            return data.DefaultConsole;
+
+        if (names.Length > 0)
+            return names[0];
+
+        if (OperatingSystem.IsWindows())
+        {
+            try
+            {
+                XbdmSession.EnsureInitialized();
+                var dmDefault = XbdmSession.GetDefaultConsoleName();
+                if (!string.IsNullOrWhiteSpace(dmDefault))
+                    return dmDefault;
+            }
+            catch
+            {
+            }
+        }
+
+        return data.DefaultConsole;
     }
 
-    private ConsoleRegistryData TryMigrateFromRegistry()
+    internal ConsoleRegistryData TryMigrateFromLegacyRegistry()
     {
         var data = new ConsoleRegistryData();
         if (!OperatingSystem.IsWindows())

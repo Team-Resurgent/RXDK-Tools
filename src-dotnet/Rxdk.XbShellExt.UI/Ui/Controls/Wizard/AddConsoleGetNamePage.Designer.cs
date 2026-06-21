@@ -67,7 +67,7 @@ partial class AddConsoleGetNamePage
         helpLabel.Location = new Point(12, 96);
         helpLabel.MaximumSize = new Size(380, 0);
         helpLabel.Name = "helpLabel";
-        helpLabel.Size = new Size(373, 60);
+        helpLabel.Size = new Size(379, 150);
         helpLabel.TabIndex = 3;
         helpLabel.Text = resources.GetString("helpLabel.Text");
         // 
@@ -75,7 +75,7 @@ partial class AddConsoleGetNamePage
         // 
         nameTextBox.Location = new Point(164, 66);
         nameTextBox.Name = "nameTextBox";
-        nameTextBox.Size = new Size(180, 23);
+        nameTextBox.Size = new Size(180, 31);
         nameTextBox.TabIndex = 2;
         // 
         // nameCaption
@@ -93,7 +93,7 @@ partial class AddConsoleGetNamePage
         introLabel.Location = new Point(12, 10);
         introLabel.MaximumSize = new Size(380, 0);
         introLabel.Name = "introLabel";
-        introLabel.Size = new Size(353, 15);
+        introLabel.Size = new Size(376, 50);
         introLabel.TabIndex = 0;
         introLabel.Text = "Specify an Xbox Development Kit.  When you are done, click Next.";
         // 
@@ -102,11 +102,11 @@ partial class AddConsoleGetNamePage
         statusLabel.AutoSize = true;
         statusLabel.Dock = DockStyle.Bottom;
         statusLabel.ForeColor = Color.DarkRed;
-        statusLabel.Location = new Point(12, 234);
+        statusLabel.Location = new Point(12, 224);
         statusLabel.MaximumSize = new Size(380, 0);
         statusLabel.Name = "statusLabel";
         statusLabel.Padding = new Padding(0, 0, 0, 4);
-        statusLabel.Size = new Size(0, 19);
+        statusLabel.Size = new Size(0, 29);
         statusLabel.TabIndex = 4;
         // 
         // AddConsoleGetNamePage

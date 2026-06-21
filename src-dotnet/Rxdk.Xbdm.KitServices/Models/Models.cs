@@ -1,16 +1,8 @@
 namespace Rxdk.Xbdm.KitServices.Models;
 
-public class ConsoleInfo
-{
-    public required string Name { get; init; }
-    public DateTimeOffset Added { get; init; }
-}
+public class ConsoleInfo : Rxdk.KitConfig.Models.ConsoleInfo;
 
-public class ConsoleRegistryData
-{
-    public string? DefaultConsole { get; set; }
-    public List<ConsoleInfo> Consoles { get; set; } = new();
-}
+public class ConsoleRegistryData : Rxdk.KitConfig.Models.ConsoleRegistryData;
 
 public class FileEntryModel
 {

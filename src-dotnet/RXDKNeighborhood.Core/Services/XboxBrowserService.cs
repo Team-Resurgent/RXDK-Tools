@@ -1,6 +1,6 @@
 using RXDKNeighborhood.Core.Models;
+using Rxdk.KitConfig.Stores;
 using Rxdk.Xbdm;
-using Rxdk.Xbdm.KitServices.Stores;
 using Rxdk.Xbdm.Managed;
 
 namespace RXDKNeighborhood.Core.Services;
@@ -10,9 +10,7 @@ public sealed class XboxBrowserService : IDisposable
     private readonly IConsoleStore _consoles;
     private XbdmSession? _session;
 
-    public XboxBrowserService(ConsoleRegistryService consoles) : this((IConsoleStore)consoles)
-    {
-    }
+    public XboxBrowserService(ConsoleRegistryService consoles) => _consoles = consoles;
 
     public XboxBrowserService(IConsoleStore consoles) => _consoles = consoles;
 

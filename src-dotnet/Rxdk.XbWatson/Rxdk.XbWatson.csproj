@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Rxdk.XbWatson</RootNamespace>
+    <ApplicationIcon Condition="$([MSBuild]::IsOSPlatform('Windows'))">..\..\src\xbWatson\Icons\xbWatson.ICO</ApplicationIcon>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="12.0.4" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.0.4" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.0.4" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.0.4" />
+    <PackageReference Include="System.Windows.Extensions" Version="8.0.0" Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Rxdk.XbWatson.Core\Rxdk.XbWatson.Core.csproj" />
+    <ProjectReference Include="..\Rxdk.KitConfig\Rxdk.KitConfig.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AvaloniaResource Include="..\..\src\xbWatson\Icons\xbWatson.ICO" Link="Assets/xbWatson.ico" />
+    <AvaloniaResource Include="..\..\src\xbWatson\Icons\icon1.ico" Link="Assets/redx.ico" />
+    <AvaloniaResource Include="..\..\src\xbWatson\about.bmp" Link="Assets/about.bmp" />
+  </ItemGroup>
+</Project>

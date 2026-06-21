@@ -1,3 +1,4 @@
+using Rxdk.KitConfig;
 using Rxdk.Xbdm.KitServices.Models;
 using Rxdk.Xbdm;
 using Rxdk.Xbdm.KitServices.Stores;
@@ -102,7 +103,7 @@ public class AddConsoleService
         }
 
         var registryName = ResolveRegistryName(state);
-        var addressStore = new ShellExtensionConsoleAddressStore();
+        var addressStore = KitConfigProvider.CreateDefault().Addresses;
         consoleStore.AddConsole(registryName);
 
         if (state.IpAddress.HasValue)

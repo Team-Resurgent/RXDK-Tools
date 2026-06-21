@@ -1,13 +1,13 @@
 using Microsoft.Win32;
 using Rxdk.Xbdm.Managed;
 
-namespace Rxdk.Xbdm.KitServices.Stores;
+namespace Rxdk.KitConfig.Stores;
 
 /// <summary>
 /// Legacy shell extension console list at HKCU\Software\Microsoft\XboxSDK\xbshlext\Consoles.
 /// Default value is REG_DWORD count; each console name is a value name with REG_DWORD payload.
 /// </summary>
-public class ShellExtensionConsoleStore : IConsoleStore
+public class RegistryConsoleStore : IConsoleStore
 {
     public const string RegistryPath = @"Software\Microsoft\XboxSDK\xbshlext\Consoles";
     private const string DefaultConsoleRegistryPath = @"Software\Microsoft\XboxSDK";
@@ -84,8 +84,19 @@ public class ShellExtensionConsoleStore : IConsoleStore
 
     public string? GetDefaultConsoleName()
     {
+        var names = GetConsoleNames();
+        var configured = GetConfiguredDefaultConsoleName();
+
+        if (!string.IsNullOrWhiteSpace(configured) &&
+            names.Any(n => string.Equals(n, configured, StringComparison.OrdinalIgnoreCase)))
+            return configured;
+
+        if (names.Count > 0)
+            return names[0];
+
         try
         {
+            XbdmSession.EnsureInitialized();
             var dmDefault = XbdmSession.GetDefaultConsoleName();
             if (!string.IsNullOrWhiteSpace(dmDefault))
                 return dmDefault;
@@ -94,7 +105,7 @@ public class ShellExtensionConsoleStore : IConsoleStore
         {
         }
 
-        return GetConfiguredDefaultConsoleName() ?? GetConsoleNames().FirstOrDefault();
+        return configured;
     }
 
     public static string? GetConfiguredDefaultConsoleName()
