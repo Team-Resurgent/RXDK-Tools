@@ -1,12 +1,19 @@
 <Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="..\SingleFilePublish.props" />
+
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>Rxdk.XbWatson</RootNamespace>
+    <AssemblyName>xbwatson</AssemblyName>
     <ApplicationIcon Condition="$([MSBuild]::IsOSPlatform('Windows'))">..\..\src\xbWatson\Icons\xbWatson.ICO</ApplicationIcon>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
+    <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
   </PropertyGroup>
 
   <ItemGroup>

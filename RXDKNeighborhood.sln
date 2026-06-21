@@ -37,6 +37,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rxdk.XbWatson", "src-dotnet
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rxdk.XbWatson.Core.Tests", "src-dotnet\Rxdk.XbWatson.Core.Tests\Rxdk.XbWatson.Core.Tests.csproj", "{7F904CF0-9187-4A48-820E-107D88C3FA4E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rxdk.XbSet", "src-dotnet\Rxdk.XbSet\Rxdk.XbSet.csproj", "{6068F44D-5126-4754-9320-9736747383AA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -239,6 +241,18 @@ Global
 		{7F904CF0-9187-4A48-820E-107D88C3FA4E}.Release|x64.Build.0 = Release|Any CPU
 		{7F904CF0-9187-4A48-820E-107D88C3FA4E}.Release|x86.ActiveCfg = Release|Any CPU
 		{7F904CF0-9187-4A48-820E-107D88C3FA4E}.Release|x86.Build.0 = Release|Any CPU
+		{6068F44D-5126-4754-9320-9736747383AA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6068F44D-5126-4754-9320-9736747383AA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6068F44D-5126-4754-9320-9736747383AA}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{6068F44D-5126-4754-9320-9736747383AA}.Debug|x64.Build.0 = Debug|Any CPU
+		{6068F44D-5126-4754-9320-9736747383AA}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{6068F44D-5126-4754-9320-9736747383AA}.Debug|x86.Build.0 = Debug|Any CPU
+		{6068F44D-5126-4754-9320-9736747383AA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6068F44D-5126-4754-9320-9736747383AA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6068F44D-5126-4754-9320-9736747383AA}.Release|x64.ActiveCfg = Release|Any CPU
+		{6068F44D-5126-4754-9320-9736747383AA}.Release|x64.Build.0 = Release|Any CPU
+		{6068F44D-5126-4754-9320-9736747383AA}.Release|x86.ActiveCfg = Release|Any CPU
+		{6068F44D-5126-4754-9320-9736747383AA}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -249,6 +263,7 @@ Global
 		{C452E9C4-1F32-4706-99A3-B1504E110AFD} = {D001EF95-38DE-94FC-B6F8-8052B05D0703}
 		{06375162-A33A-4743-80B1-4067971CB844} = {D001EF95-38DE-94FC-B6F8-8052B05D0703}
 		{7F904CF0-9187-4A48-820E-107D88C3FA4E} = {D001EF95-38DE-94FC-B6F8-8052B05D0703}
+		{6068F44D-5126-4754-9320-9736747383AA} = {D001EF95-38DE-94FC-B6F8-8052B05D0703}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {9BAC8E47-428E-4F44-9A01-7EFE5823358F}

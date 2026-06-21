@@ -21,74 +21,152 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
-    name: Build (${{ matrix.artifact_name }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: windows-latest
-            platform: windows
-            artifact_name: rxdk-tools-win-x64
-          # Future ports: uncomment and implement scripts/ci/build-rxdktools-unix.sh (or per-OS scripts).
-          # - os: ubuntu-latest
-          #   platform: linux
-          #   artifact_name: rxdk-tools-linux-x64
-          # - os: macos-latest
-          #   platform: macos
-          #   artifact_name: rxdk-tools-macos-arm64
-
+  build-windows:
+    name: Build (Windows)
+    runs-on: windows-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup MSBuild
-        if: matrix.platform == 'windows'
         uses: microsoft/setup-msbuild@v2
 
       - name: Setup .NET
-        if: matrix.platform == 'windows'
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
 
-      - name: Build RXDKTools.sln
-        if: matrix.platform == 'windows'
+      - name: Build RXDKTools.sln and managed artifacts
         shell: pwsh
         run: ./scripts/ci/build-rxdktools-windows.ps1
 
-      - name: Build RXDKTools.sln (Unix)
-        if: matrix.platform != 'windows'
-        shell: bash
-        run: ./scripts/ci/build-rxdktools-unix.sh
-
-      - name: Upload executables
-        if: matrix.platform == 'windows'
+      - name: Upload native tools
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact_name }}
+          name: rxdk-tools-win-x64
           path: artifacts/rxdk-tools/*.exe
           if-no-files-found: error
           retention-days: 90
 
+      - name: Upload Xbox Neighborhood installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: xbox-neighborhood-setup
+          path: artifacts/installer/XboxNeighborhood-Setup.exe
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Upload managed tools (Windows)
+        uses: actions/upload-artifact@v4
+        with:
+          name: rxdk-managed-win-x64
+          path: artifacts/managed/win-x64/**
+          if-no-files-found: error
+          retention-days: 90
+
       - name: Build summary
-        if: matrix.platform == 'windows'
         shell: pwsh
         run: |
           $exes = Get-ChildItem artifacts/rxdk-tools -Filter *.exe -File | Sort-Object Name
           $lines = $exes | ForEach-Object { "| $($_.Name) | $([math]::Round($_.Length / 1MB, 2)) MB |" }
           @(
-            '### RXDK Tools binaries',
+            '### Windows build',
+            '',
+            '#### Native RXDK tools',
             '',
             '| File | Size |',
             '|------|------|',
-            $lines
+            $lines,
+            '',
+            '#### Managed tools',
+            '',
+            '| Path |',
+            '|------|',
+            '| `artifacts/managed/win-x64/xbset/` |',
+            '| `artifacts/managed/win-x64/xbwatson/` |',
+            '',
+            '#### Shell extension installer',
+            '',
+            '| File |',
+            '|------|',
+            '| `XboxNeighborhood-Setup.exe` |'
           ) | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+
+  build-linux:
+    name: Build (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Publish managed tools (Linux)
+        shell: bash
+        run: ./scripts/ci/build-rxdktools-unix.sh
+
+      - name: Upload managed tools (Linux)
+        uses: actions/upload-artifact@v4
+        with:
+          name: rxdk-managed-linux-x64
+          path: artifacts/managed/linux-x64/**
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Build summary
+        shell: bash
+        run: |
+          {
+            echo "### Linux build"
+            echo ""
+            echo "| Path |"
+            echo "|------|"
+            echo "| \`artifacts/managed/linux-x64/xbset/\` |"
+            echo "| \`artifacts/managed/linux-x64/xbwatson/\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  build-macos:
+    name: Build (macOS)
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Publish managed tools (macOS)
+        shell: bash
+        run: ./scripts/ci/build-rxdktools-unix.sh
+
+      - name: Upload managed tools (macOS)
+        uses: actions/upload-artifact@v4
+        with:
+          name: rxdk-managed-osx-arm64
+          path: artifacts/managed/osx-arm64/**
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Build summary
+        shell: bash
+        run: |
+          {
+            echo "### macOS build"
+            echo ""
+            echo "| Path |"
+            echo "|------|"
+            echo "| \`artifacts/managed/osx-arm64/xbset/\` |"
+            echo "| \`artifacts/managed/osx-arm64/xbwatson/\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   release:
     name: GitHub Release
-    needs: build
+    needs: [build-windows, build-linux, build-macos]
     if: |
       github.event_name != 'pull_request' && (
         startsWith(github.ref, 'refs/tags/v') ||
@@ -99,11 +177,28 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Download build artifacts
+      - name: Download all build artifacts
         uses: actions/download-artifact@v4
         with:
-          name: rxdk-tools-win-x64
           path: dist
+
+      - name: Package managed tool bundles
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist/zips
+          for artifact in dist/rxdk-managed-*; do
+            if [[ -d "$artifact" ]]; then
+              zip -r "dist/zips/$(basename "$artifact").zip" "$artifact"
+            fi
+          done
+          if [[ -f dist/xbox-neighborhood-setup/XboxNeighborhood-Setup.exe ]]; then
+            cp dist/xbox-neighborhood-setup/XboxNeighborhood-Setup.exe dist/zips/
+          fi
+          if [[ -d dist/rxdk-tools-win-x64 ]]; then
+            cp dist/rxdk-tools-win-x64/*.exe dist/zips/
+          fi
+          ls -la dist/zips/
 
       - name: Resolve release tag
         id: meta
@@ -131,7 +226,8 @@ jobs:
           name: RXDK Tools ${{ steps.meta.outputs.tag }}
           prerelease: ${{ steps.meta.outputs.prerelease }}
           generate_release_notes: true
-          files: dist/*.exe
+          files: |
+            dist/zips/**/*
 
       - name: Release summary
         shell: bash
@@ -141,5 +237,6 @@ jobs:
             echo ""
             echo "- Tag: \`${{ steps.meta.outputs.tag }}\`"
             echo "- Pre-release: \`${{ steps.meta.outputs.prerelease }}\`"
-            echo "- Assets: individual \`.exe\` files"
+            echo "- Windows: native tools, \`XboxNeighborhood-Setup.exe\`, managed tool zip"
+            echo "- Linux/macOS: managed tool zips (\`xbset\`, \`xbwatson\`)"
           } >> "$GITHUB_STEP_SUMMARY"
