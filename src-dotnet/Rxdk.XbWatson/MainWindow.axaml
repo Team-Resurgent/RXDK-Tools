@@ -16,7 +16,7 @@
 
     <MenuItem Header="_File">
 
-      <MenuItem Header="_Save..." Click="OnSaveLog" HotKey="Ctrl+S" />
+      <MenuItem Header="_Save..." InputGesture="Ctrl+S" Click="OnSaveLog" />
 
       <MenuItem Header="E_xit" Click="OnExit" />
 
@@ -24,39 +24,15 @@
 
     <MenuItem Header="_Edit">
 
-      <MenuItem Header="_Copy" Click="OnCopy" HotKey="Ctrl+C">
+      <MenuItem Header="_Copy" InputGesture="Ctrl+C" Click="OnCopy" />
 
-        <MenuItem.Icon>
+      <MenuItem Header="Clea_r window" InputGesture="Ctrl+R" Click="OnClear" />
 
-          <Panel Width="18" Height="18" />
-
-        </MenuItem.Icon>
-
-      </MenuItem>
-
-      <MenuItem Header="Clea_r window" Click="OnClear" HotKey="Ctrl+R">
-
-        <MenuItem.Icon>
-
-          <Panel Width="18" Height="18" />
-
-        </MenuItem.Icon>
-
-      </MenuItem>
-
-      <MenuItem Header="Select _All" Click="OnSelectAll" HotKey="Ctrl+A">
-
-        <MenuItem.Icon>
-
-          <Panel Width="18" Height="18" />
-
-        </MenuItem.Icon>
-
-      </MenuItem>
+      <MenuItem Header="Select _All" InputGesture="Ctrl+A" Click="OnSelectAll" />
 
       <Separator />
 
-      <MenuItem x:Name="LimitBufferMenuItem" Header="_Limit Buffer Length" Click="OnToggleLimitBuffer" HotKey="Ctrl+L">
+      <MenuItem x:Name="LimitBufferMenuItem" Header="_Limit Buffer Length" InputGesture="Ctrl+L" Click="OnToggleLimitBuffer">
 
         <MenuItem.Icon>
 
@@ -72,7 +48,7 @@
 
       </MenuItem>
 
-      <MenuItem x:Name="TimestampsMenuItem" Header="_Timestamps" Click="OnToggleTimestamps" HotKey="Ctrl+T">
+      <MenuItem x:Name="TimestampsMenuItem" Header="_Timestamps" InputGesture="Ctrl+T" Click="OnToggleTimestamps">
 
         <MenuItem.Icon>
 
@@ -88,7 +64,7 @@
 
       </MenuItem>
 
-      <MenuItem x:Name="KernelDebugMenuItem" Header="All &amp;Kernel Debug Output" IsEnabled="False" Click="OnToggleKernelDebug" HotKey="Ctrl+K">
+      <MenuItem x:Name="KernelDebugMenuItem" Header="All &amp;Kernel Debug Output" InputGesture="Ctrl+K" IsEnabled="False" Click="OnToggleKernelDebug">
 
         <MenuItem.Icon>
 
