@@ -8,8 +8,6 @@
     <AssemblyName>Rxdk.XbShellExt.UI</AssemblyName>
     <UseWindowsForms>true</UseWindowsForms>
     <UseWinFormsOutOfProcDesigner>false</UseWinFormsOutOfProcDesigner>
-    <ApplicationHighDpiMode>SystemAware</ApplicationHighDpiMode>
-    <ForceDesignerDpiUnaware>true</ForceDesignerDpiUnaware>
     <GenerateRuntimeConfigurationFile>true</GenerateRuntimeConfigurationFile>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
