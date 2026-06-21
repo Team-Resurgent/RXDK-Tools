@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+
+
+  <PropertyGroup>
+
+    <TargetFramework>net8.0</TargetFramework>
+
+    <Nullable>enable</Nullable>
+
+    <ImplicitUsings>enable</ImplicitUsings>
+
+    <RootNamespace>Rxdk.XbeImage</RootNamespace>
+
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+  </PropertyGroup>
+
+
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Rxdk.XbeImage.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+
+    <Compile Remove="tools\**" />
+
+  </ItemGroup>
+
+
+
+</Project>
+
+

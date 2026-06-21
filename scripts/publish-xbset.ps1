@@ -1,4 +1,4 @@
-# Publish single-file self-contained xbset
+# Publish single-file self-contained xbset (or use publish-managed-cli-tools.ps1 for the full bundle)
 param(
     [string]$Runtime = "win-x64",
     [string]$OutputDir = ""

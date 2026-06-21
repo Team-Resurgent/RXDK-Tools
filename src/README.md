@@ -18,6 +18,6 @@ Host-tool **project sources** and `.vcxproj` files live under `src/`.
 
 ## Build props
 
-Each component folder includes its `.vcxproj` and optional `.props`. Shared output paths and roots (`IncludeRoot`, `CommonRoot`) live in **`RXDKTools.props`**. Every project also imports **`RXDKTools.SharedItems.props`** so `shared/include` and `shared/common` appear in Solution Explorer.
+Each component folder includes its `.vcxproj` and optional `.props`. Shared output paths and roots (`IncludeRoot`, `CommonRoot`) live in **`src-dotnet/RXDKTools.props`** (with **`RXDKTools.SharedItems.props`** for Solution Explorer browsing of `shared/`).
 
 Set **`SharedCommonCompile`** in a project to compile specific common sources.

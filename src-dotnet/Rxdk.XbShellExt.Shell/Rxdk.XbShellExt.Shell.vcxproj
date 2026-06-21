@@ -29,7 +29,7 @@
     <UseOfAtl>Static</UseOfAtl>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
-  <Import Project="$(MSBuildThisFileDirectory)..\..\src\RXDKTools.props" />
+  <Import Project="$(MSBuildThisFileDirectory)..\RXDKTools.props" />
   <PropertyGroup>
     <TargetName>Rxdk.XbShellExt.Shell</TargetName>
     <OutDir>$(BinOutDir)</OutDir>

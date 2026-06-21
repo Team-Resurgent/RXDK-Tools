@@ -11,8 +11,8 @@ public sealed class XboxDbgBridgeTests
         var project = Path.GetFullPath(Path.Combine(
             AppContext.BaseDirectory,
             "..", "..", "..", "..",
-            "Rxdk.XboxDbgBridge",
-            "Rxdk.XboxDbgBridge.csproj"));
+            "Rxdk.XboxDbgBridge.Cli",
+            "Rxdk.XboxDbgBridge.Cli.csproj"));
 
         var psi = new ProcessStartInfo
         {
