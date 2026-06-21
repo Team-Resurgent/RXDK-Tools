@@ -173,7 +173,7 @@ Requires **.NET 8 SDK**.
 
 ### Managed CLI tools (cross-platform)
 
-Single-file, self-contained builds of **`xbset`**, **`xbcp`**, **`xbdir`**, **`xbmkdir`**, **`xbecopy`**, **`imagebld`**, **`xbox-launch`**, and **`xboxdbg-bridge`** are published together as a flat **`tools/`** bundle in CI ( **`xbwatson`** remains a separate GUI publish).
+Single-file, self-contained builds of **`xbset`**, **`xbcp`**, **`xbdir`**, **`xbmkdir`**, **`xbecopy`**, **`imagebld`**, **`xbox-launch`**, **`xboxdbg-bridge`**, and **`xbwatson`** are published together as a flat **`tools/`** bundle in CI.
 
 ```powershell
 # Windows
@@ -257,7 +257,7 @@ Rxdk.XbWatson [/x xboxname]
 ```
 
 ```powershell
-# Publish Rxdk.XbWatson
+# Publish only xbWatson into the tools bundle
 powershell -File scripts/publish-xbwatson.ps1 -Runtime win-x64
 powershell -File scripts/publish-xbwatson.ps1 -Runtime linux-x64
 ```

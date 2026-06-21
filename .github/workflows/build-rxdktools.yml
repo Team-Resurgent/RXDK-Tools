@@ -62,9 +62,6 @@ jobs:
         shell: pwsh
         run: ./scripts/publish-managed-cli-tools.ps1 -Runtime win-x64 -OutputDir out/publish/managed/win-x64/tools
 
-      - name: Publish xbWatson
-        run: dotnet publish src/Rxdk.XbWatson/Rxdk.XbWatson.csproj -c Release -r win-x64 -o out/publish/managed/win-x64/xbwatson
-
       - name: Upload Xbox Neighborhood installer
         uses: actions/upload-artifact@v4
         with:
@@ -99,12 +96,7 @@ jobs:
             '| `out/publish/managed/win-x64/tools/imagebld.exe` |',
             '| `out/publish/managed/win-x64/tools/xbox-launch.exe` |',
             '| `out/publish/managed/win-x64/tools/xboxdbg-bridge.exe` |',
-            '',
-            '#### Other managed tools',
-            '',
-            '| Path |',
-            '|------|',
-            '| `out/publish/managed/win-x64/xbwatson/xbwatson.exe` |',
+            '| `out/publish/managed/win-x64/tools/xbwatson.exe` |',
             '',
             '#### Shell extension installer',
             '',
@@ -149,9 +141,6 @@ jobs:
       - name: Publish managed CLI tools (single-file bundle)
         run: bash scripts/publish-managed-cli-tools.sh linux-x64 out/publish/managed/linux-x64/tools
 
-      - name: Publish xbWatson
-        run: dotnet publish src/Rxdk.XbWatson/Rxdk.XbWatson.csproj -c Release -r linux-x64 -o out/publish/managed/linux-x64/xbwatson
-
       - name: Upload NuGet packages
         uses: actions/upload-artifact@v4
         with:
@@ -176,8 +165,7 @@ jobs:
             echo ""
             echo "| Path |"
             echo "|------|"
-            echo "| \`out/publish/managed/linux-x64/tools/\` (xbset, xbcp, xbdir, xbmkdir, xbecopy, imagebld, xbox-launch, xboxdbg-bridge) |"
-            echo "| \`out/publish/managed/linux-x64/xbwatson/\` |"
+            echo "| \`out/publish/managed/linux-x64/tools/\` (xbset, xbcp, xbdir, xbmkdir, xbecopy, imagebld, xbox-launch, xboxdbg-bridge, xbwatson) |"
             echo "| \`out/publish/nuget/Rxdk.XboxDbgBridge.*.nupkg\` |"
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -204,9 +192,6 @@ jobs:
       - name: Publish managed CLI tools (single-file bundle)
         run: bash scripts/publish-managed-cli-tools.sh osx-arm64 out/publish/managed/osx-arm64/tools
 
-      - name: Publish xbWatson
-        run: dotnet publish src/Rxdk.XbWatson/Rxdk.XbWatson.csproj -c Release -r osx-arm64 -o out/publish/managed/osx-arm64/xbwatson
-
       - name: Upload managed tools (macOS)
         uses: actions/upload-artifact@v4
         with:
@@ -223,8 +208,7 @@ jobs:
             echo ""
             echo "| Path |"
             echo "|------|"
-            echo "| \`out/publish/managed/osx-arm64/tools/\` (xbset, xbcp, xbdir, xbmkdir, xbecopy, imagebld, xbox-launch, xboxdbg-bridge) |"
-            echo "| \`out/publish/managed/osx-arm64/xbwatson/\` |"
+            echo "| \`out/publish/managed/osx-arm64/tools/\` (xbset, xbcp, xbdir, xbmkdir, xbecopy, imagebld, xbox-launch, xboxdbg-bridge, xbwatson) |"
           } >> "$GITHUB_STEP_SUMMARY"
 
   release:
@@ -301,7 +285,7 @@ jobs:
             echo ""
             echo "- Tag: \`${{ steps.meta.outputs.tag }}\`"
             echo "- Pre-release: \`${{ steps.meta.outputs.prerelease }}\`"
-            echo "- Windows: \`XboxNeighborhood-Setup.exe\`, managed tool zips (\`tools/\` bundle, \`xbwatson\`)"
-            echo "- Linux/macOS: managed tool zips (\`tools/\` bundle, \`xbwatson\`)"
+            echo "- Windows: \`XboxNeighborhood-Setup.exe\`, managed tool zip (\`tools/\` bundle incl. \`xbwatson\`)"
+            echo "- Linux/macOS: managed tool zip (\`tools/\` bundle incl. \`xbwatson\`)"
             echo "- NuGet: \`Rxdk.XboxDbgBridge\` (\`rxdk-nuget.zip\`)"
           } >> "$GITHUB_STEP_SUMMARY"

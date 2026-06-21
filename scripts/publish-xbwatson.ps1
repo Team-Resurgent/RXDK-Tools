@@ -1,4 +1,4 @@
-# Publish single-file self-contained xbWatson
+# Publish single-file self-contained xbWatson into the managed tools bundle.
 param(
     [string]$Runtime = "win-x64",
     [string]$OutputDir = ""
@@ -6,10 +6,33 @@ param(
 
 $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent $PSScriptRoot
+$toolsDir = if ($OutputDir) { $OutputDir } else { Join-Path $repoRoot "out\publish\managed-cli-tools-$Runtime" }
 $project = Join-Path $repoRoot "src\Rxdk.XbWatson\Rxdk.XbWatson.csproj"
-$publishDir = if ($OutputDir) { $OutputDir } else { Join-Path $repoRoot "out\publish\xbwatson-$Runtime" }
+$staging = Join-Path ([System.IO.Path]::GetTempPath()) "rxdk-xbwatson-publish-$Runtime-$(Get-Random)"
 
-Write-Host "Publishing xbWatson (single-file, $Runtime)..."
-dotnet publish $project -c Release -r $Runtime -o $publishDir
-if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-Write-Host "Published to: $publishDir"
+New-Item -ItemType Directory -Force -Path $toolsDir | Out-Null
+New-Item -ItemType Directory -Force -Path $staging | Out-Null
+
+try {
+    Write-Host "Publishing xbWatson (single-file, $Runtime)..."
+    dotnet publish $project -c Release -r $Runtime -o $staging
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+    $publishedExe = Get-ChildItem -Path $staging -File |
+        Where-Object { $_.BaseName -eq "xbwatson" } |
+        Select-Object -First 1
+    if ($null -eq $publishedExe) {
+        $names = (Get-ChildItem -Path $staging -File | ForEach-Object { $_.Name }) -join ", "
+        throw "Expected published executable 'xbwatson', found: $names"
+    }
+
+    $source = $publishedExe.FullName
+    $destination = Join-Path $toolsDir $publishedExe.Name
+    Copy-Item -LiteralPath $source -Destination $destination -Force
+    Write-Host "Published to: $destination"
+}
+finally {
+    if (Test-Path $staging) {
+        Remove-Item -LiteralPath $staging -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
