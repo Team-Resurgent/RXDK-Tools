@@ -1,4 +1,4 @@
-using RXDKNeighborhood.Core.Services;
+using Rxdk.XbNeighborhood.Core.Services;
 using Rxdk.XbShellExt.Ui;
 using Rxdk.XbShellExt.Ui.Controls.Properties;
 using Rxdk.Xbdm;
@@ -32,7 +32,7 @@ public sealed partial class PropertiesForm : ShellDialogForm
         ApplyRuntimeChrome();
     }
 
-    public PropertiesForm(RXDKNeighborhood.Core.Services.PropertyRequest request, string? initialTab)
+    public PropertiesForm(Rxdk.XbNeighborhood.Core.Services.PropertyRequest request, string? initialTab)
         : this()
     {
         tabs.TabPages.Clear();

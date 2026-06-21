@@ -1,4 +1,4 @@
-# Publish single-file self-contained xbWatson into the managed tools bundle.
+# Publish single-file framework-dependent xbWatson into the managed tools bundle.
 param(
     [string]$Runtime = "win-x64",
     [string]$OutputDir = ""
@@ -14,7 +14,7 @@ New-Item -ItemType Directory -Force -Path $toolsDir | Out-Null
 New-Item -ItemType Directory -Force -Path $staging | Out-Null
 
 try {
-    Write-Host "Publishing xbWatson (single-file, $Runtime)..."
+    Write-Host "Publishing xbWatson (single-file framework-dependent, $Runtime)..."
     dotnet publish $project -c Release -r $Runtime -o $staging
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 

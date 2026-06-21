@@ -14,7 +14,7 @@
     <ApplicationUseCompatibleTextRendering>false</ApplicationUseCompatibleTextRendering>
     <EnableComHosting Condition="'$(DesignTimeBuild)' != 'true' and '$(Configuration)' == 'Release'">true</EnableComHosting>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <ApplicationIcon>..\..\assets\shell\console.ico</ApplicationIcon>
+    <ApplicationIcon>..\..\assets\console.ico</ApplicationIcon>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
@@ -27,7 +27,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\RXDKNeighborhood.Core\RXDKNeighborhood.Core.csproj" />
+    <ProjectReference Include="..\Rxdk.XbNeighborhood.Core\Rxdk.XbNeighborhood.Core.csproj" />
     <ProjectReference Include="..\Rxdk.Xbdm.KitServices\Rxdk.Xbdm.KitServices.csproj" />
     <ProjectReference Include="..\Rxdk.XbShellExt.UI\Rxdk.XbShellExt.UI.csproj" />
   </ItemGroup>

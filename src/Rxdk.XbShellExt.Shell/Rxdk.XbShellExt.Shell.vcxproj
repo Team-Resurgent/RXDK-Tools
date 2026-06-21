@@ -95,6 +95,6 @@
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <Target Name="StageShellIcons" AfterTargets="Build">
-    <Copy SourceFiles="$(MSBuildThisFileDirectory)..\..\assets\shell\xbox.ico" DestinationFiles="$(OutDir)xbox.ico" SkipUnchangedFiles="true" Condition="Exists('$(MSBuildThisFileDirectory)..\..\assets\shell\xbox.ico')" />
+    <Copy SourceFiles="$(MSBuildThisFileDirectory)..\..\assets\xbox-light.ico" DestinationFiles="$(OutDir)xbox.ico" SkipUnchangedFiles="true" Condition="Exists('$(MSBuildThisFileDirectory)..\..\assets\xbox-light.ico')" />
   </Target>
 </Project>

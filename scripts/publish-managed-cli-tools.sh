@@ -32,7 +32,7 @@ for entry in "${cli_tools[@]}"; do
   staging="$temp_root/$tool_name"
   mkdir -p "$staging"
 
-  echo "Publishing $tool_name (single-file, $runtime)..."
+echo "Publishing $tool_name (single-file framework-dependent, $runtime)..."
   dotnet publish "$project" -c Release -r "$runtime" -o "$staging"
 
   published_file="$(find "$staging" -maxdepth 1 -type f -name "$tool_name*" ! -name "*.pdb" | head -n 1)"
@@ -46,4 +46,4 @@ for entry in "${cli_tools[@]}"; do
   echo "  -> $tools_dir/$(basename "$published_file")"
 done
 
-echo "Published ${#cli_tools[@]} single-file tools to: $tools_dir"
+echo "Published ${#cli_tools[@]} single-file framework-dependent tools to: $tools_dir"

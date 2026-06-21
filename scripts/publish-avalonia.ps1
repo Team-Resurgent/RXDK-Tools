@@ -11,8 +11,8 @@ if (-not (Test-Path (Join-Path $repoRoot "RXDKTools.sln"))) {
     $repoRoot = $PSScriptRoot
 }
 
-$project = Join-Path $repoRoot "src\RXDKNeighborhood\RXDKNeighborhood.csproj"
-$publishDir = Join-Path $repoRoot "out\publish\RXDKNeighborhood-$Runtime"
+$project = Join-Path $repoRoot "src\Rxdk.XbNeighborhood\Rxdk.XbNeighborhood.csproj"
+$publishDir = Join-Path $repoRoot "out\publish\Rxdk.XbNeighborhood-$Runtime"
 
 $publishArgs = @(
     "publish", $project,
@@ -22,12 +22,12 @@ $publishArgs = @(
 )
 
 if ($Mode -eq "self-contained") {
-    $publishArgs += @("--self-contained", "true", "-p:PublishSingleFile=true", "-p:IncludeNativeLibrariesForSelfExtract=true")
+    $publishArgs += @("-p:SelfContained=true", "-p:IncludeNativeLibrariesForSelfExtract=true", "-p:IncludeAllContentForSelfExtract=true")
 } else {
     $publishArgs += @("--self-contained", "false")
 }
 
-Write-Host "Publishing Avalonia RXDKNeighborhood ($Mode, $Runtime)..."
+Write-Host "Publishing Avalonia Rxdk.XbNeighborhood ($Mode, $Runtime)..."
 dotnet @publishArgs
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 

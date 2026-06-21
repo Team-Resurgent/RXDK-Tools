@@ -15,13 +15,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\RXDKNeighborhood.Core\RXDKNeighborhood.Core.csproj" />
+    <ProjectReference Include="..\Rxdk.XbNeighborhood.Core\Rxdk.XbNeighborhood.Core.csproj" />
     <ProjectReference Include="..\Rxdk.Xbdm.KitServices\Rxdk.Xbdm.KitServices.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="..\..\assets\shell\xwmark.bmp" Link="Assets\xwmark.bmp" />
-    <EmbeddedResource Include="..\..\assets\shell\xheader.bmp" Link="Assets\xheader.bmp" />
+    <EmbeddedResource Include="..\..\assets\xwmark.bmp" Link="Assets\xwmark.bmp" />
+    <EmbeddedResource Include="..\..\assets\xheader.bmp" Link="Assets\xheader.bmp" />
   </ItemGroup>
 
   <ItemGroup>

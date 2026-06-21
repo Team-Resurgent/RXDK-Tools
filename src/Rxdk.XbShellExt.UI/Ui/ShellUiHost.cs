@@ -5,7 +5,7 @@ namespace Rxdk.XbShellExt.Ui;
 
 public static class ShellUiHost
 {
-    public static void ShowProperties(nint ownerHwnd, RXDKNeighborhood.Core.Services.PropertyRequest? request, string? initialTab = null)
+    public static void ShowProperties(nint ownerHwnd, Rxdk.XbNeighborhood.Core.Services.PropertyRequest? request, string? initialTab = null)
     {
         if (request == null)
             return;

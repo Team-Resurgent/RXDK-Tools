@@ -1,5 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <Import Project="..\SingleFilePublish.props" />
+  <Import Project="..\CliTool.props" />
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>

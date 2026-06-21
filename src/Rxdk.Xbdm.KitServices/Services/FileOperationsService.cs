@@ -140,7 +140,7 @@ public class FileOperationsService
         if (selection.Items.Count == 0)
             return Array.Empty<string>();
 
-        var tempRoot = Path.Combine(Path.GetTempPath(), "RXDKNeighborhoodDrag");
+        var tempRoot = Path.Combine(Path.GetTempPath(), "Rxdk.XbNeighborhoodDrag");
         Directory.CreateDirectory(tempRoot);
 
         var paths = new List<string>();

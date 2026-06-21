@@ -17,7 +17,7 @@ The classic XDK shipped 32-bit utilities that no longer run on modern Windows. R
 | Category | Tools |
 |----------|-------|
 | Explorer | **Xbox Neighborhood** shell extension (`Rxdk.XbShellExt.comhost.dll`) |
-| Neighborhood app | **`RXDKNeighborhood.exe`** — Avalonia standalone browser (`RXDKTools.sln`) |
+| Neighborhood app | **`xbneighborhood.exe`** — Avalonia standalone browser (`RXDKTools.sln`) |
 | File transfer | `xbcp`, `xbdir`, `xbmkdir`, `xbecopy` |
 | Build | `imagebld` (PE → signed `.xbe`) |
 | Debug | `xbox-launch`, **`Rxdk.XbWatson`** (cross-platform Avalonia), `xboxdbg-bridge` |
@@ -26,11 +26,11 @@ The classic XDK shipped 32-bit utilities that no longer run on modern Windows. R
 
 - [Requirements](#requirements)
 - [Quick start — Xbox Neighborhood (shell extension)](#quick-start--xbox-neighborhood-shell-extension)
-- [Quick start — RXDKNeighborhood app](#quick-start--rxdkneighborhood-app)
+- [Quick start — Rxdk.XbNeighborhood app](#quick-start--rxdkxbneighborhood-app)
 - [Screenshots](#screenshots)
 - [Tools](#tools)
   - [Xbox Neighborhood](#xbox-neighborhood-rxdkxbshlext)
-  - [RXDKNeighborhood app](#rxdkneighborhood-app)
+  - [Rxdk.XbNeighborhood app](#rxdkxbneighborhood-app)
   - [File utilities](#file-utilities-xbcp-xbdir-xbmkdir-xbecopy)
   - [Image builder](#xbox-image-file-builder-imagebld)
   - [Launch helper](#launch-helper-xbox-launch)
@@ -68,9 +68,9 @@ Build **`Rxdk.XbShellExt`** (`Release | win-x64`), then stage and register local
 
 Repo-root **`register-shell-ext.cmd`** / **`unregister-shell-ext.cmd`** are convenience wrappers for the same scripts. Staged payloads: **`out/dev/xbshlext/`** (managed comhost + dependencies). Manual Explorer checks: [`docs/xbshlext-manual-checklist.md`](docs/xbshlext-manual-checklist.md).
 
-## Quick start — RXDKNeighborhood app
+## Quick start — Rxdk.XbNeighborhood app
 
-Build or publish the Avalonia app (see [RXDKNeighborhood app](#rxdkneighborhood-app) below), then run **`RXDKNeighborhood.exe`**. No shell extension or admin install is required — the app talks to kits directly over XBDM.
+Build or publish the Avalonia app (see [Rxdk.XbNeighborhood app](#rxdkxbneighborhood-app) below), then run **`xbneighborhood.exe`**. No shell extension or admin install is required — the app talks to kits directly over XBDM.
 
 1. **Add Console** and complete the wizard (name/IP, security if needed)
 2. Select a console in the tree to browse drives
@@ -81,7 +81,7 @@ Console list persistence (shared via **`Rxdk.KitConfig`**):
 | OS | Console list | Default console | IP cache |
 |----|--------------|-----------------|----------|
 | Windows | `HKCU\Software\Microsoft\XboxSDK\xbshlext\Consoles` | `HKCU\Software\Microsoft\XboxSDK\XboxName` | `HKCU\...\xbshlext\Addresses` |
-| Linux / macOS | `%AppData%/RXDKNeighborhood/consoles.json` | JSON `DefaultConsole` | JSON per-console `IpAddress` |
+| Linux / macOS | `%AppData%/Rxdk.XbNeighborhood/consoles.json` | JSON `DefaultConsole` | JSON per-console `IpAddress` |
 
 On Windows, if the registry list is empty but `consoles.json` exists, consoles are migrated into the registry once.
 
@@ -96,7 +96,7 @@ powershell -File scripts/publish-avalonia.ps1 -Runtime linux-x64
 ./scripts/publish-avalonia.sh framework linux-x64
 ```
 
-Published output: `out/publish/RXDKNeighborhood-<runtime>/`
+Published output: `out/publish/Rxdk.XbNeighborhood-<runtime>/`
 
 ## Screenshots
 
@@ -130,9 +130,9 @@ The headline feature — an **Xbox Neighborhood** entry in Windows Explorer for 
 | Reboot | Warm, cold, or same-title reboot from the console context menu |
 | Capture & security | Screenshot capture and security settings from the console menu |
 
-Built as **`Rxdk.XbShellExt.comhost.dll`** with shared **`Rxdk.Xbdm.KitServices`** / **`RXDKNeighborhood.Core`** logic and WinForms UI in-process. Run **`setup/build-installer.ps1`** (or build from **`RXDKTools.sln`**) to produce **`XboxNeighborhood-Setup.exe`**.
+Built as **`Rxdk.XbShellExt.comhost.dll`** with shared **`Rxdk.Xbdm.KitServices`** / **`Rxdk.XbNeighborhood.Core`** logic and WinForms UI in-process. Run **`setup/build-installer.ps1`** (or build from **`RXDKTools.sln`**) to produce **`XboxNeighborhood-Setup.exe`**.
 
-### RXDKNeighborhood app
+### Rxdk.XbNeighborhood app
 
 Modern **Avalonia** standalone browser (`RXDKTools.sln`) — browse kits, drives, and folders **without Explorer shell integration**. Uses the managed XBDM protocol stack in `Rxdk.Xbdm.Managed`.
 
@@ -155,25 +155,47 @@ Modern **Avalonia** standalone browser (`RXDKTools.sln`) — browse kits, drives
 **Build and run:**
 
 ```powershell
-dotnet run --project src/RXDKNeighborhood/RXDKNeighborhood.csproj -c Release
+dotnet run --project src/Rxdk.XbNeighborhood/Rxdk.XbNeighborhood.csproj -c Release
 
 # Publish distributable folder (Windows)
 powershell -File scripts/publish-avalonia.ps1 -Runtime win-x64
 ```
 
-Published output: `out/publish/RXDKNeighborhood-<runtime>/`
+Published output: `out/publish/Rxdk.XbNeighborhood-<runtime>/`
 
 | Component | Location |
 |-----------|----------|
-| Avalonia app | `src/RXDKNeighborhood/` |
-| C# core logic | `src/RXDKNeighborhood.Core/` |
+| Avalonia app | `src/Rxdk.XbNeighborhood/` |
+| C# core logic | `src/Rxdk.XbNeighborhood.Core/` |
 | Managed XBDM client | `src/Rxdk.Xbdm.Managed/` |
 
 Requires **.NET 8 SDK**.
 
 ### Managed CLI tools (cross-platform)
 
-Single-file, self-contained builds of **`xbset`**, **`xbcp`**, **`xbdir`**, **`xbmkdir`**, **`xbecopy`**, **`imagebld`**, **`xbox-launch`**, **`xboxdbg-bridge`**, and **`xbwatson`** are published together as a flat **`tools/`** bundle in CI.
+Single-file, framework-dependent builds of **`xbset`**, **`xbcp`**, **`xbdir`**, **`xbmkdir`**, **`xbecopy`**, **`imagebld`**, **`xbox-launch`**, **`xboxdbg-bridge`**, and **`xbwatson`** are published together as a flat **`tools/`** bundle in CI. Requires the **.NET 8 runtime** on the target machine.
+
+Each OS package also includes a bundled .NET 8 runtime under **`runtime/`** and an installer script:
+
+```powershell
+# Windows (from extracted release zip)
+.\install-dotnet-runtime.cmd
+
+# Linux / macOS
+chmod +x install-dotnet-runtime.sh
+./install-dotnet-runtime.sh
+```
+
+To build a full package locally (tools + bundled runtime + install scripts):
+
+```powershell
+powershell -File scripts/stage-managed-tools-package.ps1 -Runtime win-x64
+```
+
+```bash
+./scripts/stage-managed-tools-package.sh linux-x64
+./scripts/stage-managed-tools-package.sh osx-arm64
+```
 
 ```powershell
 # Windows
@@ -184,11 +206,11 @@ powershell -File scripts/publish-managed-cli-tools.ps1 -Runtime win-x64
 ./scripts/publish-managed-cli-tools.sh osx-arm64
 ```
 
-Output: `out/publish/managed-cli-tools-<runtime>/` (one executable per tool, no sidecar DLLs).
+Output: `out/publish/managed-cli-tools-<runtime>/` (one executable per tool; requires **.NET 8 runtime**).
 
 ### Rxdk.XboxDbgBridge (NuGet)
 
-Tool-only **`Rxdk.XboxDbgBridge`** NuGet package: self-contained **`xboxdbg-bridge`** binaries for **win-x64**, **linux-x64**, and **osx-arm64** under `tools/<rid>/` (stdin/JSON protocol for VS Code DAP). No library reference — spawn the executable. PDB/stack/locals require **Windows**; kit control is cross-platform.
+Tool-only **`Rxdk.XboxDbgBridge`** NuGet package: framework-dependent single-file **`xboxdbg-bridge`** binaries for **win-x64**, **linux-x64**, and **osx-arm64** under `tools/<rid>/` (stdin/JSON protocol for VS Code DAP). No library reference — spawn the executable. Requires the **.NET 8 runtime**. PDB/stack/locals require **Windows**; kit control is cross-platform.
 
 ```bash
 dotnet pack src/Rxdk.XboxDbgBridge/Rxdk.XboxDbgBridge.csproj -c Release -o out/publish/nuget
@@ -309,4 +331,4 @@ Managed projects live under **`src/`**. The native **`Rxdk.XbShellExt.Shell`** C
 | `Rxdk.XbWatson` | `xbwatson.exe` | Break/assert/RIP notification UI |
 | `Rxdk.XboxDbgBridge.Cli` | `xboxdbg-bridge.exe` | JSON debug bridge for editor integration (also in `Rxdk.XboxDbgBridge` NuGet) |
 
-The standalone **`RXDKNeighborhood.exe`** Avalonia app is also in **`RXDKTools.sln`** — see [RXDKNeighborhood app](#rxdkneighborhood-app).
+The standalone **`xbneighborhood.exe`** Avalonia app is also in **`RXDKTools.sln`** — see [Rxdk.XbNeighborhood app](#rxdkxbneighborhood-app).
