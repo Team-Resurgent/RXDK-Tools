@@ -4,7 +4,6 @@ using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
-using System.Windows.Input;
 using Rxdk.XbWatson.Core;
 using Rxdk.XbWatson.Core.BreakInfo;
 using Rxdk.XbWatson.Dialogs;
@@ -54,23 +53,23 @@ public partial class MainWindow : Window, IWatsonEventSink
 
     private void RegisterKeyboardShortcuts()
     {
-        KeyBindings.Add(CreateShortcut(Key.S, OnSaveLog));
-        KeyBindings.Add(CreateShortcut(Key.C, OnCopy));
-        KeyBindings.Add(CreateShortcut(Key.R, OnClear));
-        KeyBindings.Add(CreateShortcut(Key.A, OnSelectAll));
-        KeyBindings.Add(CreateShortcut(Key.L, OnToggleLimitBuffer));
-        KeyBindings.Add(CreateShortcut(Key.T, OnToggleTimestamps));
-        KeyBindings.Add(CreateShortcut(Key.K, OnToggleKernelDebug));
+        KeyBindings.Add(CreateShortcut(Key.S, () => OnSaveLog(this, new RoutedEventArgs())));
+        KeyBindings.Add(CreateShortcut(Key.C, () => OnCopy(this, new RoutedEventArgs())));
+        KeyBindings.Add(CreateShortcut(Key.R, () => OnClear(this, new RoutedEventArgs())));
+        KeyBindings.Add(CreateShortcut(Key.A, () => OnSelectAll(this, new RoutedEventArgs())));
+        KeyBindings.Add(CreateShortcut(Key.L, () => OnToggleLimitBuffer(this, new RoutedEventArgs())));
+        KeyBindings.Add(CreateShortcut(Key.T, () => OnToggleTimestamps(this, new RoutedEventArgs())));
+        KeyBindings.Add(CreateShortcut(Key.K, () => OnToggleKernelDebug(this, new RoutedEventArgs())));
     }
 
-    private static KeyBinding CreateShortcut(Key key, RoutedEventHandler handler) =>
+    private static KeyBinding CreateShortcut(Key key, Action handler) =>
         new()
         {
             Gesture = new KeyGesture(key, KeyModifiers.Control),
-            Command = new RelayCommand(() => handler(null, new RoutedEventArgs())),
+            Command = new RelayCommand(handler),
         };
 
-    private sealed class RelayCommand : ICommand
+    private sealed class RelayCommand : System.Windows.Input.ICommand
     {
         private readonly Action _execute;
 
