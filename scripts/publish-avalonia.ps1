@@ -7,11 +7,11 @@ param(
 
 $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent $PSScriptRoot
-if (-not (Test-Path (Join-Path $repoRoot "RXDKNeighborhood.sln"))) {
+if (-not (Test-Path (Join-Path $repoRoot "RXDKTools.sln"))) {
     $repoRoot = $PSScriptRoot
 }
 
-$project = Join-Path $repoRoot "src-dotnet\RXDKNeighborhood\RXDKNeighborhood.csproj"
+$project = Join-Path $repoRoot "src\RXDKNeighborhood\RXDKNeighborhood.csproj"
 $publishDir = Join-Path $repoRoot "out\publish\RXDKNeighborhood-$Runtime"
 
 $publishArgs = @(

@@ -1,4 +1,4 @@
-# Run managed XBDM hardware tests and write artifacts/xbdm-kit-report.md
+# Run managed XBDM hardware tests and write out/reports/xbdm-kit-report.md
 #
 # Examples:
 #   .\scripts\run-xbdm-kit-tests.ps1 -Console MyXbox
@@ -14,15 +14,15 @@ param(
     [switch]$Full,
     [switch]$OpenReport,
     [switch]$Pause,
-    [string]$ReportPath = $(if ($env:RXDK_KIT_REPORT) { $env:RXDK_KIT_REPORT } elseif ($env:RXDK_PARITY_REPORT) { $env:RXDK_PARITY_REPORT } else { $null })
+    [string]$ReportPath = $(if ($env:RXDK_KIT_REPORT) { $env:RXDK_KIT_REPORT } else { $null })
 )
 
 $ErrorActionPreference = 'Stop'
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
-$testsProject = Join-Path $repoRoot 'src-dotnet\Rxdk.Xbdm.Tests\Rxdk.Xbdm.Tests.csproj'
-$bridgeProject = Join-Path $repoRoot 'src-dotnet\Rxdk.XboxDbgBridge.Cli\Rxdk.XboxDbgBridge.Cli.csproj'
-$artifactsDir = Join-Path $repoRoot 'artifacts'
+$testsProject = Join-Path $repoRoot 'src\Rxdk.Xbdm.Tests\Rxdk.Xbdm.Tests.csproj'
+$bridgeProject = Join-Path $repoRoot 'src\Rxdk.XboxDbgBridge.Cli\Rxdk.XboxDbgBridge.Cli.csproj'
+$reportsDir = Join-Path $repoRoot 'out\reports'
 
 if ([string]::IsNullOrWhiteSpace($Console)) {
     $Console = Read-Host 'Xbox console name or IP (RXDK_TEST_CONSOLE)'
@@ -54,7 +54,7 @@ if ($Full -and [string]::IsNullOrWhiteSpace($Password)) {
 }
 
 if ([string]::IsNullOrWhiteSpace($ReportPath)) {
-    $ReportPath = Join-Path $artifactsDir 'xbdm-kit-report.md'
+    $ReportPath = Join-Path $reportsDir 'xbdm-kit-report.md'
 }
 
 Write-Host ''
@@ -123,7 +123,7 @@ Write-Host ''
 Write-Host 'Running Comprehensive_kit_report...' -ForegroundColor Cyan
 Write-Host ''
 
-$testOutDir = Join-Path $repoRoot "src-dotnet\Rxdk.Xbdm.Tests\bin\$Configuration\net8.0"
+$testOutDir = Join-Path $repoRoot "src\Rxdk.Xbdm.Tests\bin\$Configuration\net8.0"
 $kitTestExe = Join-Path $testOutDir 'Rxdk.Xbdm.Tests.exe'
 $kitTestDll = Join-Path $testOutDir 'Rxdk.Xbdm.Tests.dll'
 

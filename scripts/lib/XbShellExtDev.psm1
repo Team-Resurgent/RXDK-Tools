@@ -737,7 +737,7 @@ function Assert-XbShellExtComHostClsidMap {
     if ($text -match "\{$publicClsid\}") {
         throw @(
             "Rxdk.XbShellExt.comhost.dll still embeds CC44 in its clsidmap (stale build output)."
-            "Run: dotnet clean src-dotnet/Rxdk.XbShellExt/Rxdk.XbShellExt.csproj -c Release"
+            "Run: dotnet clean src/Rxdk.XbShellExt/Rxdk.XbShellExt.csproj -c Release"
             "Then rebuild and stage again."
         ) -join ' '
     }

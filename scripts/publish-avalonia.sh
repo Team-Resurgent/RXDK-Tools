@@ -7,7 +7,7 @@ RUNTIME="${2:-linux-x64}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-PROJECT="$REPO_ROOT/src-dotnet/RXDKNeighborhood/RXDKNeighborhood.csproj"
+PROJECT="$REPO_ROOT/src/RXDKNeighborhood/RXDKNeighborhood.csproj"
 PUBLISH_DIR="$REPO_ROOT/out/publish/RXDKNeighborhood-$RUNTIME"
 
 PUBLISH_ARGS=(

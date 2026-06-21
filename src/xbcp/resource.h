@@ -1,3 +1,0 @@
-#define IDS_NOTDIR 1000
-#define IDS_ISDIR 1001
-#define IDS_NOTEMPFILE 1002

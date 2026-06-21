@@ -6,7 +6,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent $PSScriptRoot
-$project = Join-Path $repoRoot "src-dotnet\Rxdk.XbWatson\Rxdk.XbWatson.csproj"
+$project = Join-Path $repoRoot "src\Rxdk.XbWatson\Rxdk.XbWatson.csproj"
 $publishDir = if ($OutputDir) { $OutputDir } else { Join-Path $repoRoot "out\publish\xbwatson-$Runtime" }
 
 Write-Host "Publishing xbWatson (single-file, $Runtime)..."

@@ -42,45 +42,34 @@ jobs:
           $ErrorActionPreference = 'Stop'
           # Restore managed projects only. Rxdk.XbShellExt.Shell is native C++ (vcxproj) and
           # is not a NuGet/SDK project — dotnet restore on the .sln emits NU1503 for it.
-          dotnet restore src-dotnet/Rxdk.XbShellExt/Rxdk.XbShellExt.csproj -r win-x64
-          Get-ChildItem -Path src-dotnet -Recurse -Filter *.csproj |
+          dotnet restore src/Rxdk.XbShellExt/Rxdk.XbShellExt.csproj -r win-x64
+          Get-ChildItem -Path src -Recurse -Filter *.csproj |
             Where-Object { $_.Name -ne 'Rxdk.XbShellExt.csproj' } |
             ForEach-Object { dotnet restore $_.FullName }
 
-      - name: Build RXDKNeighborhood.sln
-        run: msbuild RXDKNeighborhood.sln /p:Configuration=Release /p:Platform=x64 /p:RestoreDuringBuild=false /m /v:m
+      - name: Build RXDKTools.sln
+        run: msbuild RXDKTools.sln /p:Configuration=Release /p:Platform=x64 /p:RestoreDuringBuild=false /m /v:m
 
-      - name: Build native imagebld (parity oracle)
-        run: |
-          msbuild src/xrsa/xrsa.vcxproj /p:Configuration=Release /p:Platform=x64 /p:RestoreDuringBuild=false /v:m
-          msbuild src/imagebld/imagebld.vcxproj /p:Configuration=Release /p:Platform=x64 /p:RestoreDuringBuild=false /v:m
-
-      - name: Test Rxdk.XbeImage (managed imagebld)
-        run: dotnet test src-dotnet/Rxdk.XbeImage.Tests/Rxdk.XbeImage.Tests.csproj -c Release --no-restore --filter "Category!=NativeOracle"
+      - name: Test Rxdk.XbeImage
+        run: dotnet test src/Rxdk.XbeImage.Tests/Rxdk.XbeImage.Tests.csproj -c Release --no-restore
 
       - name: Build Xbox Neighborhood installer
         shell: pwsh
         working-directory: ${{ github.workspace }}
         run: ./setup/build-installer.ps1
 
-      - name: Stage installer artifact
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force -Path artifacts/installer | Out-Null
-          Copy-Item -LiteralPath out/bin/x64/Release/XboxNeighborhood-Setup.exe -Destination artifacts/installer/ -Force
-
       - name: Publish managed CLI tools (single-file bundle)
         shell: pwsh
-        run: ./scripts/publish-managed-cli-tools.ps1 -Runtime win-x64 -OutputDir artifacts/managed/win-x64/tools
+        run: ./scripts/publish-managed-cli-tools.ps1 -Runtime win-x64 -OutputDir out/publish/managed/win-x64/tools
 
       - name: Publish xbWatson
-        run: dotnet publish src-dotnet/Rxdk.XbWatson/Rxdk.XbWatson.csproj -c Release -r win-x64 -o artifacts/managed/win-x64/xbwatson
+        run: dotnet publish src/Rxdk.XbWatson/Rxdk.XbWatson.csproj -c Release -r win-x64 -o out/publish/managed/win-x64/xbwatson
 
       - name: Upload Xbox Neighborhood installer
         uses: actions/upload-artifact@v4
         with:
           name: xbox-neighborhood-setup
-          path: artifacts/installer/XboxNeighborhood-Setup.exe
+          path: out/bin/x64/Release/XboxNeighborhood-Setup.exe
           if-no-files-found: error
           retention-days: 90
 
@@ -88,7 +77,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: rxdk-managed-win-x64
-          path: artifacts/managed/win-x64/**
+          path: out/publish/managed/win-x64/**
           if-no-files-found: error
           retention-days: 90
 
@@ -102,26 +91,26 @@ jobs:
             '',
             '| Path |',
             '|------|',
-            '| `artifacts/managed/win-x64/tools/xbset.exe` |',
-            '| `artifacts/managed/win-x64/tools/xbcp.exe` |',
-            '| `artifacts/managed/win-x64/tools/xbdir.exe` |',
-            '| `artifacts/managed/win-x64/tools/xbmkdir.exe` |',
-            '| `artifacts/managed/win-x64/tools/xbecopy.exe` |',
-            '| `artifacts/managed/win-x64/tools/imagebld.exe` |',
-            '| `artifacts/managed/win-x64/tools/xbox-launch.exe` |',
-            '| `artifacts/managed/win-x64/tools/xboxdbg-bridge.exe` |',
+            '| `out/publish/managed/win-x64/tools/xbset.exe` |',
+            '| `out/publish/managed/win-x64/tools/xbcp.exe` |',
+            '| `out/publish/managed/win-x64/tools/xbdir.exe` |',
+            '| `out/publish/managed/win-x64/tools/xbmkdir.exe` |',
+            '| `out/publish/managed/win-x64/tools/xbecopy.exe` |',
+            '| `out/publish/managed/win-x64/tools/imagebld.exe` |',
+            '| `out/publish/managed/win-x64/tools/xbox-launch.exe` |',
+            '| `out/publish/managed/win-x64/tools/xboxdbg-bridge.exe` |',
             '',
             '#### Other managed tools',
             '',
             '| Path |',
             '|------|',
-            '| `artifacts/managed/win-x64/xbwatson/xbwatson.exe` |',
+            '| `out/publish/managed/win-x64/xbwatson/xbwatson.exe` |',
             '',
             '#### Shell extension installer',
             '',
             '| File |',
             '|------|',
-            '| `XboxNeighborhood-Setup.exe` |'
+            '| `out/bin/x64/Release/XboxNeighborhood-Setup.exe` |'
           ) | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
 
   build-linux:
@@ -138,11 +127,11 @@ jobs:
 
       - name: Restore managed projects
         run: |
-          dotnet restore src-dotnet/Rxdk.XbeImage.Tests/Rxdk.XbeImage.Tests.csproj
-          dotnet restore src-dotnet/Rxdk.XboxDbgBridge/Rxdk.XboxDbgBridge.csproj
+          dotnet restore src/Rxdk.XbeImage.Tests/Rxdk.XbeImage.Tests.csproj
+          dotnet restore src/Rxdk.XboxDbgBridge/Rxdk.XboxDbgBridge.csproj
 
-      - name: Test Rxdk.XbeImage (golden parity)
-        run: dotnet test src-dotnet/Rxdk.XbeImage.Tests/Rxdk.XbeImage.Tests.csproj -c Release --no-restore --filter "Category!=NativeOracle"
+      - name: Test Rxdk.XbeImage
+        run: dotnet test src/Rxdk.XbeImage.Tests/Rxdk.XbeImage.Tests.csproj -c Release --no-restore
 
       - name: Pack Rxdk.XboxDbgBridge NuGet
         shell: bash
@@ -152,22 +141,22 @@ jobs:
           if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
             VERSION="${GITHUB_REF#refs/tags/v}"
           fi
-          mkdir -p artifacts/nuget
-          dotnet pack src-dotnet/Rxdk.XboxDbgBridge/Rxdk.XboxDbgBridge.csproj \
-            -c Release -o artifacts/nuget --no-restore \
+          mkdir -p out/publish/nuget
+          dotnet pack src/Rxdk.XboxDbgBridge/Rxdk.XboxDbgBridge.csproj \
+            -c Release -o out/publish/nuget --no-restore \
             -p:PackageVersion="$VERSION"
 
       - name: Publish managed CLI tools (single-file bundle)
-        run: bash scripts/publish-managed-cli-tools.sh linux-x64 artifacts/managed/linux-x64/tools
+        run: bash scripts/publish-managed-cli-tools.sh linux-x64 out/publish/managed/linux-x64/tools
 
       - name: Publish xbWatson
-        run: dotnet publish src-dotnet/Rxdk.XbWatson/Rxdk.XbWatson.csproj -c Release -r linux-x64 -o artifacts/managed/linux-x64/xbwatson
+        run: dotnet publish src/Rxdk.XbWatson/Rxdk.XbWatson.csproj -c Release -r linux-x64 -o out/publish/managed/linux-x64/xbwatson
 
       - name: Upload NuGet packages
         uses: actions/upload-artifact@v4
         with:
           name: rxdk-nuget
-          path: artifacts/nuget/**
+          path: out/publish/nuget/**
           if-no-files-found: error
           retention-days: 90
 
@@ -175,7 +164,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: rxdk-managed-linux-x64
-          path: artifacts/managed/linux-x64/**
+          path: out/publish/managed/linux-x64/**
           if-no-files-found: error
           retention-days: 90
 
@@ -187,9 +176,9 @@ jobs:
             echo ""
             echo "| Path |"
             echo "|------|"
-            echo "| \`artifacts/managed/linux-x64/tools/\` (xbset, xbcp, xbdir, xbmkdir, xbecopy, imagebld, xbox-launch, xboxdbg-bridge) |"
-            echo "| \`artifacts/managed/linux-x64/xbwatson/\` |"
-            echo "| \`artifacts/nuget/Rxdk.XboxDbgBridge.*.nupkg\` |"
+            echo "| \`out/publish/managed/linux-x64/tools/\` (xbset, xbcp, xbdir, xbmkdir, xbecopy, imagebld, xbox-launch, xboxdbg-bridge) |"
+            echo "| \`out/publish/managed/linux-x64/xbwatson/\` |"
+            echo "| \`out/publish/nuget/Rxdk.XboxDbgBridge.*.nupkg\` |"
           } >> "$GITHUB_STEP_SUMMARY"
 
   build-macos:
@@ -206,23 +195,23 @@ jobs:
 
       - name: Restore managed projects
         run: |
-          dotnet restore src-dotnet/Rxdk.XbeImage.Tests/Rxdk.XbeImage.Tests.csproj
-          dotnet restore src-dotnet/Rxdk.XboxDbgBridge/Rxdk.XboxDbgBridge.csproj
+          dotnet restore src/Rxdk.XbeImage.Tests/Rxdk.XbeImage.Tests.csproj
+          dotnet restore src/Rxdk.XboxDbgBridge/Rxdk.XboxDbgBridge.csproj
 
-      - name: Test Rxdk.XbeImage (golden parity)
-        run: dotnet test src-dotnet/Rxdk.XbeImage.Tests/Rxdk.XbeImage.Tests.csproj -c Release --no-restore --filter "Category!=NativeOracle"
+      - name: Test Rxdk.XbeImage
+        run: dotnet test src/Rxdk.XbeImage.Tests/Rxdk.XbeImage.Tests.csproj -c Release --no-restore
 
       - name: Publish managed CLI tools (single-file bundle)
-        run: bash scripts/publish-managed-cli-tools.sh osx-arm64 artifacts/managed/osx-arm64/tools
+        run: bash scripts/publish-managed-cli-tools.sh osx-arm64 out/publish/managed/osx-arm64/tools
 
       - name: Publish xbWatson
-        run: dotnet publish src-dotnet/Rxdk.XbWatson/Rxdk.XbWatson.csproj -c Release -r osx-arm64 -o artifacts/managed/osx-arm64/xbwatson
+        run: dotnet publish src/Rxdk.XbWatson/Rxdk.XbWatson.csproj -c Release -r osx-arm64 -o out/publish/managed/osx-arm64/xbwatson
 
       - name: Upload managed tools (macOS)
         uses: actions/upload-artifact@v4
         with:
           name: rxdk-managed-osx-arm64
-          path: artifacts/managed/osx-arm64/**
+          path: out/publish/managed/osx-arm64/**
           if-no-files-found: error
           retention-days: 90
 
@@ -234,8 +223,8 @@ jobs:
             echo ""
             echo "| Path |"
             echo "|------|"
-            echo "| \`artifacts/managed/osx-arm64/tools/\` (xbset, xbcp, xbdir, xbmkdir, xbecopy, imagebld, xbox-launch, xboxdbg-bridge) |"
-            echo "| \`artifacts/managed/osx-arm64/xbwatson/\` |"
+            echo "| \`out/publish/managed/osx-arm64/tools/\` (xbset, xbcp, xbdir, xbmkdir, xbecopy, imagebld, xbox-launch, xboxdbg-bridge) |"
+            echo "| \`out/publish/managed/osx-arm64/xbwatson/\` |"
           } >> "$GITHUB_STEP_SUMMARY"
 
   release:
