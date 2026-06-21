@@ -5,10 +5,13 @@
 #define MyAppId "F3A8C2E1-9B4D-4F6A-8E2C-1D5B7A9C0E3F"
 
 #ifndef InstallerOutputDir
-#define InstallerOutputDir "..\out\bin\x64\Release"
+#define InstallerOutputDir "../out/bin/x64/Release"
 #endif
 #ifndef InstallerOutputBaseName
 #define InstallerOutputBaseName "XboxNeighborhood-Setup"
+#endif
+#ifndef PayloadDir
+#define PayloadDir "../out/bin/x64/Release"
 #endif
 
 [Setup]
@@ -55,18 +58,18 @@ Type: files; Name: "{app}\xheader.bmp"
 Type: files; Name: "{app}\xwmark.bmp"
 
 [Files]
-Source: "..\out\bin\x64\Release\Rxdk.XbShellExt.Shell.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\out\bin\x64\Release\Rxdk.XbShellExt.comhost.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\out\bin\x64\Release\Rxdk.XbShellExt.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\out\bin\x64\Release\Rxdk.XbShellExt.UI.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\out\bin\x64\Release\RXDKNeighborhood.Core.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\out\bin\x64\Release\Rxdk.Xbdm.KitServices.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\out\bin\x64\Release\Rxdk.Xbdm.Managed.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\out\bin\x64\Release\Rxdk.Xbdm.Abstractions.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\out\bin\x64\Release\Rxdk.XbShellExt.deps.json"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
-Source: "..\out\bin\x64\Release\Rxdk.XbShellExt.runtimeconfig.json"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
-Source: "..\out\bin\x64\Release\console.ico"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\out\bin\x64\Release\xbox.ico"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#PayloadDir}/Rxdk.XbShellExt.Shell.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#PayloadDir}/Rxdk.XbShellExt.comhost.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#PayloadDir}/Rxdk.XbShellExt.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#PayloadDir}/Rxdk.XbShellExt.UI.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#PayloadDir}/RXDKNeighborhood.Core.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#PayloadDir}/Rxdk.Xbdm.KitServices.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#PayloadDir}/Rxdk.Xbdm.Managed.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#PayloadDir}/Rxdk.Xbdm.Abstractions.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#PayloadDir}/Rxdk.XbShellExt.deps.json"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
+Source: "{#PayloadDir}/Rxdk.XbShellExt.runtimeconfig.json"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
+Source: "{#PayloadDir}/console.ico"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#PayloadDir}/xbox.ico"; DestDir: "{app}"; Flags: ignoreversion
 
 [Registry]
 ; CC44 namespace shell extension (native proxy)
