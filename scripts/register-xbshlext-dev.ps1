@@ -56,12 +56,13 @@ try {
         throw "Staged native shell proxy not found: $shellDll"
     }
 
+    Write-Host "Registering native shell proxy: $shellDll"
+    Invoke-XbShellExtRegsvr32 -DllPath $shellDll
+    Repair-XbShellExtRegistry -ModulePath $shellDll
+
     Write-Host "Registering managed coclass: $comHost"
     Invoke-XbShellExtRegsvr32 -DllPath $comHost
     Repair-XbShellExtManagedRegistry -ModulePath $comHost
-
-    Write-Host "Registering native shell proxy: $shellDll"
-    Repair-XbShellExtRegistry -ModulePath $shellDll
 
     Enable-ExplorerNavPaneShowAllFolders
 

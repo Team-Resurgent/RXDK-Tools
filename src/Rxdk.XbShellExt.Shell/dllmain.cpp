@@ -51,11 +51,16 @@ STDAPI DllGetClassObject(REFCLSID clsid, REFIID riid, LPVOID* ppv)
 
 STDAPI DllRegisterServer()
 {
-    // Registry is written by scripts/Repair-XbShellExtRegistry.ps1.
-    return S_OK;
+    ShellTraceInit();
+    const HRESULT hr = _Module.RegisterServer(TRUE);
+    ShellTraceHr("DllRegisterServer", hr);
+    return hr;
 }
 
 STDAPI DllUnregisterServer()
 {
-    return S_OK;
+    ShellTraceInit();
+    const HRESULT hr = _Module.UnregisterServer(TRUE);
+    ShellTraceHr("DllUnregisterServer", hr);
+    return hr;
 }

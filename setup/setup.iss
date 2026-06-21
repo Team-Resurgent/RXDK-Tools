@@ -91,6 +91,8 @@ const
   ShellExtClsidKey = 'SOFTWARE\Classes\CLSID\{{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}}\InprocServer32';
   ClsidPublicRegKey = 'CLSID\{{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}}';
   ClsidPublicInprocKey = 'CLSID\{{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}}\InprocServer32';
+  LmClassesClsidPublicInprocKey = 'Software\Classes\CLSID\{{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}}\InprocServer32';
+  LmClassesClsidPublicShellFolderKey = 'Software\Classes\CLSID\{{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}}\ShellFolder';
   ClsidPublicShellFolderKey = 'CLSID\{{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}}\ShellFolder';
   ClsidPublicDefaultIconKey = 'CLSID\{{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}}\DefaultIcon';
   ClsidPublicShellKey = 'CLSID\{{DB15FEDD-96B8-4DA9-97E0-7E5CCA05CC44}}\shell';
@@ -181,15 +183,33 @@ end;
 function VerifyNamespaceProxyRegistration: Boolean;
 var
   Path, WowPath, LegacyPath: String;
+  ShellFolderAttrs: Cardinal;
 begin
   Path := '';
   WowPath := '';
   LegacyPath := '';
 
   Result :=
-    RegQueryStringValue(HKCR64, ClsidPublicInprocKey, '', Path) and
+    RegQueryStringValue(HKLM64, LmClassesClsidPublicInprocKey, '', Path) and
     (Path <> '') and
     FileExists(Path);
+
+  if not Result then
+    Result :=
+      RegQueryStringValue(HKCR64, ClsidPublicInprocKey, '', Path) and
+      (Path <> '') and
+      FileExists(Path);
+
+  if Result then
+  begin
+    if not RegQueryDWordValue(HKLM64, LmClassesClsidPublicShellFolderKey, 'Attributes', ShellFolderAttrs) then
+      RegQueryDWordValue(HKCR64, ClsidPublicShellFolderKey, 'Attributes', ShellFolderAttrs);
+    if ShellFolderAttrs <> $A0000004 then
+    begin
+      Log(Format('CC44 ShellFolder Attributes invalid: 0x%.8x (expected 0xA0000004)', [ShellFolderAttrs]));
+      Result := False;
+    end;
+  end;
 
   if Result then
   begin
@@ -206,7 +226,7 @@ begin
   if (Path <> '') and not FileExists(Path) then
     Log('CC44 InprocServer32 path does not exist: ' + Path)
   else
-    Log('CC44 InprocServer32 is missing from native 64-bit HKCR.');
+    Log('CC44 InprocServer32 is missing from native 64-bit HKLM\\Software\\Classes.');
 end;
 
 function DotNetDesktopSharedDir: String;
@@ -561,8 +581,14 @@ begin
   StopExplorer;
   try
     ClearShellExtensionRegistry;
-    { CC44 is pure registry (Shell.dll DllRegisterServer is a no-op). Write it
-      before regsvr32 so a comhost failure cannot leave the namespace missing. }
+    { Register CC44 through native 64-bit regsvr32 (ShellFolder.rgs). This is the same
+      mechanism that reliably registers CC45 via the comhost and avoids Inno Setup
+      HKCR64 writes that can fail to persist on some Windows 10 systems. }
+    ResultCode := RunRegsvr32(ShellDll, False);
+    if ResultCode <> 0 then
+      RaiseException(Regsvr32ErrorMessage('regsvr32 (Rxdk.XbShellExt.Shell.dll)', ResultCode));
+
+    { Idempotent repair for icon path, Approved, namespace pins, and xbox:// handler. }
     RepairShellExtensionRegistry(InstallDir, ShellDll);
     RepairNavPaneUserState;
     RegisterPerUserExplorerKeys(ShellDll);
@@ -570,7 +596,8 @@ begin
     if not VerifyNamespaceProxyRegistration then
       RaiseException(
         'The namespace shell extension proxy (CC44) was not registered in the native 64-bit registry. ' +
-        'Rxdk.XbShellExt.Shell.dll must be registered under HKCR64\\CLSID\\' + PublicClsidBracedName + '\\InprocServer32.');
+        'Rxdk.XbShellExt.Shell.dll must be registered under HKLM\\Software\\Classes\\CLSID\\' +
+        PublicClsidBracedName + '\\InprocServer32.');
 
     ResultCode := RunRegsvr32(ComHost, False);
     if ResultCode <> 0 then
@@ -584,16 +611,23 @@ end;
 
 procedure UnregisterShellExtensionFromDir(const InstallDir: String);
 var
-  ComHost: String;
+  ComHost, ShellDll: String;
   ResultCode: Integer;
 begin
   ComHost := ResolveComHostPath(InstallDir);
+  ShellDll := InstallDir + '\Rxdk.XbShellExt.Shell.dll';
   if ComHost = '' then
     Exit;
 
   StopExplorer;
   try
     UnregisterPerUserExplorerKeys;
+    if FileExists(ShellDll) then
+    begin
+      ResultCode := RunRegsvr32(ShellDll, True);
+      if ResultCode <> 0 then
+        Log(Regsvr32ErrorMessage('regsvr32 /u (Rxdk.XbShellExt.Shell.dll)', ResultCode));
+    end;
     ResultCode := RunRegsvr32(ComHost, True);
     if ResultCode <> 0 then
       Log(Regsvr32ErrorMessage('regsvr32 /u', ResultCode));
@@ -687,6 +721,13 @@ end;
 function GetRegisteredDllPath: String;
 begin
   Result := '';
+  if RegQueryStringValue(HKLM64, LmClassesClsidPublicInprocKey, '', Result) then
+  begin
+    if FileExists(Result) then
+      Exit;
+    Result := '';
+  end;
+
   if RegQueryStringValue(HKCR64, ClsidPublicInprocKey, '', Result) then
   begin
     if FileExists(Result) then
