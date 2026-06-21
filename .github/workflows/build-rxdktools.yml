@@ -36,9 +36,27 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      - name: Build RXDKNeighborhood.sln and managed artifacts
+      - name: Restore NuGet packages
+        run: dotnet restore RXDKNeighborhood.sln
+
+      - name: Build RXDKNeighborhood.sln
+        run: msbuild RXDKNeighborhood.sln /p:Configuration=Release /p:Platform=x64 /m /v:m
+
+      - name: Build Xbox Neighborhood installer
         shell: pwsh
-        run: ./scripts/ci/build-rxdktools-windows.ps1
+        run: ./setup/build-installer.ps1
+
+      - name: Stage installer artifact
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path artifacts/installer | Out-Null
+          Copy-Item -LiteralPath out/bin/x64/Release/XboxNeighborhood-Setup.exe -Destination artifacts/installer/ -Force
+
+      - name: Publish xbset
+        run: dotnet publish src-dotnet/Rxdk.XbSet/Rxdk.XbSet.csproj -c Release -r win-x64 -o artifacts/managed/win-x64/xbset
+
+      - name: Publish xbWatson
+        run: dotnet publish src-dotnet/Rxdk.XbWatson/Rxdk.XbWatson.csproj -c Release -r win-x64 -o artifacts/managed/win-x64/xbwatson
 
       - name: Upload Xbox Neighborhood installer
         uses: actions/upload-artifact@v4
@@ -88,9 +106,11 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      - name: Publish managed tools (Linux)
-        shell: bash
-        run: bash ./scripts/ci/build-rxdktools-unix.sh
+      - name: Publish xbset
+        run: dotnet publish src-dotnet/Rxdk.XbSet/Rxdk.XbSet.csproj -c Release -r linux-x64 -o artifacts/managed/linux-x64/xbset
+
+      - name: Publish xbWatson
+        run: dotnet publish src-dotnet/Rxdk.XbWatson/Rxdk.XbWatson.csproj -c Release -r linux-x64 -o artifacts/managed/linux-x64/xbwatson
 
       - name: Upload managed tools (Linux)
         uses: actions/upload-artifact@v4
@@ -124,9 +144,11 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      - name: Publish managed tools (macOS)
-        shell: bash
-        run: bash ./scripts/ci/build-rxdktools-unix.sh
+      - name: Publish xbset
+        run: dotnet publish src-dotnet/Rxdk.XbSet/Rxdk.XbSet.csproj -c Release -r osx-arm64 -o artifacts/managed/osx-arm64/xbset
+
+      - name: Publish xbWatson
+        run: dotnet publish src-dotnet/Rxdk.XbWatson/Rxdk.XbWatson.csproj -c Release -r osx-arm64 -o artifacts/managed/osx-arm64/xbwatson
 
       - name: Upload managed tools (macOS)
         uses: actions/upload-artifact@v4
