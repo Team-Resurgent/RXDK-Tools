@@ -148,7 +148,7 @@ internal static class StructMarshal
     public static byte[] GetBytes<T>(T value) where T : struct
     {
         var buffer = new byte[Marshal.SizeOf<T>()];
-        MemoryMarshal.Write(buffer, ref value);
+        MemoryMarshal.Write(buffer, in value);
         return buffer;
     }
 }
