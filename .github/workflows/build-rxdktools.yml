@@ -36,17 +36,9 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      - name: Build RXDKTools.sln and managed artifacts
+      - name: Build RXDKNeighborhood.sln and managed artifacts
         shell: pwsh
         run: ./scripts/ci/build-rxdktools-windows.ps1
-
-      - name: Upload native tools
-        uses: actions/upload-artifact@v4
-        with:
-          name: rxdk-tools-win-x64
-          path: artifacts/rxdk-tools/*.exe
-          if-no-files-found: error
-          retention-days: 90
 
       - name: Upload Xbox Neighborhood installer
         uses: actions/upload-artifact@v4
@@ -67,23 +59,15 @@ jobs:
       - name: Build summary
         shell: pwsh
         run: |
-          $exes = Get-ChildItem artifacts/rxdk-tools -Filter *.exe -File | Sort-Object Name
-          $lines = $exes | ForEach-Object { "| $($_.Name) | $([math]::Round($_.Length / 1MB, 2)) MB |" }
           @(
             '### Windows build',
-            '',
-            '#### Native RXDK tools',
-            '',
-            '| File | Size |',
-            '|------|------|',
-            $lines,
             '',
             '#### Managed tools',
             '',
             '| Path |',
             '|------|',
-            '| `artifacts/managed/win-x64/xbset/` |',
-            '| `artifacts/managed/win-x64/xbwatson/` |',
+            '| `artifacts/managed/win-x64/xbset/xbset.exe` |',
+            '| `artifacts/managed/win-x64/xbwatson/xbwatson.exe` |',
             '',
             '#### Shell extension installer',
             '',
@@ -195,9 +179,6 @@ jobs:
           if [[ -f dist/xbox-neighborhood-setup/XboxNeighborhood-Setup.exe ]]; then
             cp dist/xbox-neighborhood-setup/XboxNeighborhood-Setup.exe dist/zips/
           fi
-          if [[ -d dist/rxdk-tools-win-x64 ]]; then
-            cp dist/rxdk-tools-win-x64/*.exe dist/zips/
-          fi
           ls -la dist/zips/
 
       - name: Resolve release tag
@@ -237,6 +218,6 @@ jobs:
             echo ""
             echo "- Tag: \`${{ steps.meta.outputs.tag }}\`"
             echo "- Pre-release: \`${{ steps.meta.outputs.prerelease }}\`"
-            echo "- Windows: native tools, \`XboxNeighborhood-Setup.exe\`, managed tool zip"
+            echo "- Windows: \`XboxNeighborhood-Setup.exe\`, managed tool zips (\`xbset\`, \`xbwatson\`)"
             echo "- Linux/macOS: managed tool zips (\`xbset\`, \`xbwatson\`)"
           } >> "$GITHUB_STEP_SUMMARY"
