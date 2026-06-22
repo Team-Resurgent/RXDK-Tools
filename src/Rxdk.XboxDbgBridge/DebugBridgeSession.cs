@@ -31,6 +31,8 @@ internal sealed partial class DebugBridgeSession : IDisposable
     private bool _autoRunLaunch;
     private bool _seenTitleMod;
     private string _launchTitleBase = string.Empty;
+    private string _launchTitleFile = string.Empty;
+    private bool _startupStopOnRelaxed = true;
     private bool _needRearmHwBps;
     private uint _mainThread;
     private uint _stoppedThread;
@@ -282,11 +284,6 @@ internal sealed partial class DebugBridgeSession : IDisposable
                     _moduleBase = mod.BaseAddress;
                     OnModuleBaseSet();
                 }
-                else if (_moduleBase == 0 && !_awaitingTitleThread)
-                {
-                    _moduleBase = mod.BaseAddress;
-                    OnModuleBaseSet();
-                }
 
                 BridgeWriter.EmitEvent(name,
                     $"\"name\":\"{Escape(mod.Name)}\",\"base\":\"0x{mod.BaseAddress:x}\",\"baseAddress\":\"0x{mod.BaseAddress:x}\",\"size\":{mod.Size}");
@@ -357,6 +354,7 @@ internal sealed partial class DebugBridgeSession : IDisposable
         _debug!.ConnectDebugger(true);
         _connectedToDebugger = true;
         _debug.StopOn(XbdmDebugConstants.DmstopCreateThread | XbdmDebugConstants.DmstopFce | XbdmDebugConstants.DmstopDebugStr, stop: false);
+        _startupStopOnRelaxed = true;
         BridgeWriter.EmitResult(id, true);
     }
 
@@ -389,6 +387,7 @@ internal sealed partial class DebugBridgeSession : IDisposable
         _breakpoints.Clear(_debug!);
         _breakpoints.ClearPending();
         _breakEvent.Reset();
+        _startupStopOnRelaxed = false;
 
         if (autoRun)
         {
@@ -513,22 +512,8 @@ internal sealed partial class DebugBridgeSession : IDisposable
 
         _debug.ConnectDebugger(true);
         _connectedToDebugger = true;
-        _debug.StopOn(XbdmDebugConstants.DmstopCreateThread | XbdmDebugConstants.DmstopFce | XbdmDebugConstants.DmstopDebugStr, stop: false);
         ApplyPendingBreakpoints();
-
-        // StopOn(FALSE) can let the title keep running before DAP installs breakpoints.
-        try
-        {
-            _debug.Stop();
-            _threadStopped = true;
-            _launchStopped = true;
-            SyncStoppedStateFromKit();
-            BridgeWriter.Log($"Launch held for debug (stopped=0x{_stoppedAddress:x})");
-        }
-        catch (XbdmException ex)
-        {
-            BridgeWriter.Log($"DmStop after launch connect failed: {ex.Message}");
-        }
+        HoldMainThreadIfRunning("launch");
 
         _launched = true;
         BridgeWriter.EmitResult(id, true, $"\"threadId\":{_mainThread},\"moduleBase\":\"0x{_moduleBase:x}\"");
@@ -537,6 +522,7 @@ internal sealed partial class DebugBridgeSession : IDisposable
     private void Go(int id)
     {
         EnsureNotifications();
+        EnsureStartupStopOnRelaxed();
         if (IsStoppedAtSoftwareBreakpoint())
             ResumeStoppedThread(exception: true);
         else
@@ -963,6 +949,7 @@ internal sealed partial class DebugBridgeSession : IDisposable
 
     private void SetLaunchBaseFromTitle(string title)
     {
+        _launchTitleFile = Path.GetFileName(title).ToLowerInvariant();
         _launchTitleBase = Path.GetFileNameWithoutExtension(title).ToLowerInvariant();
     }
 
@@ -970,8 +957,17 @@ internal sealed partial class DebugBridgeSession : IDisposable
     {
         if (string.IsNullOrEmpty(_launchTitleBase))
             return false;
+
         var baseName = Path.GetFileName(name.Replace('/', '\\')).ToLowerInvariant();
-        return baseName.Contains(_launchTitleBase, StringComparison.Ordinal);
+        if (!string.IsNullOrEmpty(_launchTitleFile) &&
+            string.Equals(baseName, _launchTitleFile, StringComparison.Ordinal))
+            return true;
+
+        var ext = Path.GetExtension(baseName);
+        if (ext is not ".exe" and not ".xbe")
+            return false;
+
+        return string.Equals(Path.GetFileNameWithoutExtension(baseName), _launchTitleBase, StringComparison.Ordinal);
     }
 
     private void PickMainThreadFromList()
