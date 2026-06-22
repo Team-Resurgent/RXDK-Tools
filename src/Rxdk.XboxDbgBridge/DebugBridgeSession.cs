@@ -737,8 +737,8 @@ internal sealed partial class DebugBridgeSession : IDisposable
     {
         var armed = install == BreakpointManager.InstallResult.Success &&
                     _debug!.GetBreakpointType(address) != XbdmDebugConstants.DmbreakNone;
-        if (armed && !string.IsNullOrEmpty(file) && line != 0)
-            BridgeWriter.Log($"Breakpoint armed {file}:{line} at 0x{address:x} (kit type={_debug.GetBreakpointType(address)})");
+        if (armed)
+            BridgeWriter.Log($"Breakpoint armed at 0x{address:x} (kit type={_debug!.GetBreakpointType(address)})");
         var extra = $"\"address\":\"0x{address:x}\",\"armed\":{Bool(armed)}";
         if (install == BreakpointManager.InstallResult.HardwareFull)
             extra += ",\"error\":\"hwBpFull\"";
