@@ -17,17 +17,8 @@ internal sealed partial class DebugBridgeSession
     private void GoUser(int id)
     {
         EnsureNotifications();
-
-        try
-        {
-            _debug!.Stop();
-            _threadStopped = true;
-            SyncStoppedStateFromKit();
-        }
-        catch (XbdmException ex)
-        {
-            BridgeWriter.Log($"goUser: DmStop failed: {ex.Message}");
-        }
+        HoldMainThreadIfRunning("goUser");
+        EnsureStartupStopOnRelaxed();
 
         if (!StoppedAtActiveBreakpoint())
             _stoppedAddress = 0;
@@ -238,6 +229,43 @@ internal sealed partial class DebugBridgeSession
 
         var bpType = _debug.GetBreakpointType(address);
         return bpType == XbdmDebugConstants.DmbreakFixed;
+    }
+
+    private void EnsureStartupStopOnRelaxed()
+    {
+        if (_startupStopOnRelaxed || _debug is null)
+            return;
+
+        _debug.StopOn(
+            XbdmDebugConstants.DmstopCreateThread | XbdmDebugConstants.DmstopFce | XbdmDebugConstants.DmstopDebugStr,
+            stop: false);
+        _startupStopOnRelaxed = true;
+    }
+
+    private void HoldMainThreadIfRunning(string phase)
+    {
+        if (_debug is null || _mainThread == 0)
+            return;
+
+        if (IsThreadStoppedOnKit(_mainThread))
+        {
+            _threadStopped = true;
+            SyncStoppedStateFromKit();
+            BridgeWriter.Log($"{phase}: main thread already stopped (pc=0x{_stoppedAddress:x})");
+            return;
+        }
+
+        try
+        {
+            _debug.HaltThread(_mainThread);
+            _threadStopped = true;
+            SyncStoppedStateFromKit();
+            BridgeWriter.Log($"{phase}: halted main thread (pc=0x{_stoppedAddress:x})");
+        }
+        catch (XbdmException ex)
+        {
+            BridgeWriter.Log($"{phase}: HaltThread failed: {ex.Message}");
+        }
     }
 
     private void OnModuleBaseChanged(nuint oldBase, string? moduleName = null)
