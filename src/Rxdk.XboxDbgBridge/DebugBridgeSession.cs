@@ -862,6 +862,8 @@ internal sealed partial class DebugBridgeSession : IDisposable
         if (_debug is null)
             return;
 
+        BridgeWriter.Log("Rebooting to dashboard (WARM, debug enabled)");
+
         try
         {
             _debug.StopOn(
@@ -879,7 +881,6 @@ internal sealed partial class DebugBridgeSession : IDisposable
         }
         catch (XbdmException ex)
         {
-            // STOP often fails once DEBUGGER CONNECT is active; reboot anyway (session.c ignores DmStop).
             BridgeWriter.Log($"DmStop before dashboard reboot: {ex.Message}");
         }
 
@@ -897,7 +898,27 @@ internal sealed partial class DebugBridgeSession : IDisposable
             _connectedToDebugger = false;
         }
 
-        _breakpoints.Clear(_debug);
+        try
+        {
+            _notifySession?.Dispose();
+        }
+        catch (XbdmException ex)
+        {
+            BridgeWriter.Log($"Notification session close before reboot: {ex.Message}");
+        }
+
+        _notifySession = null;
+
+        try
+        {
+            _breakpoints.Clear(_debug);
+        }
+        catch (XbdmException ex)
+        {
+            BridgeWriter.Log($"Clear breakpoints before reboot: {ex.Message}");
+        }
+
+        _breakpoints.ClearPending();
         _mainThread = 0;
         _stoppedThread = 0;
         _stoppedAddress = 0;
@@ -910,10 +931,12 @@ internal sealed partial class DebugBridgeSession : IDisposable
         _threadStopped = false;
         _startupStopOnRelaxed = true;
 
-        BridgeWriter.Log("Rebooting to dashboard (WARM, debug enabled)");
         try
         {
+            _debug.UseSharedConnection(false);
+            _debug.UseSharedConnection(true);
             _debug.Reboot(XbdmDebugConstants.DmbootWarm);
+            BridgeWriter.Log("Dashboard warm reboot sent");
         }
         catch (XbdmException ex)
         {
@@ -1042,11 +1065,51 @@ internal sealed partial class DebugBridgeSession : IDisposable
     {
         if (_debug is null)
             return;
+
+        var continued = 0;
         foreach (var threadId in _debug.GetThreadList())
         {
-            if (_debug.TryGetThreadStop(threadId) is not null)
-                _debug.ContinueThread(threadId, exception: false);
+            if (!IsThreadStoppedOnKit(threadId))
+                continue;
+
+            var exception = _autoRunResume || ShouldContinueAsException(threadId) || IsStoppedAtSoftwareBreakpoint();
+            try
+            {
+                _debug.ContinueThread(threadId, exception);
+                continued++;
+            }
+            catch (XbdmException ex)
+            {
+                BridgeWriter.Log($"ContinueThread({threadId}) failed: {ex.Message}");
+            }
         }
+
+        if (continued == 0)
+        {
+            try
+            {
+                ResumeStoppedThread(_autoRunResume || IsStoppedAtSoftwareBreakpoint());
+            }
+            catch (XbdmException ex)
+            {
+                BridgeWriter.Log($"ResumeStoppedThread failed: {ex.Message}");
+            }
+        }
+
+        _threadStopped = false;
+        _launchStopped = false;
+        BridgeWriter.Log($"ResumeAllStoppedThreads continued {continued} thread(s)");
+    }
+
+    private bool ShouldContinueAsException(uint threadId)
+    {
+        var stop = _debug?.TryGetThreadStop(threadId);
+        if (stop is null)
+            return false;
+
+        var reason = stop.NotifiedReason;
+        return reason is XbdmDebugConstants.DmBreak or XbdmDebugConstants.DmDataBreak
+            or XbdmDebugConstants.DmSingleStep;
     }
 
     private void ResumeStoppedThread(bool exception)

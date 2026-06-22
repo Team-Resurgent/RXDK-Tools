@@ -17,7 +17,10 @@ internal sealed partial class DebugBridgeSession
     private void GoUser(int id)
     {
         EnsureNotifications();
-        HoldMainThreadIfRunning("goUser");
+        if (!_threadStopped && !_launchStopped && !IsThreadStoppedOnKit(_mainThread))
+            HoldMainThreadIfRunning("goUser");
+        else
+            BridgeWriter.Log($"goUser: continuing from held stop (pc=0x{_stoppedAddress:x})");
         EnsureStartupStopOnRelaxed();
 
         if (!StoppedAtActiveBreakpoint())
