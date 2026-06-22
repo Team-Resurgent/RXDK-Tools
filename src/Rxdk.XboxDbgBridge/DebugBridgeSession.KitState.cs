@@ -17,6 +17,21 @@ internal sealed partial class DebugBridgeSession
     private void GoUser(int id)
     {
         EnsureNotifications();
+
+        try
+        {
+            _debug!.Stop();
+            _threadStopped = true;
+            SyncStoppedStateFromKit();
+        }
+        catch (XbdmException ex)
+        {
+            BridgeWriter.Log($"goUser: DmStop failed: {ex.Message}");
+        }
+
+        if (!StoppedAtActiveBreakpoint())
+            _stoppedAddress = 0;
+
         _autoRunResume = true;
         try
         {
@@ -28,13 +43,14 @@ internal sealed partial class DebugBridgeSession
 
                 if (_breakEvent.Wait(GoUserTimeoutMs))
                 {
-                    if (_moduleBase != 0 && IsTitleAddress(_stoppedAddress))
+                    if (StoppedAtActiveBreakpoint() && IsTitleAddress(_stoppedAddress))
                         break;
-                    if (SyncStoppedStateFromKit() && IsTitleAddress(_stoppedAddress))
+                    if (SyncStoppedStateFromKit() && StoppedAtActiveBreakpoint() && IsTitleAddress(_stoppedAddress))
                         break;
 
+                    var inTitle = _moduleBase != 0 && IsTitleAddress(_stoppedAddress);
                     BridgeWriter.Log(
-                        $"Skipping non-title break at 0x{_stoppedAddress:x} (base=0x{_moduleBase:x} attempt={attempt})");
+                        $"Skipping break at 0x{_stoppedAddress:x}{(inTitle ? " (title init)" : " (non-title)")} attempt={attempt}");
                     continue;
                 }
 
@@ -51,7 +67,7 @@ internal sealed partial class DebugBridgeSession
                 return;
             }
 
-            if (_moduleBase != 0 && _stoppedAddress != 0 && IsTitleAddress(_stoppedAddress))
+            if (StoppedAtActiveBreakpoint() && _moduleBase != 0 && IsTitleAddress(_stoppedAddress))
             {
                 BridgeWriter.Log("goUser hit breakpoint");
                 BridgeWriter.EmitResult(id, true,
@@ -59,7 +75,7 @@ internal sealed partial class DebugBridgeSession
                 return;
             }
 
-            BridgeWriter.Log("goUser: no title breakpoint; leaving title running");
+            BridgeWriter.Log("goUser: no user breakpoint; leaving title running");
             LeaveTitleRunning(id);
         }
         finally

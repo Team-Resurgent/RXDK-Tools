@@ -277,7 +277,7 @@ internal sealed partial class DebugBridgeSession : IDisposable
             case XbdmDebugConstants.DmModLoad when data is XbdmModLoadNotification mod:
                 var oldBase = _moduleBase;
                 var titleMod = ModuleMatchesLaunchTitle(mod.Name);
-                if (titleMod || (_awaitingTitleThread && string.IsNullOrEmpty(_launchTitleBase)))
+                if (titleMod)
                 {
                     _moduleBase = mod.BaseAddress;
                     OnModuleBaseSet();
@@ -516,9 +516,21 @@ internal sealed partial class DebugBridgeSession : IDisposable
         _debug.StopOn(XbdmDebugConstants.DmstopCreateThread | XbdmDebugConstants.DmstopFce | XbdmDebugConstants.DmstopDebugStr, stop: false);
         ApplyPendingBreakpoints();
 
+        // StopOn(FALSE) can let the title keep running before DAP installs breakpoints.
+        try
+        {
+            _debug.Stop();
+            _threadStopped = true;
+            _launchStopped = true;
+            SyncStoppedStateFromKit();
+            BridgeWriter.Log($"Launch held for debug (stopped=0x{_stoppedAddress:x})");
+        }
+        catch (XbdmException ex)
+        {
+            BridgeWriter.Log($"DmStop after launch connect failed: {ex.Message}");
+        }
+
         _launched = true;
-        _threadStopped = true;
-        _launchStopped = true;
         BridgeWriter.EmitResult(id, true, $"\"threadId\":{_mainThread},\"moduleBase\":\"0x{_moduleBase:x}\"");
     }
 
