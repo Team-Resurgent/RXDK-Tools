@@ -75,8 +75,7 @@ internal static class XbLocalFs
 
     public static IEnumerable<string> EnumerateNames(XbPath path, bool includeHidden)
     {
-        var dir = path.DirectoryPath;
-        var pattern = path.Name is "." or "" ? "*" : path.Name;
+        var (dir, pattern) = ResolveListingDirectory(path);
 
         foreach (var entry in Directory.EnumerateFileSystemEntries(dir, pattern))
         {
@@ -93,6 +92,18 @@ internal static class XbLocalFs
 
             yield return name;
         }
+    }
+
+    private static (string Dir, string Pattern) ResolveListingDirectory(XbPath path)
+    {
+        if (path.Name is "." or "")
+            return (path.DirectoryPath, "*");
+
+        var full = path.LocalFullPath;
+        if (Directory.Exists(full))
+            return (full, "*");
+
+        return (path.DirectoryPath, path.Name);
     }
 
     public static (ulong free, ulong total) GetDiskFreeSpace(XbPath path)
