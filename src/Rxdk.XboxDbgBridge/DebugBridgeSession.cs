@@ -282,7 +282,7 @@ internal sealed partial class DebugBridgeSession : IDisposable
                     _moduleBase = mod.BaseAddress;
                     OnModuleBaseSet();
                 }
-                else if (_moduleBase == 0)
+                else if (_moduleBase == 0 && !_awaitingTitleThread)
                 {
                     _moduleBase = mod.BaseAddress;
                     OnModuleBaseSet();
@@ -297,7 +297,7 @@ internal sealed partial class DebugBridgeSession : IDisposable
                         _breakEvent.Set();
                 }
 
-                OnModuleBaseChanged(oldBase);
+                OnModuleBaseChanged(oldBase, mod.Name);
                 break;
 
             case XbdmDebugConstants.DmDebugStr when data is XbdmDebugStringNotification dbg:
@@ -820,9 +820,19 @@ internal sealed partial class DebugBridgeSession : IDisposable
         var context = new XbdmContext { ContextFlags = XbdmDebugConstants.ContextControl };
         _debug!.GetThreadContext(threadId, ref context);
 
+        var address = (nuint)context.Eip;
+        if (address == 0)
+        {
+            if (_stoppedAddress != 0)
+                address = _stoppedAddress;
+            else
+                SyncStoppedStateFromKit();
+            if (address == 0 && _stoppedAddress != 0)
+                address = _stoppedAddress;
+        }
+
         var builder = new StringBuilder();
         builder.Append("{\"type\":\"result\",\"id\":").Append(id).Append(",\"success\":true,\"frames\":[");
-        var address = (nuint)context.Eip;
         var ebp = context.Ebp;
         Span<byte> buffer = stackalloc byte[4];
         for (var frame = 0; frame < 8; frame++)
