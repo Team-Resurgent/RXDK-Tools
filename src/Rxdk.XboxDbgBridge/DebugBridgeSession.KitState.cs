@@ -14,6 +14,10 @@ internal sealed partial class DebugBridgeSession
     private bool _launchStopped;
     private bool _launched;
 
+    /// <summary>
+    /// Entry was held during launch; breakpoints are armed — continue once and wait for a user BP.
+    /// Same steps as stop-on-entry + F5, but invoked automatically when stopOnEntry=false.
+    /// </summary>
     private void GoUser(int id)
     {
         EnsureNotifications();
@@ -21,66 +25,16 @@ internal sealed partial class DebugBridgeSession
         try
         {
             BridgeWriter.Log(
-                $"goUser: begin hold={_holdForBreakpointSetup} pc=0x{_stoppedAddress:x} thread={_mainThread}");
+                $"runAfterBreakpoints: entry pc=0x{_stoppedAddress:x} thread={_mainThread} breakpoints={_breakpoints.Active.Count}");
             EnsureStartupStopOnRelaxed();
 
-            if (!StoppedAtActiveBreakpoint())
-                _stoppedAddress = 0;
-
-            if (TryEmitGoUserBreakpointStop(id))
+            if (PollUserBreakpoint(out var already) && EmitUserBreakpointStop(id, already, "already stopped"))
                 return;
 
-            for (var attempt = 0; attempt < 12; attempt++)
-            {
-                if (attempt == 0 && _holdForBreakpointSetup)
-                    ForceContinueLaunchHold();
-                else
-                    ResumeAllStoppedThreads();
-
-                BypassStoppedHardwareBreakpoint();
-                _breakEvent.Reset();
-                if (!TryGo($"goUser attempt={attempt}"))
-                {
-                    BridgeWriter.EmitResult(id, false, "\"error\":\"go\"");
-                    return;
-                }
-
-                if (_breakEvent.Wait(GoUserTimeoutMs))
-                {
-                    if (StoppedAtActiveBreakpoint() && IsTitleAddress(_stoppedAddress))
-                        break;
-                    if (SyncStoppedStateFromKit() && StoppedAtActiveBreakpoint() && IsTitleAddress(_stoppedAddress))
-                        break;
-
-                    var inTitle = _moduleBase != 0 && IsTitleAddress(_stoppedAddress);
-                    BridgeWriter.Log(
-                        $"Skipping break at 0x{_stoppedAddress:x}{(inTitle ? " (title init)" : " (non-title)")} attempt={attempt}");
-                    continue;
-                }
-
-                if (SyncStoppedStateFromKit() && StoppedAtActiveBreakpoint() && IsTitleAddress(_stoppedAddress))
-                {
-                    BridgeWriter.Log("goUser sync stop after timeout");
-                    BridgeWriter.EmitResult(id, true,
-                        $"\"threadId\":{_stoppedThread},\"address\":\"0x{_stoppedAddress:x}\"");
-                    return;
-                }
-
-                BridgeWriter.Log("goUser: wait timed out; ensuring title is running");
-                LeaveTitleRunning(id);
-                return;
-            }
-
-            if (StoppedAtActiveBreakpoint() && _moduleBase != 0 && IsTitleAddress(_stoppedAddress))
-            {
-                BridgeWriter.Log("goUser hit breakpoint");
-                BridgeWriter.EmitResult(id, true,
-                    $"\"threadId\":{_stoppedThread},\"address\":\"0x{_stoppedAddress:x}\"");
-                return;
-            }
-
-            BridgeWriter.Log("goUser: no user breakpoint; leaving title running");
-            LeaveTitleRunning(id);
+            ResumeFromEntryHold();
+            BypassStoppedHardwareBreakpoint();
+            TryGo("runAfterBreakpoints");
+            WaitForActiveUserBreakpoint(id, GoUserTimeoutMs);
         }
         finally
         {
@@ -89,36 +43,174 @@ internal sealed partial class DebugBridgeSession
         }
     }
 
-    private bool TryEmitGoUserBreakpointStop(int id)
-    {
-        if (!SyncStoppedStateFromKit() || !StoppedAtActiveBreakpoint() || !IsTitleAddress(_stoppedAddress))
-            return false;
-
-        BridgeWriter.Log("goUser: already at user breakpoint");
-        BridgeWriter.EmitResult(id, true,
-            $"\"threadId\":{_stoppedThread},\"address\":\"0x{_stoppedAddress:x}\"");
-        return true;
-    }
-
-    private void ForceContinueLaunchHold()
+    private void ResumeFromEntryHold()
     {
         if (_debug is null || _mainThread == 0)
             return;
 
         var threadId = _stoppedThread != 0 ? _stoppedThread : _mainThread;
-        var exception = _autoRunResume || IsStoppedAtSoftwareBreakpoint();
+        if (!IsThreadStoppedOnKit(threadId) && !_threadStopped && !_launchStopped && !_holdForBreakpointSetup)
+        {
+            BridgeWriter.Log("ResumeFromEntryHold: thread not held; skipping continue");
+            return;
+        }
+
         try
         {
-            _debug.ContinueThread(threadId, exception);
-            BridgeWriter.Log($"launch hold: ContinueThread({threadId}, exception={exception})");
+            _debug.ContinueThread(threadId, true);
+            BridgeWriter.Log($"ResumeFromEntryHold: ContinueThread({threadId}, exception=true)");
         }
         catch (XbdmException ex)
         {
-            BridgeWriter.Log($"launch hold: ContinueThread({threadId}) failed: {ex.Message}");
+            BridgeWriter.Log($"ResumeFromEntryHold: ContinueThread({threadId}) failed: {ex.Message}");
         }
 
         _threadStopped = false;
         _launchStopped = false;
+    }
+
+    private void WaitForActiveUserBreakpoint(int id, int timeoutMs)
+    {
+        var deadline = Environment.TickCount64 + timeoutMs;
+        for (var attempt = 0; attempt < 12 && Environment.TickCount64 < deadline; attempt++)
+        {
+            if (PollUserBreakpoint(out var polled) && EmitUserBreakpointStop(id, polled, "poll"))
+                return;
+
+            var waitMs = (int)Math.Min(1000, deadline - Environment.TickCount64);
+            if (waitMs <= 0)
+                break;
+
+            _breakEvent.Reset();
+            if (_breakEvent.Wait(waitMs))
+            {
+                if (StoppedAtActiveBreakpoint() && IsTitleAddress(_stoppedAddress))
+                {
+                    EmitUserBreakpointStop(id, _stoppedAddress, "notify");
+                    return;
+                }
+
+                var inTitle = _moduleBase != 0 && IsTitleAddress(_stoppedAddress);
+                BridgeWriter.Log(
+                    $"runAfterBreakpoints: skipping stop 0x{_stoppedAddress:x}{(inTitle ? " (title init)" : " (non-title)")} attempt={attempt}");
+
+                if (ResumeStoppedThreadsIfNeeded($"skip attempt={attempt}"))
+                {
+                    BypassStoppedHardwareBreakpoint();
+                    TryGo($"skip attempt={attempt}");
+                }
+
+                continue;
+            }
+
+            if (PollUserBreakpoint(out polled) && EmitUserBreakpointStop(id, polled, "poll-after-wait"))
+                return;
+        }
+
+        if (PollUserBreakpoint(out var finalAddr) && EmitUserBreakpointStop(id, finalAddr, "final poll"))
+            return;
+
+        BridgeWriter.Log("runAfterBreakpoints: timed out waiting for user breakpoint");
+        BridgeWriter.EmitResult(id, false, "\"error\":\"waitTimeout\"");
+    }
+
+    private bool EmitUserBreakpointStop(int id, nuint address, string via)
+    {
+        if (!StoppedAtActiveBreakpoint() && !BreakpointMatchesAddress(address))
+            return false;
+
+        _stoppedAddress = address;
+        if (_stoppedThread == 0)
+            _stoppedThread = _mainThread;
+        BridgeWriter.Log($"runAfterBreakpoints: user breakpoint at 0x{address:x} ({via})");
+        BridgeWriter.EmitResult(id, true,
+            $"\"threadId\":{_stoppedThread},\"address\":\"0x{address:x}\"");
+        return true;
+    }
+
+    private bool BreakpointMatchesAddress(nuint address)
+    {
+        if (address == 0)
+            return false;
+
+        foreach (var bp in _breakpoints.Active)
+        {
+            if (bp.Address == address || bp.Address + 1 == address)
+                return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Poll main-thread EIP — this kit often reports ISSTOPPED=false even at a soft breakpoint.
+    /// </summary>
+    private bool PollUserBreakpoint(out nuint address)
+    {
+        address = 0;
+        if (_debug is null || _mainThread == 0 || _breakpoints.Active.Count == 0)
+            return false;
+
+        var context = new XbdmContext { ContextFlags = XbdmDebugConstants.ContextControl };
+        try
+        {
+            _debug.GetThreadContext(_mainThread, ref context);
+        }
+        catch (XbdmException ex)
+        {
+            BridgeWriter.Log($"PollUserBreakpoint: GetThreadContext failed: {ex.Message}");
+            return false;
+        }
+
+        var eip = (nuint)context.Eip;
+        if (eip == 0 && _stoppedAddress != 0)
+            eip = _stoppedAddress;
+        if (eip == 0)
+            return false;
+
+        if (IsSoftBreakpointAt(eip) && _breakpoints.IsActive(eip - 1))
+            eip = eip - 1;
+
+        foreach (var bp in _breakpoints.Active)
+        {
+            if (bp.Address != eip && bp.Address + 1 != eip)
+                continue;
+            address = bp.Address;
+            _stoppedThread = _mainThread;
+            _threadStopped = true;
+            _stoppedAddress = address;
+            return true;
+        }
+
+        return false;
+    }
+
+    private bool ResumeStoppedThreadsIfNeeded(string phase)
+    {
+        if (_debug is null)
+            return false;
+
+        var continued = 0;
+        foreach (var threadId in _debug.GetThreadList())
+        {
+            if (!IsThreadStoppedOnKit(threadId))
+                continue;
+
+            try
+            {
+                _debug.ContinueThread(threadId, true);
+                continued++;
+                BridgeWriter.Log($"{phase}: ContinueThread({threadId}, exception=true)");
+            }
+            catch (XbdmException ex)
+            {
+                BridgeWriter.Log($"{phase}: ContinueThread({threadId}) failed: {ex.Message}");
+            }
+        }
+
+        _threadStopped = false;
+        _launchStopped = false;
+        return continued > 0;
     }
 
     private bool TryGo(string phase)
@@ -139,87 +231,27 @@ internal sealed partial class DebugBridgeSession
                 return false;
             }
 
-            // Target already running — wait for the next breakpoint notification.
             BridgeWriter.Log($"{phase}: Go skipped ({ex.Message}); title already running");
             return true;
         }
     }
 
-    private bool TryContinueHeldTitle(string phase)
-    {
-        if (_debug is null || _mainThread == 0)
-            return false;
-
-        var continued = 0;
-        foreach (var threadId in _debug.GetThreadList())
-        {
-            if (!IsThreadStoppedOnKit(threadId))
-                continue;
-
-            var exception = _autoRunResume || ShouldContinueAsException(threadId) || IsStoppedAtSoftwareBreakpoint();
-            try
-            {
-                _debug.ContinueThread(threadId, exception);
-                continued++;
-            }
-            catch (XbdmException ex)
-            {
-                BridgeWriter.Log($"{phase}: ContinueThread({threadId}) failed: {ex.Message}");
-            }
-        }
-
-        if (continued == 0 && (_holdForBreakpointSetup || _threadStopped || _launchStopped))
-        {
-            var threadId = _stoppedThread != 0 ? _stoppedThread : _mainThread;
-            var exception = _autoRunResume || IsStoppedAtSoftwareBreakpoint();
-            try
-            {
-                _debug.ContinueThread(threadId, exception);
-                continued = 1;
-                BridgeWriter.Log($"{phase}: forced ContinueThread({threadId}, exception={exception})");
-            }
-            catch (XbdmException ex)
-            {
-                BridgeWriter.Log($"{phase}: forced ContinueThread({threadId}) failed: {ex.Message}");
-                return false;
-            }
-        }
-        else if (continued == 0 && !AnyThreadStopped())
-        {
-            BridgeWriter.Log($"{phase}: no stopped threads (title running)");
-            return true;
-        }
-        else if (continued == 0)
-        {
-            return false;
-        }
-
-        _threadStopped = false;
-        _launchStopped = false;
-        BridgeWriter.Log($"{phase}: continued {continued} thread(s)");
-        return continued > 0;
-    }
-
     private void LeaveTitleRunning(int id)
     {
-        if (!TryContinueHeldTitle("leaveRunning"))
+        if (ResumeStoppedThreadsIfNeeded("leaveRunning"))
         {
-            BridgeWriter.EmitResult(id, false, "\"error\":\"continueThread\"");
-            return;
+            BypassStoppedHardwareBreakpoint();
+            if (!TryGo("leaveRunning"))
+            {
+                BridgeWriter.EmitResult(id, false, "\"error\":\"go\"");
+                return;
+            }
         }
-
-        BypassStoppedHardwareBreakpoint();
-        _debug!.Go();
 
         if (AnyThreadStopped())
         {
-            if (SyncStoppedStateFromKit() && StoppedAtActiveBreakpoint())
-            {
-                BridgeWriter.Log("leaveRunning sync breakpoint");
-                BridgeWriter.EmitResult(id, true,
-                    $"\"threadId\":{_stoppedThread},\"address\":\"0x{_stoppedAddress:x}\"");
+            if (PollUserBreakpoint(out var addr) && EmitUserBreakpointStop(id, addr, "leaveRunning poll"))
                 return;
-            }
 
             BridgeWriter.Log("leaveRunning still stopped");
             BridgeWriter.EmitResult(id, false, "\"error\":\"stillStopped\"");
@@ -244,6 +276,13 @@ internal sealed partial class DebugBridgeSession
         if (_mainThread != 0 && IsThreadStoppedOnKit(_mainThread) && _stoppedAddress == 0)
             SyncStoppedStateFromKit();
 
+        if (mainEip == 0 && _mainThread != 0)
+        {
+            var ctx = new XbdmContext { ContextFlags = XbdmDebugConstants.ContextControl };
+            _debug!.GetThreadContext(_mainThread, ref ctx);
+            mainEip = ctx.Eip;
+        }
+
         var builder = new StringBuilder();
         builder.Append("{\"type\":\"result\",\"id\":").Append(id).Append(",\"success\":true");
         builder.Append(",\"mainThread\":").Append(_mainThread);
@@ -254,6 +293,7 @@ internal sealed partial class DebugBridgeSession
         builder.Append(",\"execState\":").Append(_execState);
         builder.Append(",\"threadStopped\":").Append(Bool(_threadStopped));
         builder.Append(",\"launchStopped\":").Append(Bool(_launchStopped));
+        builder.Append(",\"holdForBreakpointSetup\":").Append(Bool(_holdForBreakpointSetup));
         builder.Append(",\"mainStoppedOnKit\":").Append(Bool(_mainThread != 0 && IsThreadStoppedOnKit(_mainThread)));
         builder.Append(",\"launched\":").Append(Bool(_launched));
         builder.Append(",\"connected\":").Append(Bool(_connectedToDebugger));
@@ -316,13 +356,24 @@ internal sealed partial class DebugBridgeSession
 
     private bool SyncStoppedStateFromKit()
     {
-        if (_mainThread == 0 || !IsThreadStoppedOnKit(_mainThread))
+        if (_mainThread == 0)
+            return false;
+
+        if (PollUserBreakpoint(out var polled))
+        {
+            _stoppedThread = _mainThread;
+            _threadStopped = true;
+            _stoppedAddress = polled;
+            return true;
+        }
+
+        if (!IsThreadStoppedOnKit(_mainThread))
             return false;
 
         var context = new XbdmContext { ContextFlags = XbdmDebugConstants.ContextControl };
         _debug!.GetThreadContext(_mainThread, ref context);
         if (context.Eip == 0)
-            return false;
+            return _stoppedAddress != 0;
 
         _stoppedThread = _mainThread;
         _threadStopped = true;
@@ -442,33 +493,17 @@ internal sealed partial class DebugBridgeSession
         if (code[0] != 0xFF)
             return false;
 
-        var modRm = code[1];
-        var reg = (modRm >> 3) & 7;
-        if (reg != 2)
+        if (_debug.GetMemory(eip, code[..2]) < 2)
             return false;
 
-        var mod = modRm >> 6;
-        var rm = modRm & 7;
-        var len = 2;
-        if (mod == 3)
-            len = 2;
-        else if (mod == 0 && rm == 5)
-            len = 6;
-        else if (mod == 1)
-            len = rm == 4 ? 4 : 3;
-        else if (mod == 2)
-            len = rm == 4 ? 7 : 6;
-        else if (mod == 0 && rm == 4)
-        {
-            if (_debug.GetMemory(eip, code[..3]) < 3)
-                return false;
-            len = (code[2] & 7) == 5 ? 7 : 3;
-        }
-
-        if (_debug.GetMemory(eip, code[..len]) < len)
+        var modrm = code[1];
+        if ((modrm & 0x38) != 0x10)
             return false;
 
-        returnAddress = eip + (nuint)len;
+        if (_debug.GetMemory(eip, code[..6]) < 6)
+            return false;
+
+        returnAddress = eip + 6;
         return true;
     }
 }
