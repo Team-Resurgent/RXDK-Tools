@@ -1,0 +1,12 @@
+<Project>
+  <PropertyGroup>
+    <Authors>RXDK Tools</Authors>
+    <Company>RXDK Tools</Company>
+    <PackageProjectUrl>https://github.com/RXDKTools/XboxNeighborhood</PackageProjectUrl>
+    <RepositoryType>git</RepositoryType>
+    <RepositoryUrl>https://github.com/RXDKTools/XboxNeighborhood</RepositoryUrl>
+    <PackageTags>xbox;xdk;xbdm;debug</PackageTags>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+  </PropertyGroup>
+</Project>

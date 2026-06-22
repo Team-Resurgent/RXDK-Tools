@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Rxdk.XbNeighborhood.Core</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Rxdk.KitConfig\Rxdk.KitConfig.csproj" />
+    <ProjectReference Include="..\Rxdk.Xbdm.KitServices\Rxdk.Xbdm.KitServices.csproj" />
+  </ItemGroup>
+</Project>

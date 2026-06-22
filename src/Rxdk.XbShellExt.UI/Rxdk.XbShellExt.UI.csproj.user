@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup />
+  <ItemGroup>
+    <Compile Update="Ui\Controls\Wizard\AddConsoleWizardPageBase.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Ui\Controls\Wizard\WizardSideBannerControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Ui\Controls\Wizard\WizardTopHeaderControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Ui\Forms\RenameForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Ui\Forms\ShellDialogForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+  </ItemGroup>
+</Project>

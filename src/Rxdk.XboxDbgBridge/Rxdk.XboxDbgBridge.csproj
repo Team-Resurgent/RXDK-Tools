@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="..\NuGetPack.props" Condition="Exists('..\NuGetPack.props')" />
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Rxdk.XboxDbgBridge</RootNamespace>
+    <IsPackable>true</IsPackable>
+    <PackageId>Rxdk.XboxDbgBridge</PackageId>
+    <Title>RXDK Xbox Debug Bridge</Title>
+    <Description>Cross-platform xboxdbg-bridge executables (win-x64, linux-x64, osx-x64, osx-arm64) for original Xbox kit debugging via stdin/JSON. For VS Code DAP and editor integration. PDB/stack/locals require Windows.</Description>
+    <PackageTags>xbox;xdk;xbdm;debug;dap;vscode;xboxdbg-bridge</PackageTags>
+    <Version>0.1.0</Version>
+    <!-- Tool-only NuGet: framework-dependent single-file bridge binaries, no library reference needed. -->
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+    <IncludeSymbols>false</IncludeSymbols>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <Import Project="Rxdk.XboxDbgBridge.Pack.targets" Condition="'$(IsPackable)' == 'true'" />
+
+  <ItemGroup>
+    <None Include="build\Rxdk.XboxDbgBridge.props" Pack="true" PackagePath="build\" />
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="xboxdbg-bridge" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Rxdk.Xbdm.Abstractions\Rxdk.Xbdm.Abstractions.csproj" />
+    <ProjectReference Include="..\Rxdk.Xbdm.Managed\Rxdk.Xbdm.Managed.csproj" />
+  </ItemGroup>
+</Project>

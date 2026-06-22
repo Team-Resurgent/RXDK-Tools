@@ -1,0 +1,48 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="..\SingleFilePublish.props" />
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Rxdk.XbNeighborhood</RootNamespace>
+    <AssemblyName>xbneighborhood</AssemblyName>
+    <ApplicationManifest Condition="$([MSBuild]::IsOSPlatform('Windows'))">app.manifest</ApplicationManifest>
+    <ApplicationIcon Condition="$([MSBuild]::IsOSPlatform('Windows'))">..\..\assets\xbox-light.ico</ApplicationIcon>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Windows'))">
+    <DefineConstants>$(DefineConstants);WINDOWS</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="12.0.4" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.0.4" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.0.4" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.0.4" />
+    <PackageReference Include="Avalonia.Controls.DataGrid" Version="12.0.0" />
+    <PackageReference Include="System.Drawing.Common" Version="8.0.11" Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
+    <PackageReference Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.1">
+      <IncludeAssets Condition="'$(Configuration)' != 'Debug'">None</IncludeAssets>
+      <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Rxdk.XbNeighborhood.Core\Rxdk.XbNeighborhood.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AvaloniaResource Include="..\..\assets\console.ico" Link="Assets\console.ico" />
+    <AvaloniaResource Include="..\..\assets\console-default.ico" Link="Assets\console-default.ico" />
+    <AvaloniaResource Include="..\..\assets\shell\volume.ico" Link="Assets\volume.ico" />
+    <AvaloniaResource Include="..\..\assets\shell\folder.ico" Link="Assets\folder.ico" />
+    <AvaloniaResource Include="..\..\assets\shell\xbe.ico" Link="Assets\xbe.ico" />
+    <AvaloniaResource Include="..\..\assets\shell\placeholder.ico" Link="Assets\placeholder.ico" />
+    <AvaloniaResource Include="..\..\assets\xbox-light.ico" Link="Assets\xbox-light.ico" />
+    <AvaloniaResource Include="..\..\assets\shell\muldoc.ico" Link="Assets\muldoc.ico" />
+  </ItemGroup>
+
+</Project>

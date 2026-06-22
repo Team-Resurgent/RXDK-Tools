@@ -1,0 +1,20 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Rxdk.XbWatson.Dialogs.RipDialog"
+        Width="400"
+        Height="200"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        Title="A fatal error has occurred on the Xbox">
+  <StackPanel Margin="16" Spacing="8">
+    <TextBlock x:Name="CaptionText" />
+    <TextBlock x:Name="BodyText" />
+    <TextBlock x:Name="SavedText" Text="(A crash dump has been saved)" IsVisible="False" />
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,12,0,0">
+      <Button Content="Reboot Xbox" IsDefault="True" Click="OnReboot" />
+      <Button Content="Save Crash Dump" Click="OnDump" />
+      <Button Content="Break" Click="OnBreak" />
+      <Button Content="Continue" Click="OnContinue" />
+    </StackPanel>
+  </StackPanel>
+</Window>

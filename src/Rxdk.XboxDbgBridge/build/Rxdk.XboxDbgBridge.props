@@ -1,0 +1,13 @@
+<Project>
+  <PropertyGroup>
+  <!-- Package root: build/ -> package root -->
+    <RxdkXboxDbgBridgePackageRoot>$([MSBuild]::NormalizeDirectory($(MSBuildThisFileDirectory), '..'))</RxdkXboxDbgBridgePackageRoot>
+    <RxdkXboxDbgBridgeRuntime Condition="'$(RxdkXboxDbgBridgeRuntime)' == '' AND '$(RuntimeIdentifier)' != ''">$(RuntimeIdentifier)</RxdkXboxDbgBridgeRuntime>
+    <RxdkXboxDbgBridgeRuntime Condition="'$(RxdkXboxDbgBridgeRuntime)' == '' AND '$([MSBuild]::IsOSPlatform(`Windows`))'">win-x64</RxdkXboxDbgBridgeRuntime>
+    <RxdkXboxDbgBridgeRuntime Condition="'$(RxdkXboxDbgBridgeRuntime)' == '' AND '$([MSBuild]::IsOSPlatform(`Linux`))'">linux-x64</RxdkXboxDbgBridgeRuntime>
+    <RxdkXboxDbgBridgeRuntime Condition="'$(RxdkXboxDbgBridgeRuntime)' == '' AND '$([MSBuild]::IsOSPlatform(`OSX`))' AND '$(NETCoreSdkRuntimeIdentifier)' != ''">$(NETCoreSdkRuntimeIdentifier)</RxdkXboxDbgBridgeRuntime>
+    <RxdkXboxDbgBridgeRuntime Condition="'$(RxdkXboxDbgBridgeRuntime)' == '' AND '$([MSBuild]::IsOSPlatform(`OSX`))'">osx-arm64</RxdkXboxDbgBridgeRuntime>
+    <RxdkXboxDbgBridgeExe Condition="'$(RxdkXboxDbgBridgeRuntime)' == 'win-x64'">$(RxdkXboxDbgBridgePackageRoot)tools\win-x64\xboxdbg-bridge.exe</RxdkXboxDbgBridgeExe>
+    <RxdkXboxDbgBridgeExe Condition="'$(RxdkXboxDbgBridgeExe)' == ''">$(RxdkXboxDbgBridgePackageRoot)tools/$(RxdkXboxDbgBridgeRuntime)/xboxdbg-bridge</RxdkXboxDbgBridgeExe>
+  </PropertyGroup>
+</Project>

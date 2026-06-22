@@ -1,0 +1,111 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Rxdk.XbShellExt</RootNamespace>
+    <AssemblyName>Rxdk.XbShellExt.UI</AssemblyName>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <ApplicationUseCompatibleTextRendering>false</ApplicationUseCompatibleTextRendering>
+    <UseWinFormsOutOfProcDesigner>false</UseWinFormsOutOfProcDesigner>
+    <GenerateRuntimeConfigurationFile>true</GenerateRuntimeConfigurationFile>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Rxdk.XbNeighborhood.Core\Rxdk.XbNeighborhood.Core.csproj" />
+    <ProjectReference Include="..\Rxdk.Xbdm.KitServices\Rxdk.Xbdm.KitServices.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\assets\xwmark.bmp" Link="Assets\xwmark.bmp" />
+    <EmbeddedResource Include="..\..\assets\xheader.bmp" Link="Assets\xheader.bmp" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="Ui\Forms\ShellDialogForm.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="Ui\Forms\AddConsoleWizardForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Ui\Forms\AddConsoleWizardForm.Designer.cs">
+      <DependentUpon>AddConsoleWizardForm.cs</DependentUpon>
+    </Compile>
+    <EmbeddedResource Update="Ui\Forms\AddConsoleWizardForm.resx">
+      <DependentUpon>AddConsoleWizardForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <Compile Update="Ui\Forms\ConfirmAttributeChangesForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Ui\Forms\ConfirmAttributeChangesForm.Designer.cs">
+      <DependentUpon>ConfirmAttributeChangesForm.cs</DependentUpon>
+    </Compile>
+    <EmbeddedResource Update="Ui\Forms\ConfirmAttributeChangesForm.resx">
+      <DependentUpon>ConfirmAttributeChangesForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <Compile Update="Ui\Forms\RenameForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Ui\Forms\RenameForm.Designer.cs">
+      <DependentUpon>RenameForm.cs</DependentUpon>
+    </Compile>
+    <EmbeddedResource Update="Ui\Forms\RenameForm.resx">
+      <DependentUpon>RenameForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <Compile Update="Ui\Forms\PropertiesForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Ui\Forms\PropertiesForm.Designer.cs">
+      <DependentUpon>PropertiesForm.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Ui\Forms\TransferProgressForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Ui\Forms\TransferProgressForm.Designer.cs">
+      <DependentUpon>TransferProgressForm.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Ui\Controls\Wizard\WizardSideBannerControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Ui\Controls\Wizard\WizardTopHeaderControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Ui\Controls\DriveUsagePieControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Ui\Controls\Properties\ConsoleAdvancedTab.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Ui\Controls\Properties\ConsoleGeneralTab.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Ui\Controls\Properties\DriveGeneralTab.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Ui\Controls\Properties\FileGeneralTab.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Ui\Controls\Properties\SecurityTab.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Ui\Controls\Wizard\AddConsoleAccessDeniedPage.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Ui\Controls\Wizard\AddConsoleFinishPage.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Ui\Controls\Wizard\AddConsoleGetNamePage.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Ui\Controls\Wizard\AddConsoleMakeDefaultPage.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Ui\Controls\Wizard\AddConsoleWelcomePage.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+  </ItemGroup>
+
+</Project>

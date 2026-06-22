@@ -1,0 +1,48 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <OutputType>Exe</OutputType>
+    <StartupObject>Rxdk.Xbdm.Tests.KitTestProgram</StartupObject>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Rxdk.Xbdm.Managed\Rxdk.Xbdm.Managed.csproj" />
+    <ProjectReference Include="..\Rxdk.Xbdm.Abstractions\Rxdk.Xbdm.Abstractions.csproj" />
+    <ProjectReference Include="..\Rxdk.XboxDbgBridge.Cli\Rxdk.XboxDbgBridge.Cli.csproj">
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="..\TestFiles\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>TestFiles\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </Content>
+  </ItemGroup>
+  <Target Name="CopyXboxDbgBridgeToOutput" AfterTargets="Build">
+    <PropertyGroup>
+      <XboxDbgBridgeOutDir>$(MSBuildThisFileDirectory)..\Rxdk.XboxDbgBridge.Cli\bin\$(Configuration)\net8.0\</XboxDbgBridgeOutDir>
+    </PropertyGroup>
+    <ItemGroup>
+      <XboxDbgBridgeOutput Include="$(XboxDbgBridgeOutDir)xboxdbg-bridge.exe" />
+      <XboxDbgBridgeOutput Include="$(XboxDbgBridgeOutDir)xboxdbg-bridge.dll" />
+      <XboxDbgBridgeOutput Include="$(XboxDbgBridgeOutDir)xboxdbg-bridge.deps.json" />
+      <XboxDbgBridgeOutput Include="$(XboxDbgBridgeOutDir)xboxdbg-bridge.runtimeconfig.json" />
+    </ItemGroup>
+    <Copy
+      SourceFiles="@(XboxDbgBridgeOutput)"
+      DestinationFolder="$(OutputPath)"
+      SkipUnchangedFiles="true"
+      Condition="Exists('%(XboxDbgBridgeOutput.Identity)')" />
+  </Target>
+</Project>

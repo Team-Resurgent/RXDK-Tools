@@ -1,0 +1,117 @@
+<Window xmlns="https://github.com/avaloniaui"
+
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+
+        x:Class="Rxdk.XbWatson.MainWindow"
+
+        Title="xbWatson"
+
+        Width="800"
+
+        Height="500">
+
+  <DockPanel>
+
+  <Menu DockPanel.Dock="Top">
+
+    <MenuItem Header="_File">
+
+      <MenuItem Header="_Save..." InputGesture="Ctrl+S" Click="OnSaveLog" />
+
+      <MenuItem Header="E_xit" Click="OnExit" />
+
+    </MenuItem>
+
+    <MenuItem Header="_Edit">
+
+      <MenuItem Header="_Copy" InputGesture="Ctrl+C" Click="OnCopy" />
+
+      <MenuItem Header="Clea_r window" InputGesture="Ctrl+R" Click="OnClear" />
+
+      <MenuItem Header="Select _All" InputGesture="Ctrl+A" Click="OnSelectAll" />
+
+      <Separator />
+
+      <MenuItem x:Name="LimitBufferMenuItem" Header="_Limit Buffer Length" InputGesture="Ctrl+L" Click="OnToggleLimitBuffer">
+
+        <MenuItem.Icon>
+
+          <Panel Width="18" Height="18">
+
+            <TextBlock x:Name="LimitBufferCheckMark" Text="✓" IsVisible="False"
+
+                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+
+          </Panel>
+
+        </MenuItem.Icon>
+
+      </MenuItem>
+
+      <MenuItem x:Name="TimestampsMenuItem" Header="_Timestamps" InputGesture="Ctrl+T" Click="OnToggleTimestamps">
+
+        <MenuItem.Icon>
+
+          <Panel Width="18" Height="18">
+
+            <TextBlock x:Name="TimestampsCheckMark" Text="✓" IsVisible="False"
+
+                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+
+          </Panel>
+
+        </MenuItem.Icon>
+
+      </MenuItem>
+
+      <MenuItem x:Name="KernelDebugMenuItem" Header="All &amp;Kernel Debug Output" InputGesture="Ctrl+K" IsEnabled="False" Click="OnToggleKernelDebug">
+
+        <MenuItem.Icon>
+
+          <Panel Width="18" Height="18">
+
+            <TextBlock x:Name="KernelDebugCheckMark" Text="✓" IsVisible="True"
+
+                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+
+          </Panel>
+
+        </MenuItem.Icon>
+
+      </MenuItem>
+
+    </MenuItem>
+
+    <MenuItem Header="_Help">
+
+      <MenuItem Header="_About xbWatson..." Click="OnAbout" />
+
+    </MenuItem>
+
+  </Menu>
+
+  <TextBox x:Name="LogTextBox"
+
+           AcceptsReturn="True"
+
+           IsReadOnly="True"
+
+           TextWrapping="NoWrap"
+
+           FontFamily="Consolas,Courier New"
+
+           FontSize="14"
+
+           ScrollViewer.HorizontalScrollBarVisibility="Visible"
+
+           ScrollViewer.VerticalScrollBarVisibility="Visible"
+
+           ScrollViewer.AllowAutoHide="False"
+
+           KeyDown="OnLogKeyDown" />
+
+  </DockPanel>
+
+</Window>
+
+

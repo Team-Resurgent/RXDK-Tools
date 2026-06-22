@@ -1,0 +1,304 @@
+name: Build RXDK Tools
+
+on:
+  push:
+    branches: [main, master]
+    tags:
+      - 'v*'
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Create a GitHub Release with this tag (e.g. v1.0.0). Leave empty to build only.'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-windows:
+    name: Build (Windows)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore NuGet packages
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          # Restore managed projects only. Rxdk.XbShellExt.Shell is native C++ (vcxproj) and
+          # is not a NuGet/SDK project — dotnet restore on the .sln emits NU1503 for it.
+          dotnet restore src/Rxdk.XbShellExt/Rxdk.XbShellExt.csproj -r win-x64
+          Get-ChildItem -Path src -Recurse -Filter *.csproj |
+            Where-Object { $_.Name -ne 'Rxdk.XbShellExt.csproj' } |
+            ForEach-Object { dotnet restore $_.FullName }
+
+      - name: Build RXDKTools.sln
+        run: msbuild RXDKTools.sln /p:Configuration=Release /p:Platform=x64 /p:RestoreDuringBuild=false /m /v:m
+
+      - name: Test Rxdk.XbeImage
+        run: dotnet test src/Rxdk.XbeImage.Tests/Rxdk.XbeImage.Tests.csproj -c Release --no-restore
+
+      - name: Build Xbox Neighborhood installer
+        shell: pwsh
+        working-directory: ${{ github.workspace }}
+        run: ./setup/build-installer.ps1
+
+      - name: Publish managed tools package (single-file + .NET runtime)
+        shell: pwsh
+        run: ./scripts/stage-managed-tools-package.ps1 -Runtime win-x64 -OutputDir out/publish/managed/win-x64
+
+      - name: Upload Xbox Neighborhood installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: xbox-neighborhood-setup
+          path: out/bin/x64/Release/XboxNeighborhood-Setup.exe
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Upload managed tools (Windows)
+        uses: actions/upload-artifact@v4
+        with:
+          name: rxdk-managed-win-x64
+          path: out/publish/managed/win-x64/**
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Build summary
+        shell: pwsh
+        run: |
+          @(
+            '### Windows build',
+            '',
+            '#### Managed CLI tools (single-file bundle)',
+            '',
+            '| Path |',
+            '|------|',
+            '| `out/publish/managed/win-x64/tools/xbset.exe` |',
+            '| `out/publish/managed/win-x64/install-dotnet-runtime.cmd` |',
+            '| `out/publish/managed/win-x64/tools/xbcp.exe` |',
+            '| `out/publish/managed/win-x64/tools/xbdir.exe` |',
+            '| `out/publish/managed/win-x64/tools/xbmkdir.exe` |',
+            '| `out/publish/managed/win-x64/tools/xbecopy.exe` |',
+            '| `out/publish/managed/win-x64/tools/imagebld.exe` |',
+            '| `out/publish/managed/win-x64/tools/xbox-launch.exe` |',
+            '| `out/publish/managed/win-x64/tools/xboxdbg-bridge.exe` |',
+            '| `out/publish/managed/win-x64/tools/xbwatson.exe` |',
+            '',
+            '#### Shell extension installer',
+            '',
+            '| File |',
+            '|------|',
+            '| `out/bin/x64/Release/XboxNeighborhood-Setup.exe` |'
+          ) | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+
+  build-linux:
+    name: Build (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore managed projects
+        run: |
+          dotnet restore src/Rxdk.XbeImage.Tests/Rxdk.XbeImage.Tests.csproj
+          dotnet restore src/Rxdk.XboxDbgBridge/Rxdk.XboxDbgBridge.csproj
+
+      - name: Test Rxdk.XbeImage
+        run: dotnet test src/Rxdk.XbeImage.Tests/Rxdk.XbeImage.Tests.csproj -c Release --no-restore
+
+      - name: Pack Rxdk.XboxDbgBridge NuGet
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="0.0.0-ci.${GITHUB_RUN_NUMBER}"
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          fi
+          mkdir -p out/publish/nuget
+          dotnet pack src/Rxdk.XboxDbgBridge/Rxdk.XboxDbgBridge.csproj \
+            -c Release -o out/publish/nuget --no-restore \
+            -p:PackageVersion="$VERSION"
+
+      - name: Publish managed tools package (single-file + .NET runtime)
+        run: bash scripts/stage-managed-tools-package.sh linux-x64 out/publish/managed/linux-x64
+
+      - name: Upload NuGet packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: rxdk-nuget
+          path: out/publish/nuget/**
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Upload managed tools (Linux)
+        uses: actions/upload-artifact@v4
+        with:
+          name: rxdk-managed-linux-x64
+          path: out/publish/managed/linux-x64/**
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Build summary
+        shell: bash
+        run: |
+          {
+            echo "### Linux build"
+            echo ""
+            echo "| Path |"
+            echo "|------|"
+            echo "| \`out/publish/managed/linux-x64/tools/\` (xbset, xbcp, xbdir, xbmkdir, xbecopy, imagebld, xbox-launch, xboxdbg-bridge, xbwatson) |"
+            echo "| \`out/publish/nuget/Rxdk.XboxDbgBridge.*.nupkg\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  build-macos:
+    name: Build (macOS)
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore managed projects
+        run: |
+          dotnet restore src/Rxdk.XbeImage.Tests/Rxdk.XbeImage.Tests.csproj
+          dotnet restore src/Rxdk.XboxDbgBridge/Rxdk.XboxDbgBridge.csproj
+
+      - name: Test Rxdk.XbeImage
+        run: dotnet test src/Rxdk.XbeImage.Tests/Rxdk.XbeImage.Tests.csproj -c Release --no-restore
+
+      - name: Publish managed tools package (macOS arm64)
+        run: bash scripts/stage-managed-tools-package.sh osx-arm64 out/publish/managed/osx-arm64
+
+      - name: Publish managed tools package (macOS x64)
+        run: bash scripts/stage-managed-tools-package.sh osx-x64 out/publish/managed/osx-x64
+
+      - name: Upload managed tools (macOS arm64)
+        uses: actions/upload-artifact@v4
+        with:
+          name: rxdk-managed-osx-arm64
+          path: out/publish/managed/osx-arm64/**
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Upload managed tools (macOS x64)
+        uses: actions/upload-artifact@v4
+        with:
+          name: rxdk-managed-osx-x64
+          path: out/publish/managed/osx-x64/**
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Build summary
+        shell: bash
+        run: |
+          {
+            echo "### macOS build"
+            echo ""
+            echo "| Path |"
+            echo "|------|"
+            echo "| \`out/publish/managed/osx-arm64/tools/\` (Apple Silicon) |"
+            echo "| \`out/publish/managed/osx-x64/tools/\` (Intel Mac) |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  release:
+    name: GitHub Release
+    needs: [build-windows, build-linux, build-macos]
+    if: |
+      github.event_name != 'pull_request' && (
+        startsWith(github.ref, 'refs/tags/v') ||
+        (github.event_name == 'workflow_dispatch' && github.event.inputs.release_tag != '') ||
+        (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'))
+      )
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Package managed tool bundles
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist/zips
+          for artifact in dist/rxdk-managed-*; do
+            if [[ -d "$artifact" ]]; then
+              find "$artifact" -name '*.pdb' -delete
+              zip -r "dist/zips/$(basename "$artifact").zip" "$artifact" -x '*.pdb'
+            fi
+          done
+          if [[ -d dist/rxdk-nuget ]]; then
+            zip -r dist/zips/rxdk-nuget.zip dist/rxdk-nuget -x '*.pdb'
+          fi
+          if [[ -f dist/xbox-neighborhood-setup/XboxNeighborhood-Setup.exe ]]; then
+            cp dist/xbox-neighborhood-setup/XboxNeighborhood-Setup.exe dist/zips/
+          fi
+          ls -la dist/zips/
+
+      - name: Resolve release tag
+        id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            tag="${GITHUB_REF#refs/tags/}"
+            prerelease=false
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ github.event.inputs.release_tag }}" ]]; then
+            tag="${{ github.event.inputs.release_tag }}"
+            prerelease=true
+          else
+            tag="build-${GITHUB_RUN_NUMBER}"
+            prerelease=true
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
+          echo "Release tag: $tag (prerelease=$prerelease)"
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          name: RXDK Tools ${{ steps.meta.outputs.tag }}
+          prerelease: ${{ steps.meta.outputs.prerelease }}
+          generate_release_notes: true
+          files: |
+            dist/zips/**/*
+
+      - name: Release summary
+        shell: bash
+        run: |
+          {
+            echo "### GitHub Release"
+            echo ""
+            echo "- Tag: \`${{ steps.meta.outputs.tag }}\`"
+            echo "- Pre-release: \`${{ steps.meta.outputs.prerelease }}\`"
+            echo "- Windows: \`XboxNeighborhood-Setup.exe\`, managed tool zip (\`tools/\` bundle incl. \`xbwatson\`)"
+            echo "- Linux/macOS: managed tool zip (\`tools/\` bundle incl. \`xbwatson\`)"
+            echo "- NuGet: \`Rxdk.XboxDbgBridge\` (\`rxdk-nuget.zip\`)"
+          } >> "$GITHUB_STEP_SUMMARY"

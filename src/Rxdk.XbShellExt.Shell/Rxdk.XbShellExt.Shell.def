@@ -1,0 +1,11 @@
+EXPORTS
+    DllCanUnloadNow     PRIVATE
+    DllGetClassObject   PRIVATE
+    DllRegisterServer   PRIVATE
+    DllUnregisterServer PRIVATE
+    OpenNamespace
+    LaunchExplorer
+    XbShellExt_CreateNativeContextMenu
+    XbShellExt_CreateNativeExtractIcon
+    XbShellExt_BeginTransferActivity
+    XbShellExt_EndTransferActivity

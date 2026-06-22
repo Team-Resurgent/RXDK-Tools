@@ -1,0 +1,157 @@
+IMAGE HEADER VALUES
+   00010000 base address
+       1000 size of headers
+     12FC40 size of image
+        184 size of image header
+   6A331390 time date stamp invalid
+   00010184 certificate address
+          8 number of sections
+   00010370 section headers address
+          1 initialization flags
+            Mount utility drive
+            16K utility drive cluster size
+   948013B4 entry point address
+   000F4478 thread local storage directory address
+      10000 size of stack commit
+       1000 size of heap commit
+     100000 size of heap reserve
+   00010CA0 original base address
+     135300 original size of image
+   00000000 original checksum
+   6A331390 original time date stamp invalid
+   000105E4 debug path name address
+   000105FD debug file name address
+   000105C4 debug Unicode file name address
+   EFA21E1A kernel image thunk address
+   00000000 non-kernel import directory address
+          5 number of library versions
+   00010574 library versions address
+   000105A4 kernel library version address
+   00010574 XAPI library version address
+   00010610 logo bitmap address
+        2B2 logo bitmap size
+
+Debug path name: z:/Git/TriangleXDK/debug/TriangleXDK.exe
+
+CERTIFICATE
+        1EC size of certificate
+   6A331390 time date stamp Wed Jun 17 15:37:20 2026
+   00000000 title id
+        207 allowed media types
+   80000007 game region
+   FFFFFFFF game ratings
+          0 disk number
+          0 version
+   54524150 online service name
+
+   Title name: 
+
+      LAN key: 54455354544553545445535454455354
+Signature key: 54455354544553545445535454455354
+
+LIBRARY VERSIONS
+   XAPILIBD 1.0.5849.1 [debug] [unapproved]
+      D3D8D 1.0.5849.15 [debug] [unapproved]
+     D3DX8D 1.0.5849.1 [debug] [unapproved]
+   XBOXKRNL 1.0.5849.1 [unapproved]
+    LIBCMTD 1.0.5849.1 [debug] [unapproved]
+
+THREAD LOCAL STORAGE DIRECTORY
+   00000000 raw data start address
+   00000000 raw data end address
+   0013E3BC TLS index address
+   00000000 TLS callbacks address
+        2AB size of zero fill
+          0 characteristics
+
+SECTION HEADER #1  .textbss
+      11000 virtual address
+      47359 virtual size
+       1000 file pointer to raw data
+          0 size of raw data
+   00010530 head shared page reference count address
+   00010532 tail shared page reference count address
+          7 flags
+            Writeable
+            Preload
+            Executable
+
+SECTION HEADER #2  .text
+      58360 virtual address
+      29198 virtual size
+       1000 file pointer to raw data
+      29198 size of raw data
+   00010532 head shared page reference count address
+   00010534 tail shared page reference count address
+          6 flags
+            Preload
+            Executable
+
+SECTION HEADER #3  D3D
+      81500 virtual address
+      67AB0 virtual size
+      2B000 file pointer to raw data
+      5B5EC size of raw data
+   00010534 head shared page reference count address
+   00010536 tail shared page reference count address
+          7 flags
+            Writeable
+            Preload
+            Executable
+
+SECTION HEADER #4  D3DX
+      E8FC0 virtual address
+       A98C virtual size
+      87000 file pointer to raw data
+       9844 size of raw data
+   00010536 head shared page reference count address
+   00010538 tail shared page reference count address
+          7 flags
+            Writeable
+            Preload
+            Executable
+
+SECTION HEADER #5  .rdata
+      F3960 virtual address
+       7F18 virtual size
+      91000 file pointer to raw data
+       7D14 size of raw data
+   00010538 head shared page reference count address
+   0001053A tail shared page reference count address
+          6 flags
+            Preload
+            Executable
+
+SECTION HEADER #6  .data
+      FB880 virtual address
+      433CC virtual size
+      99000 file pointer to raw data
+      429A4 size of raw data
+   0001053A head shared page reference count address
+   0001053C tail shared page reference count address
+          7 flags
+            Writeable
+            Preload
+            Executable
+
+SECTION HEADER #7  .idata
+     13EC60 virtual address
+        6B7 virtual size
+      DC000 file pointer to raw data
+        5B4 size of raw data
+   0001053C head shared page reference count address
+   0001053E tail shared page reference count address
+          7 flags
+            Writeable
+            Preload
+            Executable
+
+SECTION HEADER #8  .XTLID
+     13F320 virtual address
+        908 virtual size
+      DD000 file pointer to raw data
+        908 size of raw data
+   0001053E head shared page reference count address
+   0001053E tail shared page reference count address
+          8 flags
+            Inserted file
