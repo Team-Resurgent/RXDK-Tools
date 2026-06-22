@@ -499,13 +499,26 @@ internal sealed partial class DebugBridgeSession : IDisposable
         if (_stoppedThread == 0)
             _stoppedThread = _mainThread;
 
-        _debug.Stop();
+        if (!_launchStopped)
+        {
+            try
+            {
+                _debug.Stop();
+            }
+            catch (XbdmException ex)
+            {
+                BridgeWriter.Log($"DmStop after launch wait failed: {ex.Message}");
+            }
+        }
+
         _debug.ConnectDebugger(true);
         _connectedToDebugger = true;
         _debug.StopOn(XbdmDebugConstants.DmstopCreateThread | XbdmDebugConstants.DmstopFce | XbdmDebugConstants.DmstopDebugStr, stop: false);
         ApplyPendingBreakpoints();
 
         _launched = true;
+        _threadStopped = true;
+        _launchStopped = true;
         BridgeWriter.EmitResult(id, true, $"\"threadId\":{_mainThread},\"moduleBase\":\"0x{_moduleBase:x}\"");
     }
 
@@ -1043,5 +1056,8 @@ internal sealed partial class DebugBridgeSession : IDisposable
     private static string Bool(bool value) => value ? "true" : "false";
 
     private static string Escape(string value) =>
-        value.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("\"", "\\\"", StringComparison.Ordinal);
+        value.Replace("\\", "\\\\", StringComparison.Ordinal)
+            .Replace("\"", "\\\"", StringComparison.Ordinal)
+            .Replace("\r", "\\r", StringComparison.Ordinal)
+            .Replace("\n", "\\n", StringComparison.Ordinal);
 }
