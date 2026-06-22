@@ -141,6 +141,19 @@ internal static class DbgHelpNative
 
     internal const int SymbolInfoSize = 88;
 
+    // SYMBOL_INFO field offsets for x64 / natural 8-byte alignment. Verified against live dbghelp
+    // output (name at 84, Flags at 40 with RegRel=0x10, Tag at 72=SymTagData, Address at 56).
+    // SizeOfStruct stays SymbolInfoSize (88); MaxNameLen must be written at 80 or names come back empty.
+    internal const int SymInfoTypeIndex = 4;
+    internal const int SymInfoSize = 28;
+    internal const int SymInfoFlags = 40;
+    internal const int SymInfoValue = 48;
+    internal const int SymInfoAddress = 56;
+    internal const int SymInfoRegister = 64;
+    internal const int SymInfoTag = 72;
+    internal const int SymInfoMaxNameLen = 80;
+    internal const int SymInfoName = 84;
+
     [StructLayout(LayoutKind.Sequential)]
     internal struct ImageHlpStackFrame
     {

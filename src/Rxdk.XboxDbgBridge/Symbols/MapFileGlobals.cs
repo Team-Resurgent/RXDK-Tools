@@ -46,9 +46,14 @@ internal static class MapFileGlobals
                     continue;
                 if (mangled.StartsWith("__", StringComparison.Ordinal))
                     continue;
+                // Compiler-generated symbols: string literals ($SG...), scratch ($S...), and other
+                // '$'-prefixed temporaries are not user globals.
+                if (mangled.StartsWith("$", StringComparison.Ordinal) ||
+                    mangled.StartsWith("??_C", StringComparison.Ordinal))
+                    continue;
 
                 var display = Undecorate(mangled);
-                if (string.IsNullOrEmpty(display))
+                if (string.IsNullOrEmpty(display) || display.StartsWith("$", StringComparison.Ordinal))
                     continue;
 
                 var size = GuessSize(mangled);

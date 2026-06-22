@@ -17,19 +17,25 @@ internal sealed partial class DebugBridgeSession
             return;
         }
 
-        if (!BridgeJson.TryGetString(root, "exe", out var exe))
+        var hasExe = BridgeJson.TryGetString(root, "exe", out var exe);
+        var hasXbe = BridgeJson.TryGetString(root, "xbe", out var xbe);
+        if (!hasExe && !hasXbe)
         {
-            BridgeWriter.EmitResult(id, false, "\"error\":\"missing exe\"");
+            BridgeWriter.EmitResult(id, false, "\"error\":\"missing exe/xbe\"");
             return;
         }
 
         if (!BridgeJson.TryGetString(root, "pdb", out var pdb))
-            pdb = exe;
+            pdb = hasExe ? exe : xbe;
         BridgeJson.TryGetString(root, "map", out var map);
 
         try
         {
-            _symbols.Load(exe, pdb, string.IsNullOrEmpty(map) ? null : map);
+            var mapArg = string.IsNullOrEmpty(map) ? null : map;
+            if (hasExe)
+                _symbols.Load(exe, pdb, mapArg);
+            else
+                _symbols.LoadFromXbe(xbe, pdb, mapArg);
             // SymbolService.Load() calls Unload(), which clears ModuleBase. Restore the kit
             // relocation base so subsequent file/line resolution maps into the running title
             // instead of returning raw PDB (link-base) addresses.

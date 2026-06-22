@@ -145,6 +145,8 @@ internal sealed partial class DebugBridgeSession : IDisposable
                     case "shutdown":
                         var rebootDashboard = true;
                         BridgeJson.TryGetBool(root, "rebootDashboard", out rebootDashboard);
+                        _active = false;
+                        _breakEvent.Set();
                         if (rebootDashboard)
                             RebootToDashboard();
                         BridgeWriter.EmitResult(id, true);
@@ -525,13 +527,24 @@ internal sealed partial class DebugBridgeSession : IDisposable
     {
         EnsureNotifications();
         EnsureStartupStopOnRelaxed();
+        if (_holdForBreakpointSetup)
+        {
+            var threadId = _stoppedThread != 0 ? _stoppedThread : _mainThread;
+            BridgeWriter.Log($"go: releasing entry hold thread={threadId} pc=0x{_stoppedAddress:x}");
+        }
+
+        if (AnyThreadStopped())
+            SyncStoppedStateFromKit();
+
         if (IsStoppedAtSoftwareBreakpoint())
             ResumeStoppedThread(exception: true);
         else
             ResumeAllStoppedThreads();
 
         BypassStoppedHardwareBreakpoint();
-        _debug!.Go();
+        TryGo("go");
+        ResumeMainThreadSuspend("go");
+        _holdForBreakpointSetup = false;
         BridgeWriter.EmitResult(id, true);
     }
 
@@ -554,12 +567,41 @@ internal sealed partial class DebugBridgeSession : IDisposable
         if (TryReportActiveBreakpointStop(id))
             return;
 
+        // Already halted at a non-user stop (e.g. kernel 0x8001a3fa) — caller should skip via go.
+        if (AnyThreadStopped() && SyncStoppedStateFromKit())
+        {
+            if (StoppedAtActiveBreakpoint())
+            {
+                BridgeWriter.EmitResult(id, true,
+                    $"\"threadId\":{_stoppedThread},\"address\":\"0x{_stoppedAddress:x}\"");
+                return;
+            }
+
+            BridgeWriter.EmitResult(id, true,
+                $"\"threadId\":{_stoppedThread},\"address\":\"0x{_stoppedAddress:x}\",\"incidental\":true");
+            return;
+        }
+
         _breakEvent.Reset();
         if (!_breakEvent.Wait(timeoutMs))
         {
             // The hit may have raced with the reset above; reconcile against the kit before failing.
             if (TryReportActiveBreakpointStop(id))
                 return;
+
+            if (AnyThreadStopped() && SyncStoppedStateFromKit())
+            {
+                if (StoppedAtActiveBreakpoint())
+                {
+                    BridgeWriter.EmitResult(id, true,
+                        $"\"threadId\":{_stoppedThread},\"address\":\"0x{_stoppedAddress:x}\"");
+                    return;
+                }
+
+                BridgeWriter.EmitResult(id, true,
+                    $"\"threadId\":{_stoppedThread},\"address\":\"0x{_stoppedAddress:x}\",\"incidental\":true");
+                return;
+            }
 
             BridgeWriter.EmitResult(id, false, "\"error\":\"waitTimeout\"");
             return;
@@ -807,8 +849,22 @@ internal sealed partial class DebugBridgeSession : IDisposable
     private void GetThreads(int id)
     {
         EnsureNotifications();
-        var threads = _debug!.GetThreadList();
-        var payload = string.Join(',', threads);
+        var raw = _debug!.GetThreadList();
+        // The kit can list the same thread id more than once; duplicates make VS Code render the
+        // call stack once per entry. Keep the stopped/main thread first, then unique remaining ids.
+        var ordered = new List<uint>();
+        var seen = new HashSet<uint>();
+        var primary = _stoppedThread != 0 ? _stoppedThread : _mainThread;
+        if (primary != 0 && raw.Contains(primary) && seen.Add(primary))
+            ordered.Add(primary);
+        foreach (var t in raw)
+            if (seen.Add(t))
+                ordered.Add(t);
+
+        if (Symbols.SymbolTypeEngine.LocalsDiagnostics)
+            BridgeWriter.Log($"threads-diag: raw=[{string.Join(',', raw)}] ordered=[{string.Join(',', ordered)}]");
+
+        var payload = string.Join(',', ordered);
         BridgeWriter.Emit($"{{\"type\":\"result\",\"id\":{id},\"success\":true,\"threads\":[{payload}]}}");
     }
 
@@ -837,27 +893,68 @@ internal sealed partial class DebugBridgeSession : IDisposable
         builder.Append("{\"type\":\"result\",\"id\":").Append(id).Append(",\"success\":true,\"frames\":[");
         var ebp = context.Ebp;
         Span<byte> buffer = stackalloc byte[4];
-        for (var frame = 0; frame < 8; frame++)
+        var emitted = 0;
+        var visited = new HashSet<uint>();
+        for (var frame = 0; frame < 32; frame++)
         {
-            if (frame > 0)
+            // Cycle guard: a not-yet-established frame pointer (e.g. at a function prologue) can make
+            // the EBP walk loop back over the same addresses; stop as soon as we revisit one.
+            if (!visited.Add((uint)address))
+                break;
+            // Caller frames: the return address points just past the call, so look up address-1 to
+            // land on the call site's line/function rather than the next statement.
+            var lookup = emitted == 0 ? address : (address > 0 ? address - 1 : address);
+            var resolved = _symbols.TryAddressToLine(lookup, out var file, out var line, out var function);
+            var hasName = !string.IsNullOrEmpty(function);
+            // Once we walk past title/CRT code into the kit/kernel (no symbol, no line), emit a
+            // single placeholder frame and stop — continuing only follows garbage and produces the
+            // duplicated frames we used to show.
+            if (!resolved && !hasName)
+            {
+                if (emitted > 0)
+                {
+                    builder.Append(',');
+                    builder.Append("{\"index\":").Append(emitted)
+                        .Append(",\"address\":\"0x").Append(address.ToString("x"))
+                        .Append("\",\"name\":\"[external code]\",\"file\":\"\",\"line\":0}");
+                }
+                break;
+            }
+
+            if (emitted > 0)
                 builder.Append(',');
-            _symbols.TryAddressToLine(address, out var file, out var line, out var function);
-            builder.Append("{\"index\":").Append(frame)
+            var name = hasName ? function : "(no symbol)";
+            builder.Append("{\"index\":").Append(emitted)
                 .Append(",\"address\":\"0x").Append(address.ToString("x")).Append("\",\"name\":");
-            BridgeJsonWriter.AppendEscaped(builder, string.IsNullOrEmpty(function) ? "???" : function);
+            BridgeJsonWriter.AppendEscaped(builder, name);
             builder.Append(",\"file\":");
             BridgeJsonWriter.AppendEscaped(builder, file);
             builder.Append(",\"line\":").Append(line).Append('}');
+            emitted++;
 
+            if (ebp == 0 || (ebp & 3) != 0)
+                break;
             if (_debug.GetMemory((nuint)(ebp + 4), buffer) != 4)
                 break;
-            address = BitConverter.ToUInt32(buffer);
+            var returnAddr = BitConverter.ToUInt32(buffer);
             if (_debug.GetMemory((nuint)ebp, buffer) != 4)
                 break;
-            ebp = BitConverter.ToUInt32(buffer);
+            var nextEbp = BitConverter.ToUInt32(buffer);
+
+            if (Symbols.SymbolTypeEngine.LocalsDiagnostics)
+                BridgeWriter.Log(
+                    $"stack-diag: frame={emitted - 1} addr=0x{address:x} ebp=0x{ebp:x} ret=0x{returnAddr:x} nextEbp=0x{nextEbp:x} name='{name}' {file}:{line}");
+
+            // Frame pointers grow upward; require strict progress to avoid cycles/garbage.
+            if (returnAddr == 0 || nextEbp <= ebp)
+                break;
+            address = (nuint)returnAddr;
+            ebp = nextEbp;
         }
 
         builder.Append("]}");
+        if (Symbols.SymbolTypeEngine.LocalsDiagnostics)
+            BridgeWriter.Log($"stack-diag: threadId={threadId} emittedFrames={emitted}");
         BridgeWriter.Emit(builder.ToString());
     }
 
@@ -877,15 +974,6 @@ internal sealed partial class DebugBridgeSession : IDisposable
         catch (XbdmException ex)
         {
             BridgeWriter.Log($"StopOn before dashboard reboot: {ex.Message}");
-        }
-
-        try
-        {
-            _debug.Stop();
-        }
-        catch (XbdmException ex)
-        {
-            BridgeWriter.Log($"DmStop before dashboard reboot: {ex.Message}");
         }
 
         if (_connectedToDebugger)
@@ -940,21 +1028,32 @@ internal sealed partial class DebugBridgeSession : IDisposable
         {
             var response = _debug.SendCommand("reboot warm");
             BridgeWriter.Log($"Dashboard reboot response: {response}");
+            return;
         }
         catch (XbdmException ex)
         {
-            BridgeWriter.Log($"Dashboard reboot (reboot warm) failed: {ex.Message}; retrying DmReboot");
-            try
-            {
-                _debug.UseSharedConnection(false);
-                _debug.UseSharedConnection(true);
-                _debug.Reboot(XbdmDebugConstants.DmbootWarm);
-                BridgeWriter.Log("Dashboard warm reboot sent (DmReboot)");
-            }
-            catch (XbdmException ex2)
-            {
-                BridgeWriter.Log($"Dashboard reboot (DmReboot) failed: {ex2.Message}");
-            }
+            BridgeWriter.Log($"Dashboard reboot (reboot warm) failed: {ex.Message}; retrying after STOP");
+        }
+
+        try
+        {
+            _debug.Stop();
+        }
+        catch (XbdmException ex)
+        {
+            BridgeWriter.Log($"DmStop before dashboard reboot retry: {ex.Message}");
+        }
+
+        try
+        {
+            _debug.UseSharedConnection(false);
+            _debug.UseSharedConnection(true);
+            _debug.Reboot(XbdmDebugConstants.DmbootWarm);
+            BridgeWriter.Log("Dashboard warm reboot sent (DmReboot)");
+        }
+        catch (XbdmException ex2)
+        {
+            BridgeWriter.Log($"Dashboard reboot (DmReboot) failed: {ex2.Message}");
         }
     }
 
@@ -1091,6 +1190,7 @@ internal sealed partial class DebugBridgeSession : IDisposable
             {
                 _debug.ContinueThread(threadId, exception);
                 continued++;
+                BridgeWriter.Log($"ContinueThread({threadId}, exception={exception})");
             }
             catch (XbdmException ex)
             {
@@ -1102,7 +1202,9 @@ internal sealed partial class DebugBridgeSession : IDisposable
         {
             try
             {
-                ResumeStoppedThread(_autoRunResume || IsStoppedAtSoftwareBreakpoint());
+                var threadId = _stoppedThread != 0 ? _stoppedThread : _mainThread;
+                var exception = _autoRunResume || ShouldContinueAsException(threadId) || IsStoppedAtSoftwareBreakpoint();
+                ResumeStoppedThread(exception);
             }
             catch (XbdmException ex)
             {
@@ -1138,9 +1240,21 @@ internal sealed partial class DebugBridgeSession : IDisposable
         var needContinue = _threadStopped || _launchStopped || _holdForBreakpointSetup ||
                            IsThreadStoppedOnKit(threadId);
         if (!needContinue)
+        {
+            BridgeWriter.Log($"ResumeStoppedThread({threadId}): not stopped (hold={_holdForBreakpointSetup})");
             return;
+        }
 
-        _debug.ContinueThread(threadId, exception);
+        try
+        {
+            _debug.ContinueThread(threadId, exception);
+            BridgeWriter.Log($"ResumeStoppedThread({threadId}, exception={exception})");
+        }
+        catch (XbdmException ex)
+        {
+            BridgeWriter.Log($"ResumeStoppedThread({threadId}) failed: {ex.Message}");
+        }
+
         _threadStopped = false;
         _launchStopped = false;
     }
