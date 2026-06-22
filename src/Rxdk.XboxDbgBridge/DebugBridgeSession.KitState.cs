@@ -224,12 +224,13 @@ internal sealed partial class DebugBridgeSession
         return bpType == XbdmDebugConstants.DmbreakFixed;
     }
 
-    private void OnModuleBaseChanged(nuint oldBase)
+    private void OnModuleBaseChanged(nuint oldBase, string? moduleName = null)
     {
         if (_moduleBase == 0 || _moduleBase == oldBase)
             return;
 
-        BridgeWriter.Log($"Module base updated 0x{oldBase:x} -> 0x{_moduleBase:x}");
+        var label = string.IsNullOrWhiteSpace(moduleName) ? string.Empty : $" ({moduleName})";
+        BridgeWriter.Log($"Module base updated 0x{oldBase:x} -> 0x{_moduleBase:x}{label}");
         if (_breakpoints.Pending.Count > 0)
             ApplyPendingBreakpoints();
         if (_breakpoints.Active.Count > 0)
