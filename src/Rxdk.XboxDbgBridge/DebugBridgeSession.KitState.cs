@@ -32,20 +32,16 @@ internal sealed partial class DebugBridgeSession
 
             for (var attempt = 0; attempt < 12; attempt++)
             {
-                if (!TryContinueHeldTitle($"goUser attempt={attempt}"))
-                {
-                    BridgeWriter.EmitResult(id, false, "\"error\":\"continueThread\"");
-                    return;
-                }
+                if (attempt == 0 && _holdForBreakpointSetup)
+                    ForceContinueLaunchHold();
+                else
+                    ResumeAllStoppedThreads();
 
+                BypassStoppedHardwareBreakpoint();
                 _breakEvent.Reset();
-                try
+                if (!TryGo($"goUser attempt={attempt}"))
                 {
-                    _debug!.Go();
-                }
-                catch (XbdmException ex)
-                {
-                    BridgeWriter.EmitResult(id, false, $"\"error\":\"{Escape(ex.Message)}\"");
+                    BridgeWriter.EmitResult(id, false, "\"error\":\"go\"");
                     return;
                 }
 
@@ -104,6 +100,51 @@ internal sealed partial class DebugBridgeSession
         return true;
     }
 
+    private void ForceContinueLaunchHold()
+    {
+        if (_debug is null || _mainThread == 0)
+            return;
+
+        var threadId = _stoppedThread != 0 ? _stoppedThread : _mainThread;
+        var exception = _autoRunResume || IsStoppedAtSoftwareBreakpoint();
+        try
+        {
+            _debug.ContinueThread(threadId, exception);
+            BridgeWriter.Log($"launch hold: ContinueThread({threadId}, exception={exception})");
+        }
+        catch (XbdmException ex)
+        {
+            BridgeWriter.Log($"launch hold: ContinueThread({threadId}) failed: {ex.Message}");
+        }
+
+        _threadStopped = false;
+        _launchStopped = false;
+    }
+
+    private bool TryGo(string phase)
+    {
+        if (_debug is null)
+            return false;
+
+        try
+        {
+            _debug.Go();
+            return true;
+        }
+        catch (XbdmException ex)
+        {
+            if (AnyThreadStopped())
+            {
+                BridgeWriter.Log($"{phase}: Go failed while stopped: {ex.Message}");
+                return false;
+            }
+
+            // Target already running — wait for the next breakpoint notification.
+            BridgeWriter.Log($"{phase}: Go skipped ({ex.Message}); title already running");
+            return true;
+        }
+    }
+
     private bool TryContinueHeldTitle(string phase)
     {
         if (_debug is null || _mainThread == 0)
@@ -127,20 +168,30 @@ internal sealed partial class DebugBridgeSession
             }
         }
 
-        if (continued == 0)
+        if (continued == 0 && (_holdForBreakpointSetup || _threadStopped || _launchStopped))
         {
             var threadId = _stoppedThread != 0 ? _stoppedThread : _mainThread;
+            var exception = _autoRunResume || IsStoppedAtSoftwareBreakpoint();
             try
             {
-                _debug.ContinueThread(threadId, false);
+                _debug.ContinueThread(threadId, exception);
                 continued = 1;
-                BridgeWriter.Log($"{phase}: forced ContinueThread({threadId})");
+                BridgeWriter.Log($"{phase}: forced ContinueThread({threadId}, exception={exception})");
             }
             catch (XbdmException ex)
             {
                 BridgeWriter.Log($"{phase}: forced ContinueThread({threadId}) failed: {ex.Message}");
                 return false;
             }
+        }
+        else if (continued == 0 && !AnyThreadStopped())
+        {
+            BridgeWriter.Log($"{phase}: no stopped threads (title running)");
+            return true;
+        }
+        else if (continued == 0)
+        {
+            return false;
         }
 
         _threadStopped = false;
