@@ -24,6 +24,12 @@ internal sealed class SymbolService : IDisposable
     }
 
     internal void Load(string exePath, string pdbPath, string? mapPath)
+        => LoadModule(exePath, ReadPeImageSize(exePath), pdbPath, mapPath);
+
+    internal void LoadFromXbe(string xbePath, string pdbPath, string? mapPath)
+        => LoadModule(xbePath, ReadXbeImageSize(xbePath), pdbPath, mapPath);
+
+    private void LoadModule(string imagePath, uint imageSize, string pdbPath, string? mapPath)
     {
         if (!IsAvailable)
             throw new PlatformNotSupportedException("DbgHelp symbols require Windows.");
@@ -38,11 +44,12 @@ internal sealed class SymbolService : IDisposable
             _initialized = true;
         }
 
-        var searchPath = Path.GetDirectoryName(exePath) ?? ".";
+        // Prefer the PDB directory for the symbol search path: prebuilt/legacy XBEs may
+        // ship without a sibling .exe, but the PDB is always present for symbol debugging.
+        var searchPath = Path.GetDirectoryName(pdbPath) ?? Path.GetDirectoryName(imagePath) ?? ".";
         DbgHelpNative.SymSetSearchPath(DbgHelpNative.PseudoProcess, searchPath);
 
-        var imageSize = ReadPeImageSize(exePath);
-        var moduleName = Path.GetFileName(exePath);
+        var moduleName = Path.GetFileName(imagePath);
         var baseAddr = DbgHelpNative.SymLoadModuleEx(
             DbgHelpNative.PseudoProcess,
             IntPtr.Zero,
@@ -57,7 +64,7 @@ internal sealed class SymbolService : IDisposable
             baseAddr = DbgHelpNative.SymLoadModuleEx(
                 DbgHelpNative.PseudoProcess,
                 IntPtr.Zero,
-                exePath,
+                imagePath,
                 pdbPath,
                 0x400000,
                 imageSize,
@@ -72,7 +79,7 @@ internal sealed class SymbolService : IDisposable
         _pdbBase = baseAddr;
 
         var map = string.IsNullOrWhiteSpace(mapPath)
-            ? Path.ChangeExtension(exePath, ".map")
+            ? Path.ChangeExtension(imagePath, ".map")
             : mapPath;
         if (File.Exists(map))
         {
@@ -160,6 +167,8 @@ internal sealed class SymbolService : IDisposable
             : (ulong)kitAddress;
 
         if (TrySymFromAddr(pdbAddr, out var symName))
+            function = symName;
+        else if (pdbAddr > 0 && TrySymFromAddr(pdbAddr - 1, out symName))
             function = symName;
 
         var imageLine = new DbgHelpNative.ImageHlpLine64 { SizeOfStruct = (uint)Marshal.SizeOf<DbgHelpNative.ImageHlpLine64>() };
@@ -258,6 +267,36 @@ internal sealed class SymbolService : IDisposable
             if (reader.ReadUInt32() != 0x00004550)
                 return 0;
             stream.Position = peOffset + 0x50;
+            return reader.ReadUInt32();
+        }
+        catch
+        {
+            return 0;
+        }
+    }
+
+    // XBE header layout: 'XBEH' signature at 0, then a 256-byte encrypted digest at 4,
+    // so the base-address header begins at 0x104. SizeOfImage and NtSizeOfImage are read
+    // relative to that base (see Rxdk.XbeImage.XbeImageReader).
+    private const int XbeBaseAddressOffset = 4 + 256;
+    private const uint XbeSignature = 0x48454258; // 'XBEH'
+
+    private static uint ReadXbeImageSize(string xbePath)
+    {
+        try
+        {
+            using var stream = File.OpenRead(xbePath);
+            using var reader = new BinaryReader(stream);
+            if (stream.Length < XbeBaseAddressOffset + 64)
+                return 0;
+            stream.Position = 0;
+            if (reader.ReadUInt32() != XbeSignature)
+                return 0;
+            stream.Position = XbeBaseAddressOffset + 8; // SizeOfImage
+            var sizeOfImage = reader.ReadUInt32();
+            if (sizeOfImage != 0)
+                return sizeOfImage;
+            stream.Position = XbeBaseAddressOffset + 60; // NtSizeOfImage
             return reader.ReadUInt32();
         }
         catch
@@ -376,12 +415,12 @@ internal sealed class SymbolService : IDisposable
         var buffer = Marshal.AllocHGlobal(88 + DbgHelpNative.MaxSymName);
         try
         {
-            Marshal.WriteInt32(buffer, 0, 88);
-            Marshal.WriteInt32(buffer, 80, DbgHelpNative.MaxSymName);
+            Marshal.WriteInt32(buffer, 0, DbgHelpNative.SymbolInfoSize);
+            Marshal.WriteInt32(buffer, DbgHelpNative.SymInfoMaxNameLen, DbgHelpNative.MaxSymName);
             if (!DbgHelpNative.SymFromName(DbgHelpNative.PseudoProcess, name, buffer))
                 return false;
-            flags = (uint)Marshal.ReadInt32(buffer, 56);
-            address = (ulong)Marshal.ReadInt64(buffer, 64);
+            flags = (uint)Marshal.ReadInt32(buffer, DbgHelpNative.SymInfoFlags);
+            address = (ulong)Marshal.ReadInt64(buffer, DbgHelpNative.SymInfoAddress);
             return true;
         }
         finally
@@ -396,11 +435,11 @@ internal sealed class SymbolService : IDisposable
         var buffer = Marshal.AllocHGlobal(88 + DbgHelpNative.MaxSymName);
         try
         {
-            Marshal.WriteInt32(buffer, 0, 88);
-            Marshal.WriteInt32(buffer, 80, DbgHelpNative.MaxSymName);
+            Marshal.WriteInt32(buffer, 0, DbgHelpNative.SymbolInfoSize);
+            Marshal.WriteInt32(buffer, DbgHelpNative.SymInfoMaxNameLen, DbgHelpNative.MaxSymName);
             if (!DbgHelpNative.SymFromAddr(DbgHelpNative.PseudoProcess, address, out _, buffer))
                 return false;
-            name = Marshal.PtrToStringAnsi(buffer + 88) ?? string.Empty;
+            name = Marshal.PtrToStringAnsi(buffer + DbgHelpNative.SymInfoName) ?? string.Empty;
             return name.Length > 0;
         }
         finally

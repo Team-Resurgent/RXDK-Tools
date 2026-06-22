@@ -26,11 +26,14 @@ internal sealed partial class SymbolTypeEngine
         try
         {
             WriteSymbolHeader(buffer);
-            if (!DbgHelpNative.SymFromAddr(DbgHelpNative.PseudoProcess, PdbAddress(context.Eip), out _, buffer))
-                return;
-
-            var frameType = (uint)Marshal.ReadInt32(buffer, 4);
-            EmitTypeTreeLocals(frameType, ref context, variables, memory, depth: 0);
+            // The frame-type tree is a best-effort enrichment; if SymFromAddr can't resolve the
+            // function symbol at EIP (common at a function-entry breakpoint), still fall through to
+            // the supplemental RegRel enumeration so locals are not silently dropped.
+            if (DbgHelpNative.SymFromAddr(DbgHelpNative.PseudoProcess, PdbAddress(context.Eip), out _, buffer))
+            {
+                var frameType = (uint)Marshal.ReadInt32(buffer, 4);
+                EmitTypeTreeLocals(frameType, ref context, variables, memory, depth: 0);
+            }
         }
         finally
         {
@@ -259,9 +262,23 @@ internal sealed partial class SymbolTypeEngine
         variables.Append(name, $"array[{elemCount}]", expandable: true, expandBase: name);
     }
 
+    internal static bool LocalsDiagnostics = true;
+
     private void EnumSupplementalLocals(ref XbdmContext context, VariableJson variables, KitMemoryAccess memory)
     {
         SetupContext(ref context);
+
+        if (LocalsDiagnostics)
+        {
+            var diagBuf = DiagSymBuffer();
+            var ok = DbgHelpNative.SymFromAddr(DbgHelpNative.PseudoProcess, PdbAddress(context.Eip), out _, diagBuf);
+            var diagName84 = ok ? Marshal.PtrToStringAnsi(diagBuf + 84) : null;
+            var diagName88 = ok ? Marshal.PtrToStringAnsi(diagBuf + 88) : null;
+            BridgeWriter.Log(
+                $"locals-diag: eip=0x{context.Eip:x} pdbEip=0x{PdbAddress(context.Eip):x} ebp=0x{context.Ebp:x} " +
+                $"symFromAddr={ok} name84='{diagName84}' name88='{diagName88}'");
+        }
+
         var state = new LocalsEnumState(variables, context, memory, this);
         var handle = GCHandle.Alloc(state);
         try
@@ -277,6 +294,19 @@ internal sealed partial class SymbolTypeEngine
         {
             handle.Free();
         }
+
+        if (LocalsDiagnostics)
+            BridgeWriter.Log($"locals-diag: callback fired {state.Examined} time(s), emitted {variables.Count}");
+    }
+
+    private static IntPtr _diagSymBuffer;
+    private static IntPtr DiagSymBuffer()
+    {
+        if (_diagSymBuffer == IntPtr.Zero)
+            _diagSymBuffer = Marshal.AllocHGlobal(DbgHelpNative.SymbolInfoSize + DbgHelpNative.MaxSymName);
+        Marshal.WriteInt32(_diagSymBuffer, 0, DbgHelpNative.SymbolInfoSize);
+        Marshal.WriteInt32(_diagSymBuffer, 80, DbgHelpNative.MaxSymName);
+        return _diagSymBuffer;
     }
 
     private static readonly DbgHelpNative.SymEnumSymbolsCallback EnumSupplementalLocalsCallback = static (symbolInfo, _, userContext) =>
@@ -288,21 +318,32 @@ internal sealed partial class SymbolTypeEngine
         if (state.Variables.IsFull || ++state.Examined > 128)
             return false;
 
-        var flags = (uint)Marshal.ReadInt32(symbolInfo, 56);
+        if (LocalsDiagnostics && state.Examined <= 8)
+        {
+            var n84 = Marshal.PtrToStringAnsi(symbolInfo + 84) ?? string.Empty;
+            var n88 = Marshal.PtrToStringAnsi(symbolInfo + 88) ?? string.Empty;
+            BridgeWriter.Log(
+                $"locals-diag[{state.Examined}]: name84='{n84}' name88='{n88}' " +
+                $"u40=0x{(uint)Marshal.ReadInt32(symbolInfo, 40):x} u56=0x{(uint)Marshal.ReadInt32(symbolInfo, 56):x} " +
+                $"u68=0x{(uint)Marshal.ReadInt32(symbolInfo, 68):x} u72=0x{(uint)Marshal.ReadInt32(symbolInfo, 72):x} " +
+                $"v48=0x{Marshal.ReadInt64(symbolInfo, 48):x} v52=0x{Marshal.ReadInt64(symbolInfo, 52):x} v56=0x{Marshal.ReadInt64(symbolInfo, 56):x}");
+        }
+
+        var flags = (uint)Marshal.ReadInt32(symbolInfo, DbgHelpNative.SymInfoFlags);
         if ((flags & DbgHelpNative.SymflagRegrel) == 0)
             return true;
 
-        var tag = (uint)Marshal.ReadInt32(symbolInfo, 68);
+        var tag = (uint)Marshal.ReadInt32(symbolInfo, DbgHelpNative.SymInfoTag);
         if (tag != DbgHelpNative.SymTagData)
             return true;
 
-        var name = Marshal.PtrToStringAnsi(symbolInfo + DbgHelpNative.SymbolInfoSize) ?? string.Empty;
+        var name = Marshal.PtrToStringAnsi(symbolInfo + DbgHelpNative.SymInfoName) ?? string.Empty;
         if (IsCompilerGenerated(name) || state.Variables.WasEmitted(name))
             return true;
 
-        var size = (uint)Marshal.ReadInt32(symbolInfo, 28);
-        var typeIndex = (uint)Marshal.ReadInt32(symbolInfo, 4);
-        var address = (long)Marshal.ReadInt64(symbolInfo, 52);
+        var size = (uint)Marshal.ReadInt32(symbolInfo, DbgHelpNative.SymInfoSize);
+        var typeIndex = (uint)Marshal.ReadInt32(symbolInfo, DbgHelpNative.SymInfoTypeIndex);
+        var address = (long)Marshal.ReadInt64(symbolInfo, DbgHelpNative.SymInfoAddress);
         var runtimeAddr = (nuint)((long)state.Context.Ebp + address);
 
         if (size > 4)
@@ -371,13 +412,13 @@ internal sealed partial class SymbolTypeEngine
             WriteSymbolHeader(buffer);
             if (!DbgHelpNative.SymFromName(DbgHelpNative.PseudoProcess, name, buffer))
                 return false;
-            typeIndex = (uint)Marshal.ReadInt32(buffer, 4);
-            size = (uint)Marshal.ReadInt32(buffer, 28);
-            flags = (uint)Marshal.ReadInt32(buffer, 56);
+            typeIndex = (uint)Marshal.ReadInt32(buffer, DbgHelpNative.SymInfoTypeIndex);
+            size = (uint)Marshal.ReadInt32(buffer, DbgHelpNative.SymInfoSize);
+            flags = (uint)Marshal.ReadInt32(buffer, DbgHelpNative.SymInfoFlags);
             if ((flags & DbgHelpNative.SymflagRegister) != 0)
-                address = Marshal.ReadInt32(buffer, 60);
+                address = Marshal.ReadInt32(buffer, DbgHelpNative.SymInfoRegister);
             else
-                address = Marshal.ReadInt64(buffer, 52);
+                address = Marshal.ReadInt64(buffer, DbgHelpNative.SymInfoAddress);
             return true;
         }
         finally
@@ -675,7 +716,9 @@ internal sealed partial class SymbolTypeEngine
     private static void WriteSymbolHeader(IntPtr buffer)
     {
         Marshal.WriteInt32(buffer, 0, DbgHelpNative.SymbolInfoSize);
-        Marshal.WriteInt32(buffer, 76, DbgHelpNative.MaxSymName);
+        // MaxNameLen lives at offset 80 (matches the working TrySymFromAddr path in SymbolService);
+        // writing it at the wrong slot makes dbghelp think the name buffer is empty and skip names.
+        Marshal.WriteInt32(buffer, 80, DbgHelpNative.MaxSymName);
     }
 
     private static bool IsCompilerGenerated(string name) =>
