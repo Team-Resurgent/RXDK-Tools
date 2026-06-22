@@ -850,8 +850,17 @@ internal sealed partial class DebugBridgeSession : IDisposable
     {
         EnsureNotifications();
         var raw = _debug!.GetThreadList();
-        // The kit can list the same thread id more than once; duplicates make VS Code render the
-        // call stack once per entry. Keep the stopped/main thread first, then unique remaining ids.
+        // When stopped at a breakpoint, VS Code requests a stack trace per thread returned here.
+        // The kit often lists 2+ threads; returning them all duplicates the call stack (N threads × M frames).
+        if (_stoppedThread != 0 && IsThreadStoppedOnKit(_stoppedThread))
+        {
+            if (Symbols.SymbolTypeEngine.LocalsDiagnostics)
+                BridgeWriter.Log($"threads-diag: stopped-only thread={_stoppedThread} raw=[{string.Join(',', raw)}]");
+            BridgeWriter.Emit($"{{\"type\":\"result\",\"id\":{id},\"success\":true,\"threads\":[{_stoppedThread}]}}");
+            return;
+        }
+
+        // The kit can list the same thread id more than once; dedupe while keeping primary first.
         var ordered = new List<uint>();
         var seen = new HashSet<uint>();
         var primary = _stoppedThread != 0 ? _stoppedThread : _mainThread;
@@ -894,12 +903,16 @@ internal sealed partial class DebugBridgeSession : IDisposable
         var ebp = context.Ebp;
         Span<byte> buffer = stackalloc byte[4];
         var emitted = 0;
-        var visited = new HashSet<uint>();
+        var visitedAddr = new HashSet<uint>();
+        var visitedEbp = new HashSet<uint>();
+        var visitedReturn = new HashSet<uint>();
+        var visitedFrames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         for (var frame = 0; frame < 32; frame++)
         {
-            // Cycle guard: a not-yet-established frame pointer (e.g. at a function prologue) can make
-            // the EBP walk loop back over the same addresses; stop as soon as we revisit one.
-            if (!visited.Add((uint)address))
+            // Cycle guard: stop if we revisit the same instruction or frame pointer.
+            if (address != 0 && !visitedAddr.Add((uint)address))
+                break;
+            if (ebp != 0 && (ebp & 3) == 0 && !visitedEbp.Add((uint)ebp))
                 break;
             // Caller frames: the return address points just past the call, so look up address-1 to
             // land on the call site's line/function rather than the next statement.
@@ -921,9 +934,16 @@ internal sealed partial class DebugBridgeSession : IDisposable
                 break;
             }
 
+            var name = hasName ? function : "(no symbol)";
+            var fileBase = string.IsNullOrEmpty(file)
+                ? string.Empty
+                : Path.GetFileName(file.Replace('/', '\\'));
+            var frameKey = $"{name}\0{fileBase}\0{line}";
+            if (!visitedFrames.Add(frameKey))
+                break;
+
             if (emitted > 0)
                 builder.Append(',');
-            var name = hasName ? function : "(no symbol)";
             builder.Append("{\"index\":").Append(emitted)
                 .Append(",\"address\":\"0x").Append(address.ToString("x")).Append("\",\"name\":");
             BridgeJsonWriter.AppendEscaped(builder, name);
@@ -946,7 +966,7 @@ internal sealed partial class DebugBridgeSession : IDisposable
                     $"stack-diag: frame={emitted - 1} addr=0x{address:x} ebp=0x{ebp:x} ret=0x{returnAddr:x} nextEbp=0x{nextEbp:x} name='{name}' {file}:{line}");
 
             // Frame pointers grow upward; require strict progress to avoid cycles/garbage.
-            if (returnAddr == 0 || nextEbp <= ebp)
+            if (returnAddr == 0 || nextEbp <= ebp || !visitedReturn.Add(returnAddr))
                 break;
             address = (nuint)returnAddr;
             ebp = nextEbp;
