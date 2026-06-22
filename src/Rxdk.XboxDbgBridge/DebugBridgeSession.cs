@@ -864,19 +864,55 @@ internal sealed partial class DebugBridgeSession : IDisposable
 
         try
         {
-            _debug.StopOn(XbdmDebugConstants.DmstopCreateThread | XbdmDebugConstants.DmstopFce | XbdmDebugConstants.DmstopDebugStr, stop: false);
+            _debug.StopOn(
+                XbdmDebugConstants.DmstopCreateThread | XbdmDebugConstants.DmstopFce | XbdmDebugConstants.DmstopDebugStr,
+                stop: false);
+        }
+        catch (XbdmException ex)
+        {
+            BridgeWriter.Log($"StopOn before dashboard reboot: {ex.Message}");
+        }
+
+        try
+        {
             _debug.Stop();
-            if (_connectedToDebugger)
+        }
+        catch (XbdmException ex)
+        {
+            // STOP often fails once DEBUGGER CONNECT is active; reboot anyway (session.c ignores DmStop).
+            BridgeWriter.Log($"DmStop before dashboard reboot: {ex.Message}");
+        }
+
+        if (_connectedToDebugger)
+        {
+            try
             {
                 _debug.ConnectDebugger(false);
-                _connectedToDebugger = false;
+            }
+            catch (XbdmException ex)
+            {
+                BridgeWriter.Log($"Debugger disconnect before dashboard reboot: {ex.Message}");
             }
 
-            _breakpoints.Clear(_debug);
-            _mainThread = 0;
-            _stoppedThread = 0;
-            _stoppedAddress = 0;
-            _moduleBase = 0;
+            _connectedToDebugger = false;
+        }
+
+        _breakpoints.Clear(_debug);
+        _mainThread = 0;
+        _stoppedThread = 0;
+        _stoppedAddress = 0;
+        _moduleBase = 0;
+        _symbols.ModuleBase = 0;
+        _launched = false;
+        _awaitingTitleThread = false;
+        _seenTitleMod = false;
+        _launchStopped = false;
+        _threadStopped = false;
+        _startupStopOnRelaxed = true;
+
+        BridgeWriter.Log("Rebooting to dashboard (WARM, debug enabled)");
+        try
+        {
             _debug.Reboot(XbdmDebugConstants.DmbootWarm);
         }
         catch (XbdmException ex)
