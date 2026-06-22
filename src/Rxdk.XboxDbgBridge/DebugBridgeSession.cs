@@ -33,6 +33,7 @@ internal sealed partial class DebugBridgeSession : IDisposable
     private string _launchTitleBase = string.Empty;
     private string _launchTitleFile = string.Empty;
     private bool _startupStopOnRelaxed = true;
+    private bool _holdForBreakpointSetup;
     private bool _needRearmHwBps;
     private uint _mainThread;
     private uint _stoppedThread;
@@ -514,6 +515,7 @@ internal sealed partial class DebugBridgeSession : IDisposable
         _connectedToDebugger = true;
         ApplyPendingBreakpoints();
         HoldMainThreadIfRunning("launch");
+        _holdForBreakpointSetup = true;
 
         _launched = true;
         BridgeWriter.EmitResult(id, true, $"\"threadId\":{_mainThread},\"moduleBase\":\"0x{_moduleBase:x}\"");
@@ -930,17 +932,27 @@ internal sealed partial class DebugBridgeSession : IDisposable
         _launchStopped = false;
         _threadStopped = false;
         _startupStopOnRelaxed = true;
+        _holdForBreakpointSetup = false;
 
         try
         {
-            _debug.UseSharedConnection(false);
-            _debug.UseSharedConnection(true);
-            _debug.Reboot(XbdmDebugConstants.DmbootWarm);
-            BridgeWriter.Log("Dashboard warm reboot sent");
+            var response = _debug.SendCommand("reboot warm");
+            BridgeWriter.Log($"Dashboard reboot response: {response}");
         }
         catch (XbdmException ex)
         {
-            BridgeWriter.Log($"Dashboard reboot failed: {ex.Message}");
+            BridgeWriter.Log($"Dashboard reboot (reboot warm) failed: {ex.Message}; retrying DmReboot");
+            try
+            {
+                _debug.UseSharedConnection(false);
+                _debug.UseSharedConnection(true);
+                _debug.Reboot(XbdmDebugConstants.DmbootWarm);
+                BridgeWriter.Log("Dashboard warm reboot sent (DmReboot)");
+            }
+            catch (XbdmException ex2)
+            {
+                BridgeWriter.Log($"Dashboard reboot (DmReboot) failed: {ex2.Message}");
+            }
         }
     }
 
@@ -1114,12 +1126,19 @@ internal sealed partial class DebugBridgeSession : IDisposable
 
     private void ResumeStoppedThread(bool exception)
     {
-        if (_debug is null || _stoppedThread == 0)
+        if (_debug is null)
             return;
-        var needContinue = _threadStopped || _launchStopped || IsThreadStoppedOnKit(_stoppedThread);
+
+        var threadId = _stoppedThread != 0 ? _stoppedThread : _mainThread;
+        if (threadId == 0)
+            return;
+
+        var needContinue = _threadStopped || _launchStopped || _holdForBreakpointSetup ||
+                           IsThreadStoppedOnKit(threadId);
         if (!needContinue)
             return;
-        _debug.ContinueThread(_stoppedThread, exception);
+
+        _debug.ContinueThread(threadId, exception);
         _threadStopped = false;
         _launchStopped = false;
     }

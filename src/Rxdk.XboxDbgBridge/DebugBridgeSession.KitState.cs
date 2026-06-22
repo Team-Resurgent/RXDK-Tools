@@ -17,23 +17,37 @@ internal sealed partial class DebugBridgeSession
     private void GoUser(int id)
     {
         EnsureNotifications();
-        if (!_threadStopped && !_launchStopped && !IsThreadStoppedOnKit(_mainThread))
-            HoldMainThreadIfRunning("goUser");
-        else
-            BridgeWriter.Log($"goUser: continuing from held stop (pc=0x{_stoppedAddress:x})");
-        EnsureStartupStopOnRelaxed();
-
-        if (!StoppedAtActiveBreakpoint())
-            _stoppedAddress = 0;
-
         _autoRunResume = true;
         try
         {
+            BridgeWriter.Log(
+                $"goUser: begin hold={_holdForBreakpointSetup} pc=0x{_stoppedAddress:x} thread={_mainThread}");
+            EnsureStartupStopOnRelaxed();
+
+            if (!StoppedAtActiveBreakpoint())
+                _stoppedAddress = 0;
+
+            if (TryEmitGoUserBreakpointStop(id))
+                return;
+
             for (var attempt = 0; attempt < 12; attempt++)
             {
-                ResumeAllStoppedThreads();
+                if (!TryContinueHeldTitle($"goUser attempt={attempt}"))
+                {
+                    BridgeWriter.EmitResult(id, false, "\"error\":\"continueThread\"");
+                    return;
+                }
+
                 _breakEvent.Reset();
-                _debug!.Go();
+                try
+                {
+                    _debug!.Go();
+                }
+                catch (XbdmException ex)
+                {
+                    BridgeWriter.EmitResult(id, false, $"\"error\":\"{Escape(ex.Message)}\"");
+                    return;
+                }
 
                 if (_breakEvent.Wait(GoUserTimeoutMs))
                 {
@@ -75,12 +89,74 @@ internal sealed partial class DebugBridgeSession
         finally
         {
             _autoRunResume = false;
+            _holdForBreakpointSetup = false;
         }
+    }
+
+    private bool TryEmitGoUserBreakpointStop(int id)
+    {
+        if (!SyncStoppedStateFromKit() || !StoppedAtActiveBreakpoint() || !IsTitleAddress(_stoppedAddress))
+            return false;
+
+        BridgeWriter.Log("goUser: already at user breakpoint");
+        BridgeWriter.EmitResult(id, true,
+            $"\"threadId\":{_stoppedThread},\"address\":\"0x{_stoppedAddress:x}\"");
+        return true;
+    }
+
+    private bool TryContinueHeldTitle(string phase)
+    {
+        if (_debug is null || _mainThread == 0)
+            return false;
+
+        var continued = 0;
+        foreach (var threadId in _debug.GetThreadList())
+        {
+            if (!IsThreadStoppedOnKit(threadId))
+                continue;
+
+            var exception = _autoRunResume || ShouldContinueAsException(threadId) || IsStoppedAtSoftwareBreakpoint();
+            try
+            {
+                _debug.ContinueThread(threadId, exception);
+                continued++;
+            }
+            catch (XbdmException ex)
+            {
+                BridgeWriter.Log($"{phase}: ContinueThread({threadId}) failed: {ex.Message}");
+            }
+        }
+
+        if (continued == 0)
+        {
+            var threadId = _stoppedThread != 0 ? _stoppedThread : _mainThread;
+            try
+            {
+                _debug.ContinueThread(threadId, false);
+                continued = 1;
+                BridgeWriter.Log($"{phase}: forced ContinueThread({threadId})");
+            }
+            catch (XbdmException ex)
+            {
+                BridgeWriter.Log($"{phase}: forced ContinueThread({threadId}) failed: {ex.Message}");
+                return false;
+            }
+        }
+
+        _threadStopped = false;
+        _launchStopped = false;
+        BridgeWriter.Log($"{phase}: continued {continued} thread(s)");
+        return continued > 0;
     }
 
     private void LeaveTitleRunning(int id)
     {
-        ResumeAllStoppedThreads();
+        if (!TryContinueHeldTitle("leaveRunning"))
+        {
+            BridgeWriter.EmitResult(id, false, "\"error\":\"continueThread\"");
+            return;
+        }
+
         BypassStoppedHardwareBreakpoint();
         _debug!.Go();
 
