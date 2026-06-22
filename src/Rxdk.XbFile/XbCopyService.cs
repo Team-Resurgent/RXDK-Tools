@@ -77,7 +77,7 @@ public sealed class XbCopyService
                 return;
 
             EnsureDirectory(dst);
-            foreach (var name in ListNames(src.WithName("*"), "*"))
+            foreach (var name in ListNames(ToListingPath(src), "*"))
             {
                 var childSrc = ChildPath(src, name);
                 var childDst = dst.WithName(name);
@@ -309,6 +309,23 @@ public sealed class XbCopyService
             XbXboxFs.EnsureDirectoryTree(_session!.Connection, path);
         else
             XbLocalFs.EnsureDirectory(path);
+    }
+
+    private static XbPath ToListingPath(XbPath path)
+    {
+        if (path.IsXbox)
+        {
+            if (path.Name is "." or "")
+                return path;
+
+            var wire = path.WirePath.TrimEnd('\\');
+            return XbPath.Parse("x" + wire + "\\.");
+        }
+
+        if (path.Name is "." or "")
+            return path;
+
+        return XbPath.Parse(path.LocalFullPath + Path.DirectorySeparatorChar);
     }
 
     private static XbPath? ParentPath(XbPath path)
