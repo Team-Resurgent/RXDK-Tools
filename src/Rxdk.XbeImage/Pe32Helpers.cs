@@ -106,8 +106,9 @@ public static class Pe32Helpers
         for (var i = 0; i < ntHeaders.FileHeader.NumberOfSections; i++)
         {
             var section = ReadSectionHeader(image, i);
+            var sectionSpan = Math.Max(section.VirtualSize, section.SizeOfRawData);
             if (virtualAddress >= section.VirtualAddress &&
-                virtualAddress < section.VirtualAddress + section.SizeOfRawData)
+                virtualAddress < section.VirtualAddress + sectionSpan)
             {
                 return section;
             }

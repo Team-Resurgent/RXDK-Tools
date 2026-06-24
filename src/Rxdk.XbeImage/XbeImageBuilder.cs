@@ -156,6 +156,8 @@ public sealed class XbeImageBuilder
                 sectionsRemaining--;
             }
 
+            _xbe.ExecutableSectionCount = sectionsRemaining;
+
             uint lastVirtualAddress = 0;
             uint lastEndingVirtualAddress = 0;
             for (var i = 0; i < sectionsRemaining; i++)
@@ -639,17 +641,152 @@ public sealed class XbeImageBuilder
             if (_xbe.ImageHeader.TlsDirectory != 0)
             {
                 _xbe.ImageHeader.TlsDirectory += newBaseAddress;
-                if (_xbe.TlsRawDataHeader.VirtualSize != 0)
-                {
-                    ref var tlsDirectory = ref MemoryMarshal.AsRef<ImageTlsDirectory32>(
-                        _inputImage.AsSpan(_xbe.TlsRawDataHeader.TlsDirectoryOffset));
-                    tlsDirectory.StartAddressOfRawData = _xbe.TlsRawDataHeader.VirtualAddress;
-                    tlsDirectory.EndAddressOfRawData =
-                        _xbe.TlsRawDataHeader.VirtualAddress + _xbe.TlsRawDataHeader.VirtualSize;
-                }
+                FixupAllTlsDirectories(newBaseAddress);
             }
 
             _xbe.NewBaseAddress = newBaseAddress;
+        }
+
+        private void FixupAllTlsDirectories(uint firstSectionBaseAddress)
+        {
+            if (_xbe.TlsRawDataHeader.TlsDirectoryOffset > 0)
+            {
+                ref var primary = ref MemoryMarshal.AsRef<ImageTlsDirectory32>(
+                    _inputImage.AsSpan(_xbe.TlsRawDataHeader.TlsDirectoryOffset));
+                FixupTlsDirectory(ref primary, firstSectionBaseAddress);
+            }
+
+            ScanForAdditionalTlsDirectories(firstSectionBaseAddress);
+        }
+
+        private void FixupTlsDirectory(ref ImageTlsDirectory32 tlsDirectory, uint firstSectionBaseAddress)
+        {
+            var rawSize = tlsDirectory.EndAddressOfRawData > tlsDirectory.StartAddressOfRawData
+                ? tlsDirectory.EndAddressOfRawData - tlsDirectory.StartAddressOfRawData
+                : 0u;
+
+            // Match classic imagebld: raw template pointers always come from the header blob.
+            tlsDirectory.StartAddressOfRawData = _xbe.TlsRawDataHeader.VirtualAddress;
+            tlsDirectory.EndAddressOfRawData =
+                _xbe.TlsRawDataHeader.VirtualAddress + _xbe.TlsRawDataHeader.VirtualSize;
+
+            if (_xbe.TlsRawDataHeader.VirtualSize != 0)
+            {
+                return;
+            }
+
+            if (Pe32Helpers.NameToSectionHeader(_inputImage, ref _ntHeaders, ".tls", out var tlsSectionIndex) is not
+                { } tlsSection ||
+                tlsSectionIndex >= _xbe.ExecutableSectionCount)
+            {
+                return;
+            }
+
+            if (rawSize == 0 && tlsDirectory.SizeOfZeroFill != 0)
+            {
+                rawSize = tlsDirectory.SizeOfZeroFill;
+            }
+
+            if (rawSize == 0)
+            {
+                rawSize = Math.Max(tlsSection.VirtualSize, tlsSection.SizeOfRawData);
+            }
+
+            var tlsVa = tlsSection.VirtualAddress + firstSectionBaseAddress;
+            tlsDirectory.StartAddressOfRawData = tlsVa;
+            tlsDirectory.EndAddressOfRawData = tlsVa + rawSize;
+        }
+
+        private void ScanForAdditionalTlsDirectories(uint firstSectionBaseAddress)
+        {
+            if (_xbe.TlsRawDataHeader.TlsDirectoryOffset <= 0)
+            {
+                return;
+            }
+
+            var imageBase = _ntHeaders.OptionalHeader.ImageBase;
+            ImageSectionHeader? tlsSection = null;
+            int tlsSectionIndex = -1;
+            if (Pe32Helpers.NameToSectionHeader(_inputImage, ref _ntHeaders, ".tls", out tlsSectionIndex) is { } tlsPeSection)
+            {
+                tlsSection = tlsPeSection;
+            }
+
+            for (var i = 0; i < _xbe.ExecutableSectionCount; i++)
+            {
+                var section = Pe32Helpers.ReadSectionHeader(_inputImage, i);
+                if (section.SizeOfRawData == 0)
+                {
+                    continue;
+                }
+
+                var sectionFileOffset = (int)section.PointerToRawData;
+                for (var offset = 0; offset + Marshal.SizeOf<ImageTlsDirectory32>() <= section.SizeOfRawData; offset += 4)
+                {
+                    var fileOffset = sectionFileOffset + offset;
+                    if (fileOffset == _xbe.TlsRawDataHeader.TlsDirectoryOffset)
+                    {
+                        continue;
+                    }
+
+                    ref var candidate = ref MemoryMarshal.AsRef<ImageTlsDirectory32>(_inputImage.AsSpan(fileOffset));
+                    if (!LooksLikeTlsDirectory(candidate, imageBase))
+                    {
+                        continue;
+                    }
+
+                    if (tlsSection is not null &&
+                        !LooksLikeTlsTemplatePointer(
+                            candidate.StartAddressOfRawData,
+                            tlsSection.Value,
+                            firstSectionBaseAddress,
+                            imageBase))
+                    {
+                        continue;
+                    }
+
+                    FixupTlsDirectory(ref candidate, firstSectionBaseAddress);
+                }
+            }
+        }
+
+        private bool LooksLikeTlsTemplatePointer(
+            uint startAddress,
+            in ImageSectionHeader tlsSection,
+            uint firstSectionBaseAddress,
+            uint imageBase)
+        {
+            var emittedTlsVa = tlsSection.VirtualAddress + firstSectionBaseAddress;
+            var emittedTlsEnd = emittedTlsVa + Math.Max(tlsSection.VirtualSize, tlsSection.SizeOfRawData);
+            var peTlsVa = imageBase + tlsSection.VirtualAddress;
+            var peTlsEnd = peTlsVa + Math.Max(tlsSection.VirtualSize, tlsSection.SizeOfRawData);
+            return (startAddress >= emittedTlsVa && startAddress < emittedTlsEnd) ||
+                   (startAddress >= peTlsVa && startAddress < peTlsEnd);
+        }
+
+        private static bool LooksLikeTlsDirectory(in ImageTlsDirectory32 candidate, uint imageBase)
+        {
+            if (candidate.AddressOfCallbacks != 0)
+            {
+                return false;
+            }
+
+            if (candidate.EndAddressOfRawData <= candidate.StartAddressOfRawData)
+            {
+                return false;
+            }
+
+            if (candidate.EndAddressOfRawData - candidate.StartAddressOfRawData > 0x10000)
+            {
+                return false;
+            }
+
+            if (candidate.AddressOfIndex < imageBase)
+            {
+                return false;
+            }
+
+            return candidate.Characteristics is 0 or 0x300000;
         }
 
         private void ConfoundHeaderData()
@@ -1273,6 +1410,7 @@ public sealed class XbeImageBuilder
     {
         public XbeImageHeader ImageHeader;
         public uint NewBaseAddress;
+        public int ExecutableSectionCount;
         public uint SizeOfExecutableImage;
         public uint SizeOfInsertFilesImage;
         public List<XbeGenericHeader> Headers { get; } = new();

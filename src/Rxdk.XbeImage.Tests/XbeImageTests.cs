@@ -219,7 +219,7 @@ public sealed class XbeImageBuilderTests
         return -1;
     }
 
-    private static void BuildManaged(
+    internal static void BuildManaged(
         string pe,
         string output,
         uint? fixedTimestamp = null,
