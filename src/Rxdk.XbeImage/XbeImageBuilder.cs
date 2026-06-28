@@ -348,6 +348,18 @@ public sealed class XbeImageBuilder
                     endExclusive--;
                 }
 
+                // Shrink EndAddressOfRawData to the bytes we actually keep. The loop
+                // above folded trailing zero bytes into SizeOfZeroFill; without this
+                // the directory still advertises the full raw-template size even
+                // though no raw-data section backs the trimmed tail. The kernel's
+                // per-thread TLS setup (XapiThreadStartup) then RtlCopyMemory's the
+                // advertised End-Start bytes from the template pointer into each
+                // thread's TLS block, reading past the real template into adjacent
+                // or unmapped memory -- harmless on xemu, a fault on real hardware.
+                // For an all-zero template this collapses to End == Start (raw size
+                // 0) plus pure zero-fill, matching the XDK linker's TLS directory.
+                tlsDirectory.EndAddressOfRawData = tlsDirectory.StartAddressOfRawData + (uint)endExclusive;
+
                 if (endExclusive > 0)
                 {
                     _xbe.TlsRawDataHeader.VirtualSize = (uint)endExclusive;
@@ -744,36 +756,40 @@ public sealed class XbeImageBuilder
 
         private void FixupTlsDirectory(ref ImageTlsDirectory32 tlsDirectory, uint firstSectionBaseAddress)
         {
-            // A raw-data blob was carved out (non-zero template): point the template
-            // at it.
+            var rawSize = tlsDirectory.EndAddressOfRawData > tlsDirectory.StartAddressOfRawData
+                ? tlsDirectory.EndAddressOfRawData - tlsDirectory.StartAddressOfRawData
+                : 0u;
+
+            // Match classic imagebld: raw template pointers always come from the header blob.
+            tlsDirectory.StartAddressOfRawData = _xbe.TlsRawDataHeader.VirtualAddress;
+            tlsDirectory.EndAddressOfRawData =
+                _xbe.TlsRawDataHeader.VirtualAddress + _xbe.TlsRawDataHeader.VirtualSize;
+
             if (_xbe.TlsRawDataHeader.VirtualSize != 0)
             {
-                tlsDirectory.StartAddressOfRawData = _xbe.TlsRawDataHeader.VirtualAddress;
-                tlsDirectory.EndAddressOfRawData =
-                    _xbe.TlsRawDataHeader.VirtualAddress + _xbe.TlsRawDataHeader.VirtualSize;
                 return;
             }
 
-            // No raw-data blob: the TLS template was entirely zero (folded into
-            // SizeOfZeroFill). Emit the canonical empty-template form the XDK linker
-            // uses -- StartAddressOfRawData == EndAddressOfRawData == 0 with pure
-            // zero-fill. Do NOT synthesize a template pointing at the .tls section:
-            // that section's virtual address sits in zero-fill space beyond the
-            // loaded raw image, so the kernel's per-thread TLS setup (XapiThreadStartup)
-            // RtlCopyMemory's from an address that is committed-zero on xemu but
-            // unmapped on real hardware -> fault before the title's first thread runs.
-            tlsDirectory.StartAddressOfRawData = 0;
-            tlsDirectory.EndAddressOfRawData = 0;
-
-            // Make sure the zero-fill covers the whole TLS template even if the input
-            // directory reported neither raw data nor zero-fill.
-            if (tlsDirectory.SizeOfZeroFill == 0 &&
-                Pe32Helpers.NameToSectionHeader(_inputImage, ref _ntHeaders, ".tls", out var tlsSectionIndex) is
-                    { } tlsSection &&
-                tlsSectionIndex < _xbe.ExecutableSectionCount)
+            if (Pe32Helpers.NameToSectionHeader(_inputImage, ref _ntHeaders, ".tls", out var tlsSectionIndex) is not
+                { } tlsSection ||
+                tlsSectionIndex >= _xbe.ExecutableSectionCount)
             {
-                tlsDirectory.SizeOfZeroFill = Math.Max(tlsSection.VirtualSize, tlsSection.SizeOfRawData);
+                return;
             }
+
+            if (rawSize == 0 && tlsDirectory.SizeOfZeroFill != 0)
+            {
+                rawSize = tlsDirectory.SizeOfZeroFill;
+            }
+
+            if (rawSize == 0)
+            {
+                rawSize = Math.Max(tlsSection.VirtualSize, tlsSection.SizeOfRawData);
+            }
+
+            var tlsVa = tlsSection.VirtualAddress + firstSectionBaseAddress;
+            tlsDirectory.StartAddressOfRawData = tlsVa;
+            tlsDirectory.EndAddressOfRawData = tlsVa + rawSize;
         }
 
         private void ScanForAdditionalTlsDirectories(uint firstSectionBaseAddress)
