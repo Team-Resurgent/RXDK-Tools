@@ -174,8 +174,12 @@ public static class Vcproj2003Importer
         // and the committed manifest VS20XX's unified project model uses -- so an imported VS2003
         // project loads in both IDEs. Only adds a file; the .vcxproj flow above is unchanged.
         var manifestPath = Path.Combine(outDir, "rxdk.project.json");
+        // The source list was built vcxproj-style (backslashes). The committed json must be
+        // forward-slash: it is read on Linux/macOS too, and only '/' is portable there.
+        var manifest = BuildManifest(name, isLib, configs, sources);
+        RxdkManifestLoader.NormalizeSeparators(manifest);
         File.WriteAllText(manifestPath,
-            JsonSerializer.Serialize(BuildManifest(name, isLib, configs, sources), ManifestWriteOptions) + "\n",
+            JsonSerializer.Serialize(manifest, ManifestWriteOptions) + "\n",
             new UTF8Encoding(false));
         result.ManifestPath = manifestPath;
 
