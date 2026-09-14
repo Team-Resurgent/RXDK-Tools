@@ -22,6 +22,10 @@ cli_tools=(
   "Rxdk.Xsasm/Rxdk.Xsasm.csproj:xsasm"
   "Rxdk.XboxLaunch.Cli/Rxdk.XboxLaunch.Cli.csproj:xbox-launch"
   "Rxdk.XboxDbgBridge.Cli/Rxdk.XboxDbgBridge.Cli.csproj:xboxdbg-bridge"
+  # The shared build engine + debug adapter (moved here from RXDK-VS20XX). Both IDEs consume these
+  # from the tools bundle: Rxdk.Cli builds/links/packs a title; Rxdk.Dap is the debug adapter.
+  "Rxdk.Cli/Rxdk.Cli.csproj:Rxdk.Cli"
+  "Rxdk.Dap/Rxdk.Dap.csproj:Rxdk.Dap"
   "Rxdk.XbWatson/Rxdk.XbWatson.csproj:xbwatson"
   # Avalonia GUI app, same single-file publish shape as xbwatson (SingleFilePublish.props
   # embeds the Avalonia native libs), so it ships as one flat exe in tools/ too.

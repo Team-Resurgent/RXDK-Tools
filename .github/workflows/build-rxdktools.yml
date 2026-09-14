@@ -104,6 +104,8 @@ jobs:
             '| `out/publish/managed/win-x64/tools/xsasm.exe` |',
             '| `out/publish/managed/win-x64/tools/xbox-launch.exe` |',
             '| `out/publish/managed/win-x64/tools/xboxdbg-bridge.exe` |',
+            '| `out/publish/managed/win-x64/tools/Rxdk.Cli.exe` |',
+            '| `out/publish/managed/win-x64/tools/Rxdk.Dap.exe` |',
             '| `out/publish/managed/win-x64/tools/xbwatson.exe` |',
             '| `out/publish/managed/win-x64/tools/xbneighborhood.exe` |',
             '',
@@ -178,7 +180,7 @@ jobs:
             echo ""
             echo "| Path |"
             echo "|------|"
-            echo "| \`out/publish/managed/linux-x64/tools/\` (xbset, xbcp, xbdir, xbmkdir, xbecopy, imagebld, bundler, xactbld, skinbld, xsasm, xbox-launch, xboxdbg-bridge, xbwatson, xbneighborhood) |"
+            echo "| \`out/publish/managed/linux-x64/tools/\` (xbset, xbcp, xbdir, xbmkdir, xbecopy, imagebld, bundler, xactbld, skinbld, xsasm, xbox-launch, xboxdbg-bridge, Rxdk.Cli, Rxdk.Dap, xbwatson, xbneighborhood) |"
             echo "| \`out/publish/nuget/Rxdk.XboxDbgBridge.*.nupkg\` |"
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -342,7 +344,7 @@ jobs:
             echo ""
             echo "- Tag: \`${{ steps.meta.outputs.tag }}\`"
             echo "- Pre-release: \`${{ steps.meta.outputs.prerelease }}\`"
-            echo "- Windows: \`XboxNeighborhood-Setup.exe\`, managed tool zip (\`tools/\` bundle incl. \`xbwatson\`, \`xbneighborhood\`)"
-            echo "- Linux/macOS: managed tool zip (\`tools/\` bundle incl. \`xbwatson\`, \`xbneighborhood\`)"
+            echo "- Windows: \`XboxNeighborhood-Setup.exe\`, managed tool zip (\`tools/\` bundle incl. \`Rxdk.Cli\`, \`Rxdk.Dap\`, \`xbwatson\`, \`xbneighborhood\`)"
+            echo "- Linux/macOS: managed tool zip (\`tools/\` bundle incl. \`Rxdk.Cli\`, \`Rxdk.Dap\`, \`xbwatson\`, \`xbneighborhood\`)"
             echo "- NuGet: \`Rxdk.XboxDbgBridge\` (\`rxdk-nuget.zip\`)"
           } >> "$GITHUB_STEP_SUMMARY"
