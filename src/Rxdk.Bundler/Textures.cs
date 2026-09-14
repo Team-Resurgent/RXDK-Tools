@@ -231,7 +231,7 @@ internal abstract class BaseTexture
     // --- LoadImage (basetexture.cpp) — combine color + optional alpha ---------
     protected CImage LoadImage(string source, string alphaSource, string basePath)
     {
-        string colorPath = source.Contains(':') ? source : basePath + source;
+        string colorPath = BundlerPath.ResolveAgainst(basePath, source);
         var color = CImage.LoadFromFile(colorPath);
         if (color.Format == D3DFmt.P8)
             color.Depalettize();
@@ -239,7 +239,7 @@ internal abstract class BaseTexture
         CImage? alpha = null;
         if (!string.IsNullOrEmpty(alphaSource))
         {
-            string alphaPath = source.Contains(':') ? alphaSource : basePath + alphaSource;
+            string alphaPath = BundlerPath.ResolveAgainst(basePath, alphaSource);
             alpha = CImage.LoadFromFile(alphaPath);
             if (alpha.Format == D3DFmt.P8)
                 throw new BundlerException("Palettized alpha source images are not supported.");

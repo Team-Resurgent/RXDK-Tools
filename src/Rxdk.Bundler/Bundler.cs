@@ -114,7 +114,7 @@ internal sealed class Bundler
             }
             else
             {
-                RdfPath = a;
+                RdfPath = BundlerPath.ToNative(a);
 
                 // Split base name / extension (last '.').
                 int dot = RdfPath.LastIndexOf('.');
@@ -139,7 +139,7 @@ internal sealed class Bundler
                 // m_strPath = the input's directory (including trailing separator).
                 // Source images resolve against it, so it must not follow -o.
                 int slash = RdfPath.LastIndexOfAny(new[] { '\\', '/' });
-                _pathPrefix = slash >= 0 ? RdfPath.Substring(0, slash + 1) : "";
+                _pathPrefix = BundlerPath.ToNative(slash >= 0 ? RdfPath.Substring(0, slash + 1) : "");
 
                 haveRdf = true;
             }
@@ -204,8 +204,6 @@ internal sealed class Bundler
     }
 
     // --- out_* handlers -------------------------------------------------------
-    private static bool HasColon(string s) => s.IndexOf(':') >= 0;
-
     private void HandleOutVersion()
     {
         string v = _reader.GetNextTokenString(TokType.Any);
@@ -218,14 +216,14 @@ internal sealed class Bundler
     {
         string f = _reader.GetNextTokenString(TokType.Filename);
         if (_resources.Count > 0) return;
-        if (!_explicitXpr) XprPath = HasColon(f) ? f : _pathPrefix + f;
+        if (!_explicitXpr) XprPath = BundlerPath.ResolveAgainst(_pathPrefix, f);
     }
 
     private void HandleOutHeader()
     {
         string f = _reader.GetNextTokenString(TokType.Filename);
         if (_resources.Count > 0) return;
-        if (!_explicitHdr) HdrPath = HasColon(f) ? f : _pathPrefix + f;
+        if (!_explicitHdr) HdrPath = BundlerPath.ResolveAgainst(_pathPrefix, f);
     }
 
     private void HandleOutPrefix()
@@ -239,7 +237,7 @@ internal sealed class Bundler
     {
         string f = _reader.GetNextTokenString(TokType.Filename);
         if (_resources.Count > 0) return;
-        if (!_explicitErr) ErrPath = HasColon(f) ? f : _pathPrefix + f;
+        if (!_explicitErr) ErrPath = BundlerPath.ResolveAgainst(_pathPrefix, f);
     }
 
     // --- Texture (bundler.cpp HandleTextureToken) -----------------------------
@@ -417,7 +415,8 @@ internal sealed class Bundler
                 case Tok.PROPERTY_VERTEXBUFFER_VERTEXFILE:
                     if (gotData) throw new BundlerException("Too many VertexData or VertexFile statements");
                     gotData = true;
-                    vb.LoadVertexDataFromFile(_reader.GetNextTokenString(TokType.Filename));
+                    vb.LoadVertexDataFromFile(BundlerPath.ResolveAgainst(_pathPrefix,
+                        _reader.GetNextTokenString(TokType.Filename)));
                     break;
                 case Tok.PROPERTY_VERTEXBUFFER_VERTEXDATA:
                     if (gotData) throw new BundlerException("Too many VertexData or VertexFile statements");

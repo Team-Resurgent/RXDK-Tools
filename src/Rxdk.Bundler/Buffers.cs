@@ -208,7 +208,7 @@ internal sealed class UserData : IResource
     {
         if (string.IsNullOrEmpty(Source)) throw new BundlerException("No source specified");
 
-        string path = Source.Contains(':') ? Source : _b.PathPrefix + Source;
+        string path = BundlerPath.ResolveAgainst(_b.PathPrefix, Source);
         byte[] file = File.ReadAllBytes(path);
 
         _b.PadToAlignment(4); // USERDATA_ALIGNMENT (no data actually written)
