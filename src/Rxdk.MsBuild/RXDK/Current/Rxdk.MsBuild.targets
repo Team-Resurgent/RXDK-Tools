@@ -1,0 +1,426 @@
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <UsingTask TaskName="Rxdk.MsBuild.Tasks.ZigCompile" AssemblyFile="$(MSBuildThisFileDirectory)Rxdk.MsBuild.dll"/>
+    <UsingTask TaskName="Rxdk.MsBuild.Tasks.ZigLd" AssemblyFile="$(MSBuildThisFileDirectory)Rxdk.MsBuild.dll"/>
+    <UsingTask TaskName="Rxdk.MsBuild.Tasks.ZigAr" AssemblyFile="$(MSBuildThisFileDirectory)Rxdk.MsBuild.dll"/>
+    <UsingTask TaskName="Rxdk.MsBuild.Tasks.ImageBld" AssemblyFile="$(MSBuildThisFileDirectory)Rxdk.MsBuild.dll"/>
+    <UsingTask TaskName="Rxdk.MsBuild.Tasks.Xiso" AssemblyFile="$(MSBuildThisFileDirectory)Rxdk.MsBuild.dll"/>
+
+    <!-- cleanup properties which are not supported by clang -->
+    <Import Project="$(VCTargetsPath)\Microsoft.Cpp.ClangCl.Exclusion.props" />
+    <Import Project="$(VCTargetsPath)\Microsoft.Cpp.LldLink.Exclusion.props" />
+    
+    <Import Project="$(VCTargetsPath)\Microsoft.CppCommon.targets" />
+
+    <!-- *******************************************************************************************
+        Clang Compile
+       ******************************************************************************************* -->
+
+    <Target Name="FixupCLCompileOptions"
+            Condition="'@(ClCompile)' != ''">
+        <ItemGroup>
+            <ClCompile>
+                <PrecompiledHeaderOutputFileDirectory Condition="'%(ClCompile.PrecompiledHeaderOutputFileDirectory)' != '' and !HasTrailingSlash('%(ClCompile.PrecompiledHeaderOutputFileDirectory)')">%(ClCompile.PrecompiledHeaderOutputFileDirectory)\</PrecompiledHeaderOutputFileDirectory>
+            </ClCompile>
+
+            <!-- Add PCH to the list of compiles -->
+            <ClCompilePCH Condition="'%(ClCompile.PrecompiledHeaderFile)' != '' and '%(ClCompile.PrecompiledHeader)' == 'Use'" Include="@(ClCompile->Metadata(PrecompiledHeaderFile)->Fullpath()->Distinct()->ClearMetadata())">
+                <CompileAs/>
+                <ForcedIncludeFiles/>
+                <PrecompiledHeaderFile/>
+                <PrecompiledHeader>Create</PrecompiledHeader>
+                <PrecompiledHeaderCompileAs>%(ClCompile.PrecompiledHeaderCompileAs)</PrecompiledHeaderCompileAs>
+                <PrecompiledHeaderOutputFileDirectory>%(ClCompile.PrecompiledHeaderOutputFileDirectory)</PrecompiledHeaderOutputFileDirectory>
+                <!-- PCH are not part of the build, so exclude the output from the link step. -->
+                <LibCompiled>false</LibCompiled>
+                <LinkCompiled>false</LinkCompiled>
+            </ClCompilePCH>
+
+            <ClCompilePCH>
+                <ObjectFileName>%(ClCompilePCH.PrecompiledHeaderOutputFileDirectory)%(FileName)%(Extension).gch</ObjectFileName>
+            </ClCompilePCH>
+
+            <!-- Add PCH to the force include, and remove from PCH related flags. -->
+            <ClCompile Condition="'%(ClCompile.PrecompiledHeader)' == 'Use' and '$(DesignTimeBuild)' == 'true'">
+                <!-- Clang expect the output pch.h, which it will deduce pch.h.gch) -->
+                <!-- VC intellisense expect name pch.h.gch passed in directly-->
+                <ForcedIncludeFiles>%(ClCompile.PrecompiledHeaderFile);%(ClCompile.ForcedIncludeFiles)</ForcedIncludeFiles>
+                <PrecompiledHeaderOutputFile>%(PrecompiledHeaderOutputFileDirectory)%(ClCompile.PrecompiledHeaderFile).gch</PrecompiledHeaderOutputFile>
+            </ClCompile>
+
+            <ClCompile Condition="'%(ClCompile.PrecompiledHeader)' == 'Use' and '$(DesignTimeBuild)' != 'true' and '%(Identity)' != ''">
+                <ForcedIncludeFiles>@(ClCompile->Metadata(PrecompiledHeaderFile)->'%(PrecompiledHeaderOutputFileDirectory)%(FileName)%(Extension)');%(ClCompile.ForcedIncludeFiles)</ForcedIncludeFiles>
+                <!-- Set MultiToolTask scheduler to wait for the PCH to finish. -->
+                <MultiToolTaskDependency>@(ClCompile->Metadata(PrecompiledHeaderFile)->Fullpath()->Distinct()->ClearMetadata())</MultiToolTaskDependency>
+            </ClCompile>
+
+            <!-- Done processing PCH, blank out the unused metadata. -->
+            <ClCompile>
+                <PrecompiledHeaderFile />
+                <PrecompiledHeaderCompileAs />
+                <PrecompiledHeaderOutputFileDirectory />
+            </ClCompile>
+
+            <ClCompilePCH>
+                <PrecompiledHeaderOutputFileDirectory />
+                <RuntimeTypeInfo Condition="'%(ClCompilePCH.PrecompiledHeaderCompileAs)' == 'CompileAsC'" />
+            </ClCompilePCH>
+
+            <ClCompile Condition="'$(DesignTimeBuild)' != 'true'" Include="@(ClCompilePCH)" />
+
+            <ClCompile>
+                <MinimalRebuildFromTracking Condition="'$(_BuildActionType)' != 'Build' or '$(ForceRebuild)' == 'true'">false</MinimalRebuildFromTracking>
+                <WarningLevel Condition="'%(WarningLevel)' == 'Level1' or '%(WarningLevel)' == 'Level2' or '%(WarningLevel)' == 'Level3'">EnableAllWarnings</WarningLevel>
+                <CompileAs Condition="'%(ClCompile.CompileAs)' == 'Default' and '%(ClCompile.Extension)' == '.c'">CompileAsC</CompileAs>
+                <CompileAs Condition="'%(ClCompile.CompileAs)' == 'Default' and '%(ClCompile.Extension)' != '.c'">CompileAsCpp</CompileAs>
+            </ClCompile>
+
+            <ClCompile>
+                <!-- Dont pass C standard to C++ and vice versa -->
+                <CLanguageStandard Condition="'%(ClCompile.CompileAs)' == 'CompileAsCpp'"></CLanguageStandard>
+                <CppLanguageStandard Condition="'%(ClCompile.CompileAs)' == 'CompileAsC'"></CppLanguageStandard>
+
+                <!-- C doesn't support 'RuntimeTypeInfo' -->
+                <RuntimeTypeInfo Condition="'%(ClCompile.CompileAs)' == 'CompileAsC'" />
+            </ClCompile>
+        </ItemGroup>
+    </Target>
+
+    <Target Name="ClCompile"
+            Condition="'@(ClCompile)' != ''"
+            Inputs="@(ClCompile)"
+            Outputs="@(ClCompile->'%(ObjectFileName)');$(IntDir)eh_start.obj;$(IntDir)eh_end.obj"
+            DependsOnTargets="SelectClCompile" >
+
+        <PropertyGroup>
+            <CLToolArchitecture Condition="'$(CLToolArchitecture)' == ''">$(VCToolArchitecture)</CLToolArchitecture>
+            <CLDeleteOutputOnExecute Condition="'$(CLDeleteOutputOnExecute)' == ''">true</CLDeleteOutputOnExecute>
+            <ClMutliToolTaskMinimalRebuild>true</ClMutliToolTaskMinimalRebuild>
+            <ClMutliToolTaskMinimalRebuild Condition="'$(_BuildActionType)' != 'Build' or '$(ForceRebuild)' == 'true'">false</ClMutliToolTaskMinimalRebuild>
+            <ProcessorNumber Condition="'$(ProcessorNumber)' == ''">$(CL_MPCount)</ProcessorNumber>
+        </PropertyGroup>
+
+        <ItemGroup>
+            <ClCompile>
+                <!-- Moved to this target to avoid adding add $(IncludePath) for intellisense -->
+                <AdditionalIncludeDirectories>%(ClCompile.AdditionalIncludeDirectories);$(IncludePath)</AdditionalIncludeDirectories>
+                <ExcludedInputPaths>$(ExcludePath)</ExcludedInputPaths>
+                <TimestampSurrogate Condition="'%(ClCompile.TimestampSurrogate)' == ''">$(CompileUpToDateFile)</TimestampSurrogate>
+            </ClCompile>
+        </ItemGroup>
+
+        <Message Condition="'$(_DebugMessages)' == 'true'" Importance="high" Text="ClCompilePCH = '@(ClCompilePCH)'"/>
+        <Message Condition="'$(_DebugMessages)' == 'true'" Importance="high" Text="ClCompilePCH.ObjectFileName = '%(ClCompilePCH.ObjectFileName)'"/>
+
+        <MultiToolTask Condition="'%(ClCompile.ExcludedFromBuild)' != 'true' and '$(UseMultiToolTask)' == 'true'"
+                      TaskName="Rxdk.MsBuild.Tasks.ZigCompile"
+                      TaskAssemblyName="$(VCTargetsPath)Microsoft.Build.CppTasks.Common.dll"
+                      Sources="@(ClCompile)"
+
+                      MaxProcessCount="$(MultiProcMaxCount)"
+                      EnforceProcessCountAcrossBuilds="$(EnforceProcessCountAcrossBuilds)"
+                      SchedulerName="$(MultiProcSchedulerName)"
+                      TrackFileAccess="$(TrackFileAccess)"
+                      TrackedOutputFilesToIgnore ="@(ClTrackedOutputFilesToIgnore)"
+                      TrackerLogDirectory="$(TLogLocation)"
+                      MinimalRebuildFromTracking="$(ClMutliToolTaskMinimalRebuild)"
+                      TLogReadFiles="@(CLTLogReadFiles)"
+                      TLogWriteFiles="@(CLTLogWriteFiles)"
+                      ToolArchitecture="$(CLToolArchitecture)"
+                      TrackerFrameworkPath="$(CLTrackerFrameworkPath)"
+                      TrackerSdkPath="$(CLTrackerSdkPath)"
+                      EnableExecuteTool="$(ClangEnableExecuteTool)" />
+
+        <!-- EH frame needs to be done like this -->
+        <PropertyGroup>
+            <_EhStartFile>$(IntDir)eh_start.asm</_EhStartFile>
+            <_EhEndFile>$(IntDir)eh_end.asm</_EhEndFile>
+            <_EhStartSource>
+                <![CDATA[                
+.section .eh_frame,"dr"
+.globl ___eh_frame_start
+___eh_frame_start:
+]]>
+            </_EhStartSource>
+            <_EhEndSource>
+                <![CDATA[                
+.section .eh_frame,"dr"
+.globl ___eh_frame_end
+___eh_frame_end:
+]]>
+            </_EhEndSource>
+        </PropertyGroup>
+
+        <WriteLinesToFile File="$(_EhStartFile)"
+                          Overwrite="true"
+                          Lines="$(_EhStartSource)" />
+        <WriteLinesToFile File="$(_EhEndFile)"
+                          Overwrite="true"
+                          Lines="$(_EhEndSource)" />
+
+        <ZigCompile Sources="$(_EhStartFile)"
+                    ObjectFileName="$(IntDir)eh_start.obj"
+                    CompileAs="CompileAsAsm"
+                    ForcedIncludeFiles="" />
+        <ZigCompile Sources="$(_EhEndFile)"
+                    ObjectFileName="$(IntDir)eh_end.obj"
+                    CompileAs="CompileAsAsm"
+                    ForcedIncludeFiles="" />
+
+        <ZigCompile Condition="'%(ClCompile.PrecompiledHeader)' == 'Create' and '$(UseMultiToolTask)' != 'true'"
+                    Sources="@(ClCompile)"
+                    
+                    Optimization="%(ClCompile.Optimization)"
+                    DebugInfo="%(ClCompile.DebugInfo)"
+                    AdditionalIncludeDirectories="%(ClCompile.AdditionalIncludeDirectories)"
+                    ObjectFileName="%(ClCompile.ObjectFileName)"
+                    WarningLevel="%(ClCompile.WarningLevel)"
+                    TreatWarningAsError="%(ClCompile.TreatWarningAsError)"
+                    Verbose="%(ClCompile.Verbose)"
+                    TrackerLogDirectory="%(ClCompile.TrackerLogDirectory)"
+                    OmitFramePointers="%(ClCompile.OmitFramePointers)"
+                    FunctionLevelLinking="%(ClCompile.FunctionLevelLinking)"
+                    DataLevelLinking="%(ClCompile.DataLevelLinking)"
+                    RuntimeTypeInfo="%(ClCompile.RuntimeTypeInfo)"
+                    CLanguageStandard="%(ClCompile.CLanguageStandard)"
+                    CppLanguageStandard="%(ClCompile.CppLanguageStandard)"
+                    PreprocessorDefinitions="%(ClCompile.PreprocessorDefinitions)"
+                    UndefinePreprocessorDefinitions="%(ClCompile.UndefinePreprocessorDefinitions)"
+                    UndefineAllPreprocessorDefinitions="%(ClCompile.UndefineAllPreprocessorDefinitions)"
+                    PrecompiledHeader="%(ClCompile.PrecompiledHeader)"
+                    PrecompiledHeaderFile="%(ClCompile.PrecompiledHeaderFile)"
+                    PrecompiledHeaderOutputFileDirectory="%(ClCompile.PrecompiledHeaderOutputFileDirectory)"
+                    PrecompiledHeaderCompileAs="%(ClCompile.PrecompiledHeaderCompileAs)"
+                    CompileAs="%(ClCompile.CompileAs)"
+                    ForcedIncludeFiles="%(ClCompile.ForcedIncludeFiles)"
+                    AdditionalOptions="%(ClCompile.AdditionalOptions)" />
+
+        <ZigCompile Condition="'%(ClCompile.ExcludedFromBuild)' != 'true' and '%(ClCompile.PrecompiledHeader)' != 'Create' and '$(UseMultiToolTask)' != 'true'"
+                    Sources="@(ClCompile)"
+                    
+                    Optimization="%(ClCompile.Optimization)"
+                    DebugInfo="%(ClCompile.DebugInfo)"
+                    AdditionalIncludeDirectories="%(ClCompile.AdditionalIncludeDirectories)"
+                    ObjectFileName="%(ClCompile.ObjectFileName)"
+                    WarningLevel="%(ClCompile.WarningLevel)"
+                    TreatWarningAsError="%(ClCompile.TreatWarningAsError)"
+                    Verbose="%(ClCompile.Verbose)"
+                    TrackerLogDirectory="%(ClCompile.TrackerLogDirectory)"
+                    OmitFramePointers="%(ClCompile.OmitFramePointers)"
+                    FunctionLevelLinking="%(ClCompile.FunctionLevelLinking)"
+                    DataLevelLinking="%(ClCompile.DataLevelLinking)"
+                    RuntimeTypeInfo="%(ClCompile.RuntimeTypeInfo)"
+                    CLanguageStandard="%(ClCompile.CLanguageStandard)"
+                    CppLanguageStandard="%(ClCompile.CppLanguageStandard)"
+                    PreprocessorDefinitions="%(ClCompile.PreprocessorDefinitions)"
+                    UndefinePreprocessorDefinitions="%(ClCompile.UndefinePreprocessorDefinitions)"
+                    UndefineAllPreprocessorDefinitions="%(ClCompile.UndefineAllPreprocessorDefinitions)"
+                    PrecompiledHeader="%(ClCompile.PrecompiledHeader)"
+                    PrecompiledHeaderFile="%(ClCompile.PrecompiledHeaderFile)"
+                    PrecompiledHeaderOutputFileDirectory="%(ClCompile.PrecompiledHeaderOutputFileDirectory)"
+                    PrecompiledHeaderCompileAs="%(ClCompile.PrecompiledHeaderCompileAs)"
+                    CompileAs="%(ClCompile.CompileAs)"
+                    ForcedIncludeFiles="%(ClCompile.ForcedIncludeFiles)"
+                    AdditionalOptions="%(ClCompile.AdditionalOptions)" />
+        
+        <WriteLinesToFile Overwrite="true" Condition="'@(ProjectReferenceToLink->HasMetadata(TimestampSurrogate))' != ''" Encoding="Unicode" File="$(TLogLocation)\ClCompile.read.1.tlog" Lines="@(ClCompile->'^%(Fullpath)','|');@(ProjectReferenceToLink->'%(TimestampSurrogate)'->Distinct())" />
+
+        <WriteLinesToFile Overwrite="true" Encoding="Unicode" File="$(TLogLocation)\ClCompile.write.1.tlog" Lines="@(ClCompile->'^%(Fullpath)','|');$(ClCompileUpToDateFile)" />
+    </Target>
+
+    <Target Name="Link"   
+            Inputs="
+                @(Link);
+                @(ProjectReferenceToLink);
+                @(Lib);
+                %(Link.AdditionalDependencies);
+                %(Link.LinkerScript)
+            "
+            Outputs="%(Link.OutputFile)">
+        <ItemGroup>
+            <Link>
+                <TimestampSurrogate Condition="'%(Link.TimestampSurrogate)' == ''">$(CompileUpToDateFile)</TimestampSurrogate>
+            </Link>
+        </ItemGroup>
+        
+        <ZigLd Condition="'@(Link)' != ''"
+               Sources="$(IntDir)eh_start.obj;@(Link);$(IntDir)eh_end.obj"
+               OutputFile="%(Link.OutputFile)"
+               
+               ShowProgress="%(Link.ShowProgress)"
+               Version="%(Link.Version)"
+               VerboseOutput="%(Link.VerboseOutput)"
+               Trace="%(Link.Trace)"
+               TraceSymbols="%(Link.TraceSymbols)"
+               EntryPointSymbol="%(Link.EntryPointSymbol)"
+               PrintMap="%(Link.PrintMap)"
+               LinkerScript="%(Link.LinkerScript)"
+               UnresolvedSymbolReferences="%(Link.UnresolvedSymbolReferences)"
+               OptimizeforMemory="%(Link.OptimizeforMemory)"
+               LibraryPath="$(LibraryPath)"
+               AdditionalLibraryDirectories="%(Link.AdditionalLibraryDirectories)"
+               IgnoreSpecificDefaultLibraries="%(Link.IgnoreSpecificDefaultLibraries)"
+               ForceUndefineSymbolReferences="%(Link.ForceUndefineSymbolReferences)"
+               DebuggerSymbolInformation="%(Link.DebuggerSymbolInformation)"
+               GenerateMapFile="%(Link.GenerateMapFile)"
+               Relocation="%(Link.Relocation)"
+               FunctionBinding="%(Link.FunctionBinding)"
+               NoExecStackRequired="%(Link.NoExecStackRequired)"
+               WholeArchiveBegin="%(Link.WholeArchiveBegin)"
+               AdditionalOptions="%(Link.AdditionalOptions)"
+               AdditionalDependencies="%(Link.AdditionalDependencies)"
+               LibraryDependencies="%(Link.LibraryDependencies)"
+               WholeArchiveEnd="%(Link.WholeArchiveEnd)" />
+        
+        <WriteLinesToFile Overwrite="true" Condition="'@(ProjectReferenceToLink->HasMetadata(TimestampSurrogate))' != ''" Encoding="Unicode" File="$(TLogLocation)\link.read.1.tlog" Lines="@(Link->'^%(Fullpath)','|');@(ProjectReferenceToLink->'%(TimestampSurrogate)'->Distinct())" />
+
+        <WriteLinesToFile Overwrite="true" Encoding="Unicode" File="$(TLogLocation)\link.write.1.tlog" Lines="@(Link->'^%(Fullpath)','|');$(LinkUpToDateFile)" />
+    </Target>
+    <Target Name="Lib"
+            Inputs="@(Lib)"
+            Outputs="%(Lib.OutputFile)">
+        <ItemGroup>
+            <Lib>
+                <TimestampSurrogate Condition="'%(Lib.TimestampSurrogate)' == ''">$(CompileUpToDateFile)</TimestampSurrogate>
+            </Lib>
+        </ItemGroup>
+
+        <ZigAr Condition="'@(Lib)' != ''"
+               Sources="@(Lib)"
+            
+               Command="%(Lib.Command)"
+               CreateIndex="%(Lib.CreateIndex)"
+               CreateThinArchive="%(Lib.CreateThinArchive)"
+               NoWarnOnCreate="%(Lib.NoWarnOnCreate)"
+               TruncateTimestamp="%(Lib.TruncateTimestamp)"
+               SuppressStartupBanner="%(Lib.SuppressStartupBanner)"
+               Verbose="%(Lib.Verbose)"
+               AdditionalOptions="%(Lib.AdditionalOptions)"
+               OutputFile="%(Lib.OutputFile)" />
+
+        <WriteLinesToFile Overwrite="true" Condition="'@(ProjectReferenceToLink->HasMetadata(TimestampSurrogate))' != ''" Encoding="Unicode" File="$(TLogLocation)\Lib.read.1.tlog" Lines="@(Lib->'^%(Fullpath)','|');@(ProjectReferenceToLink->'%(TimestampSurrogate)'->Distinct())" />
+
+        <WriteLinesToFile Overwrite="true" Encoding="Unicode" File="$(TLogLocation)\lib.write.1.tlog" Lines="@(Lib->'^%(Fullpath)');$(LinkUpToDateFile)" />
+    </Target>
+    
+    <Target Name="ImageBld"
+            Inputs="@(ImageBld);@(Link)"
+            Outputs="%(ImageBld.OutputFile)"
+            DependsOnTargets="Link">
+        <ItemGroup>
+            <ImageBld>
+                <TimestampSurrogate Condition="'%(ImageBld.TimestampSurrogate)' == ''">$(CompileUpToDateFile)</TimestampSurrogate>
+            </ImageBld>
+        </ItemGroup>
+
+        <ImageBld Condition="'@(ImageBld)' != ''"
+                  OutputFile="%(ImageBld.OutputFile)"
+                  InputFile="@(ImageBld)"
+                          
+                  Dxt="%(ImageBld.Dxt)"
+                  StackSize="%(ImageBld.StackSize)"
+                  Debug="%(ImageBld.Debug)"
+                  NoLogo="%(ImageBld.NoLogo)"
+                  NoLibWarn="%(ImageBld.NoLibWarn)"
+                  LimitMemory="%(ImageBld.LimitMemory)"
+                  DontModifyHardDisk="%(ImageBld.DontModifyHardDisk)"
+                  DontMountUtilityDrive="%(ImageBld.DontMountUtilityDrive)"
+                  FormatUtilityDrive="%(ImageBld.FormatUtilityDrive)"
+                  UtilityDriveClusterSize="%(ImageBld.UtilityDriveClusterSize)"
+                  NoPreload="%(ImageBld.NoPreload)"
+                  TestId="%(ImageBld.TestId)"
+                  TestAltId="%(ImageBld.TestAltId)"
+                  TestRegion="%(ImageBld.TestRegion)"
+                  TestRatings="%(ImageBld.TestRatings)"
+                  TestMediaTypes="%(ImageBld.TestMediaTypes)"
+                  TestLanKey="%(ImageBld.TestLanKey)"
+                  TestSignKey="%(ImageBld.TestSignKey)"
+                  TestName="%(ImageBld.TestName)"
+                  TestVersion="%(ImageBld.TestVersion)"
+                  TitleInfo="%(ImageBld.TitleInfo)"
+                  TitleImage="%(ImageBld.TitleImage)"
+                  DefaultSaveImage="%(ImageBld.DefaultSaveImage)" />
+        
+        <WriteLinesToFile Overwrite="true" Condition="'@(ProjectReferenceToLink->HasMetadata(TimestampSurrogate))' != ''" Encoding="Unicode" File="$(TLogLocation)\ImageBld.read.1.tlog" Lines="@(ImageBld->'^%(Fullpath)','|');@(ProjectReferenceToLink->'%(TimestampSurrogate)'->Distinct())" />
+
+        <WriteLinesToFile Overwrite="true" Encoding="Unicode" File="$(TLogLocation)\imagebld.write.1.tlog" Lines="@(ImageBld->'^%(Fullpath)');$(LinkUpToDateFile)" />
+    </Target>
+
+    <Target Name="StageIsoFiles"
+            Inputs="%(ImageBld.OutputFile);@(IsoCopy)"
+            Outputs="@(Xiso)"
+            Condition="'@(Xiso)' != ''">
+        <PropertyGroup>
+            <_XisoDir>@(Xiso)</_XisoDir>
+        </PropertyGroup>
+        <RemoveDir Directories="$(_XisoDir)" />
+        <!-- Copy the XBE and any other files -->
+        <Copy SourceFiles="%(ImageBld.OutputFile)"
+              DestinationFiles="$(_XisoDir)\default.xbe"
+              UseHardlinksIfPossible="true" />
+        <Copy SourceFiles="@(IsoCopy)"
+              DestinationFolder="$(_XisoDir)"
+              UseHardlinksIfPossible="true" />
+    </Target>
+    
+    <Target Name="Xiso"
+            Inputs="@(Xiso)"
+            Outputs="%(Xiso.OutputFile)"
+            DependsOnTargets="StageIsoFiles">
+        <ItemGroup>
+            <Xiso>
+                <TimestampSurrogate Condition="'%(Xiso.TimestampSurrogate)' == ''">$(CompileUpToDateFile)</TimestampSurrogate>
+            </Xiso>
+        </ItemGroup>
+
+        <Xiso Condition="'@(Xiso)' != ''"
+              OutputFile="%(Xiso.OutputFile)"
+              InputDirectory="@(Xiso)" />
+
+        <WriteLinesToFile Overwrite="true" Condition="'@(ProjectReferenceToLink->HasMetadata(TimestampSurrogate))' != ''" Encoding="Unicode" File="$(TLogLocation)\Xiso.read.1.tlog" Lines="@(Xiso->'^%(Fullpath)','|');@(ProjectReferenceToLink->'%(TimestampSurrogate)'->Distinct())" />
+
+        <WriteLinesToFile Overwrite="true" Encoding="Unicode" File="$(TLogLocation)\xiso.write.1.tlog" Lines="@(Xiso->'^%(Fullpath)');$(LinkUpToDateFile)" />
+    </Target>
+
+    <!-- Make sure ImageBld is called -->
+    <PropertyGroup Condition="'$(ConfigurationType)' == 'Application' or '$(ConfigurationType)' == 'DebuggerExtension'">
+        <BuildDependsOn>
+            $(BuildDependsOn);ImageBld;Xiso
+        </BuildDependsOn>
+    </PropertyGroup>
+    
+    <!-- Designtime definitions -->
+    <!-- Property pages -->
+    <ItemGroup>
+        <PropertyPageSchema Include="$(MSBuildThisFileDirectory)$(LangID)\General.xml">
+            <Context>Project</Context>
+        </PropertyPageSchema>
+        <PropertyPageSchema Include="$(VCTargetsPath)$(LangID)\folder.xml">
+            <Context>File;BrowseObject</Context>
+        </PropertyPageSchema>
+        <PropertyPageSchema Include="$(MSBuildThisFileDirectory)$(LangID)\RxdkDebugger.xml"/>
+        <PropertyPageSchema Include="$(MSBuildThisFileDirectory)$(LangID)\ZigCompile.xml"/>
+        <PropertyPageSchema Include="$(MSBuildThisFileDirectory)$(LangID)\ZigLd.xml" />
+        <PropertyPageSchema Include="$(MSBuildThisFileDirectory)$(LangID)\ZigAr.xml" />
+        <PropertyPageSchema Include="$(MSBuildThisFileDirectory)$(LangID)\ImageBld.xml" />
+        <PropertyPageSchema Include="$(MSBuildThisFileDirectory)$(LangID)\Xiso.xml" />
+    </ItemGroup>
+
+    <!-- Property pages -->
+    <ItemGroup>
+        <!-- Unique items for the project -->
+        <CustomBuildStep Include="$(ProjectName)" />
+        <PreBuildEvent Include="$(ProjectName)" />
+        <PreLinkEvent Include="$(ProjectName)" />
+        <PostBuildEvent Include="$(ProjectName)" />
+        <RemotePreBuildEvent Include="$(ProjectName)" />
+        <RemotePreLinkEvent Include="$(ProjectName)" />
+        <RemotePostBuildEvent Include="$(ProjectName)" />
+        
+        <!-- Tools that show up in the IDE property pages for Link/Lib -->
+        <ProjectTools Condition="'$(ConfigurationType)' == 'Application' or '$(ConfigurationType)' == 'DebuggerExtension'" Include="Link" />
+        <ProjectTools Condition="'$(ConfigurationType)' == 'Application' or '$(ConfigurationType)' == 'DebuggerExtension'" Include="ImageBld" />
+        <ProjectTools Condition="'$(ConfigurationType)' == 'Application'" Include="Xiso" />
+        <ProjectTools Condition="'$(ConfigurationType)' == 'StaticLibrary'" Include="Lib" />
+        <ProjectTools Include="CustomBuildStep" />
+    </ItemGroup>
+</Project>

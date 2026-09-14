@@ -1,0 +1,161 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Rule Name="Link"
+      DisplayName="Linker"
+      SwitchPrefix="-"
+      Order="20"
+      PageTemplate="tool"
+      xmlns="http://schemas.microsoft.com/build/2009/properties"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:sys="clr-namespace:System;assembly=mscorlib" >
+    <Rule.Categories>
+        <Category Name="General" DisplayName="General" />
+        <Category Name="Input" DisplayName="Input" />
+        <Category Name="Debugging" DisplayName="Debugging" />
+        <Category Name="Advanced" DisplayName="Advanced" />
+        <Category Name="All Options" DisplayName="All Options" Subtype="Search" />
+        <Category Name="Command Line" DisplayName="Command Line" Subtype="CommandLine" />
+    </Rule.Categories>
+    <Rule.DataSource>
+        <DataSource
+           Persistence="ProjectFile"
+           ItemType="Link"
+           Label=""
+           HasConfigurationCondition="true" />
+    </Rule.DataSource>
+    <StringProperty Name="OutputFile"
+                    DisplayName="Output File"
+                    Description="The option overrides the default name and location of the program that the linker creates. (-o)"
+                    Subtype="file"
+                    Category="General"
+                    Switch="o " />
+    <BoolProperty Name="ShowProgress"
+                  DisplayName="Show Progress"
+                  Description="Prints Linker Progress Messages."
+                  Category="General"
+                  Switch="Wl,--stats" />
+    <BoolProperty Name="Version"
+                  DisplayName="Version"
+                  Description="The -version option tells the linker to put a version number in the header of the executable."
+                  Category="General"
+                  Switch="Wl,--version" />
+    <BoolProperty Name="VerboseOutput"
+                  DisplayName="Enable Verbose Output"
+                  Description="The -verbose option tells the linker to output verbose messages for debugging."
+                  Category="General"
+                  Switch="-verbose" />
+    <BoolProperty Name="Trace"
+                  DisplayName="Trace"
+                  Description="The --trace option tells the linker to output the input files as are processed."
+                  Category="Advanced"
+                  Switch="Wl,--trace" />
+    <StringListProperty Name="TraceSymbols"
+                        DisplayName="Trace Symbols"
+                        Description="Print the list of files in which a symbol appears. (--trace-symbol=symbol)"
+                        Category="Advanced"
+                        Switch="Wl,--trace-symbol=" />
+    <StringProperty Name="EntryPointSymbol"
+                    DisplayName="Entry Point"
+                    Description="Specify an entry point function as the starting address for the title. (--entry=symbol)"
+                    Category="Advanced"
+                    Switch="Wl,--entry=" />
+    <BoolProperty Name="PrintMap"
+                  DisplayName="Print Map"
+                  Description="The --print-map option tells the linker to output a link map."
+                  Category="General" />
+    <BoolProperty Name="LinkerScript"
+                  DisplayName="Linker Script"
+                  Description="The -T option tells the linker to use a linker script."
+                  Category="Advanced"
+                  Switch="Wl,-T" />
+    <BoolProperty Name="UnresolvedSymbolReferences"
+                  DisplayName="Report Unresolved Symbol References"
+                  Description="This option when enabled will report unresolved symbol references."
+                  Category="Advanced"
+                  Switch="Wl,--no-undefined" />
+    <BoolProperty Name="OptimizeforMemory"
+                  DisplayName="Optimize For Memory Usage"
+                  Description="Optimize for memory usage, by rereading the symbol tables as necessary."
+                  Category="General"
+                  Switch="Wl,--no-keep-memory" />
+    <StringProperty Name="LibraryPath"
+                    DisplayName="Library Search Path"
+                    Description="Library search path. (-L folder)."
+                    Visible="false"
+                    Switch="L " />
+    <StringProperty Name="AdditionalLibraryDirectories"
+                    DisplayName="Additional Library Directories"
+                    Description="Allows the user to override the environmental library path. (-L folder)."
+                    Category="General"
+                    Switch="L " />
+    <StringListProperty Name="IgnoreSpecificDefaultLibraries"
+                        DisplayName="Ignore Specific Default Libraries"
+                        Description="Specifies one or more names of default libraries to ignore."
+                        Category="Input"
+                        Switch="Wl,--exclude-libs=" />
+    <BoolProperty Name="ForceUndefineSymbolReferences"
+                  DisplayName="Force Symbol References"
+                  Description="Force symbol to be entered in the output file as an undefined symbol."
+                  Category="Advanced"
+                  Switch="Wl,-u--undefined=" />
+    <EnumProperty Name="DebuggerSymbolInformation"
+                  DisplayName="Debugger Symbol Information"
+                  Description="Debugger symbol information from the output file."
+                  Category="Debugging" >
+        <EnumValue Name="true"
+                   DisplayName="Enable" />
+        <EnumValue Name="false"
+                   DisplayName="Disable" />
+        <EnumValue Name="IncludeAll"
+                   DisplayName="Include All" />
+        <EnumValue Name="OmitDebuggerSymbolInformation"
+                   DisplayName="Strip Debug Information"
+                   Switch="Wl,--strip-debug" />
+        <EnumValue Name="OmitAllSymbolInformation"
+                   DisplayName="Strip All Symbol Information"
+                   Switch="Wl,--strip-all" />
+    </EnumProperty>
+    <StringProperty Name="GenerateMapFile"
+                    DisplayName="Map File Name"
+                    Description="The Map option tells the linker to create a map file with the user specified name."
+                    Category="General"
+                    Switch="Wl,-Map=" />
+    <BoolProperty Name="Relocation"
+                  DisplayName="Mark Variables ReadOnly After Relocation"
+                  Description="This option marks variables read-only after relocation."
+                  Category="Advanced"
+                  Switch="Wl,-z,relro" />
+    <BoolProperty Name="FunctionBinding"
+                  DisplayName="Enable Immediate Function Binding"
+                  Description="This option marks object for immediate function binding."
+                  Category="Advanced"
+                  Switch="Wl,-z,now" />
+    <BoolProperty Name="NoExecStackRequired"
+                  DisplayName="Executable Stack Not Required"
+                  Description="This option marks output as not requiring executable stack."
+                  Category="Advanced"
+                  Switch="Wl,-z,noexecstack" />
+    <BoolProperty Name="WholeArchiveBegin"
+                  DisplayName="Whole Archive"
+                  Description="Whole Archive uses all code from Sources and Additional Dependencies."
+                  Category="Input"
+                  Switch="Wl,--whole-archive" />
+    <StringListProperty Name="AdditionalDependencies"
+                        DisplayName="Additional Dependencies"
+                        Description="Specifies additional items to add to the link command line." />
+    <BoolProperty Name="WholeArchiveEnd"
+                  DisplayName=""
+                  Description=""
+                  Switch="Wl,--no-whole-archive" />
+    <StringListProperty Name="LibraryDependencies"
+                        DisplayName="Library Dependencies"
+                        Description="This option allows specifying additional libraries to be  added to the linker command line. The additional library will be added to the end of the linker command line  with the '.lib' extension.  (-lNAME)"
+                        Category="Input"
+                        Switch="l" />
+  <StringProperty
+     Name="AdditionalOptions"
+     DisplayName="Additional Options"
+     Description="Additional Options."
+     Category="Command Line"
+     F1Keyword="vc.project.AdditionalOptionsPage">
+  </StringProperty>
+</Rule>

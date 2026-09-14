@@ -1,0 +1,14 @@
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+    <!-- Import Before -->
+    <Import Condition="Exists('$(MSBuildThisFileDirectory)ImportBefore\Default')" Project="$(MSBuildThisFileDirectory)ImportBefore\Default\*.props" />
+
+    <PropertyGroup>
+        <TargetPlatformIdentifier>RXDK</TargetPlatformIdentifier>
+        <ToolsetISenseIdentifier>RXDK</ToolsetISenseIdentifier>
+    </PropertyGroup>
+
+    <!-- Import After -->
+    <Import Condition="Exists('$(MSBuildThisFileDirectory)ImportAfter\Default')" Project="$(MSBuildThisFileDirectory)ImportAfter\Default\*.props" />
+</Project>
+

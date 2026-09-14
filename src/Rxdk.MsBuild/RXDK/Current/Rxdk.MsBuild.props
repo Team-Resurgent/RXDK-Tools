@@ -1,0 +1,117 @@
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <Import Project="$(MSBuildThisFileDirectory)ImportBefore\*.props" Condition="Exists('$(MSBuildThisFileDirectory)ImportBefore')" />
+
+    <PropertyGroup>
+        <EnableStdModules>false</EnableStdModules>
+        <IncludePath>$(RXDK)\sdk\include\c++\v1;$(RXDK)\sdk\include</IncludePath>
+        <LibraryPath Condition="'$(UseDebugLibraries)' == 'true'">$(RXDK)\sdk\lib\debug</LibraryPath>
+        <LibraryPath Condition="'$(UseDebugLibraries)' != 'true'">$(RXDK)\sdk\lib\release</LibraryPath>
+        <NeedImageBld Condition="'$(ConfigurationType)' == 'Application' or '$(ConfigurationType)' == 'DebuggerExtension'">true</NeedImageBld>
+        <!-- This happens because of how ImageBld is set up -->
+        <MSBuildWarningsAsMessages Condition="'$(NeedImageBld)' != ''">$(MSBuildWarningsAsMessages);MSB8012</MSBuildWarningsAsMessages>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(DesignTimeBuild)' == 'true'">
+        <!--<IncludePath>$(AdditionalIncludeDirectories);$(IncludePath);$(RXDK)\sdk\intellisense</IncludePath>-->
+    </PropertyGroup>
+
+    <!-- Specific values -->
+    <PropertyGroup Condition="'$(ConfigurationType)' == 'Application'">
+        <LinkCompiled>true</LinkCompiled>
+        <TargetExt>.xbe</TargetExt>
+        <OutputType>exe</OutputType>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(ConfigurationType)' == 'DebuggerExtension'">
+        <LibCompiled>true</LibCompiled>
+        <TargetExt>.dxt</TargetExt>
+        <OutputType>library</OutputType>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(ConfigurationType)' == 'StaticLibrary'">
+        <LibCompiled>true</LibCompiled>
+        <TargetExt>.lib</TargetExt>
+        <OutputType>staticlibrary</OutputType>
+    </PropertyGroup>
+
+    <ItemDefinitionGroup>
+        <ClCompile>
+            <WarningLevel>EnableAllWarnings</WarningLevel>
+            <DebugInfo Condition="'$(UseDebugLibraries)' == 'true'">Full</DebugInfo>
+            <DebugInfo Condition="'$(UseDebugLibraries)' != 'true'">LineTables</DebugInfo>
+            <PreprocessorDefinitions Condition="'$(UseDebugLibraries)' != 'true'">NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+            <Optimization Condition="'$(UseDebugLibraries)' == 'true'">None</Optimization>
+            <Optimization Condition="'$(UseDebugLibraries)' != 'true'">Full</Optimization>
+            <ProgramDatabaseFileName Condition="'$(ConfigurationType)' != 'StaticLibrary'">$(IntDir)</ProgramDatabaseFileName>
+            <ProgramDatabaseFileName Condition="'$(ConfigurationType)' == 'StaticLibrary'">$(OutDir)</ProgramDatabaseFileName>
+            <OmitFramePointers Condition="'$(UseDebugLibraries)' == 'true'">false</OmitFramePointers>
+            <OmitFramePointers Condition="'$(UseDebugLibraries)' != 'true'">true</OmitFramePointers>
+            <ExceptionHandling>Enabled</ExceptionHandling>
+            <FunctionLevelLinking Condition="'$(UseDebugLibraries)' == 'true'">false</FunctionLevelLinking>
+            <FunctionLevelLinking Condition="'$(UseDebugLibraries)' != 'true'">true</FunctionLevelLinking>
+            <DataLevelLinking Condition="'$(UseDebugLibraries)' == 'true'">false</DataLevelLinking>
+            <DataLevelLinking Condition="'$(UseDebugLibraries)' != 'true'">true</DataLevelLinking>
+            <BufferSecurityCheck>true</BufferSecurityCheck>
+            <PositionIndependentCode>false</PositionIndependentCode>
+            <UseShortEnums>false</UseShortEnums>
+            <RuntimeTypeInfo>false</RuntimeTypeInfo>
+            <CLanguageStandard>c23</CLanguageStandard>
+            <CppLanguageStandard>c++23</CppLanguageStandard>
+            <PrecompiledHeader>NotUsing</PrecompiledHeader>
+            <ObjectFileName>$(IntDir)%(filename).obj</ObjectFileName>
+            <CompileAs>Default</CompileAs>
+            <TreatWarningAsError>false</TreatWarningAsError>
+            <Verbose>false</Verbose>
+            <EnablePREfast Condition="'%(ClCompile.EnablePREfast)' == ''">false</EnablePREfast>
+            <OmitFramePointers Condition="'%(ClCompile.OmitFramePointers)' == ''">false</OmitFramePointers>
+            <MinimalRebuildFromTracking>true</MinimalRebuildFromTracking>
+            <PrecompiledHeaderOutputFileDirectory>$(IntDir)</PrecompiledHeaderOutputFileDirectory>
+            <PrecompiledHeaderOutputFile></PrecompiledHeaderOutputFile>
+            <PrecompiledHeaderCompileAs>CompileAsCpp</PrecompiledHeaderCompileAs>
+            <ForcedIncludeFiles>picolibc.h</ForcedIncludeFiles>
+        </ClCompile>
+
+        <ClCompile Condition="'$(DesignTimeBuild)' == 'true'">
+            <!--<ForcedIncludeFiles>rxdk_intellisense.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>-->
+        </ClCompile>
+
+        <Link>
+            <OutputFile>$(OutDir)$(TargetName).exe</OutputFile>
+            <EntryPointSymbol Condition="'$(ConfigurationType)' == 'Application'">XapiTitleStartup</EntryPointSymbol>
+            <EntryPointSymbol Condition="'$(ConfigurationType)' == 'DebuggerExtension'">DxtEntry</EntryPointSymbol>
+            <LibraryDependencies>libd3d8;libd3dx8;libxapi;libc;libcpp;libkernel</LibraryDependencies>
+            <AdditionalDependencies />
+            <AdditionalOptions>-rtlib=compiler-rt -Wl,--whole-archive -llibcompat -Wl,--no-whole-archive</AdditionalOptions>
+        </Link>
+
+        <ImageBld>
+            <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
+            <Dxt Condition="'$(ConfigurationType)' == 'DebuggerExtension'">true</Dxt>
+            <Dxt Condition="'$(ConfigurationType)' != 'DebuggerExtension'">false</Dxt>
+            <StackSize Condition="'%(ImageBld.StackSize)' == ''">65536</StackSize>
+            <Debug Condition="'%(ImageBld.Debug)' == ''">$(UseDebugLibraries)</Debug>
+            <NoLogo Condition="'%(ImageBld.NoLogo)' == ''">true</NoLogo>
+            <NoLibWarn Condition="'%(ImageBld.NoLibWarn)' == ''">true</NoLibWarn>
+            <LimitMemory Condition="'%(ImageBld.LimitMemory)' == ''">false</LimitMemory>
+            <DontModifyHardDisk Condition="'%(ImageBld.DontModifyHardDisk)' == ''">false</DontModifyHardDisk>
+            <DontMountUtilityDrive Condition="'%(ImageBld.DontMountUtilityDrive)' == ''">false</DontMountUtilityDrive>
+            <FormatUtilityDrive Condition="'%(ImageBld.FormatUtilityDrive)' == ''">false</FormatUtilityDrive>
+            <UtilityDriveClusterSize Condition="'%(ImageBld.UtilityDriveClusterSize)' == ''">Default</UtilityDriveClusterSize>
+        </ImageBld>
+
+        <Xiso>
+            <OutputFile>$(OutDir)$(TargetName).iso</OutputFile>
+        </Xiso>
+    </ItemDefinitionGroup>
+
+    <ItemGroup>
+        <ImageBld Condition="'$(NeedImageBld)' != ''" Include="$(OutDir)$(TargetName).exe" />
+    </ItemGroup>
+    
+    <ItemGroup Condition="'$(ConfigurationType)' == 'Application'">
+        <IsoCopy Include="$(ProjectDir)Media\**" />
+        <Xiso Include="$(OutDir)XISO" />
+    </ItemGroup>
+
+    <Import Project="$(MSBuildThisFileDirectory)ImportAfter\*.props" Condition="Exists('$(MSBuildThisFileDirectory)ImportAfter')" />
+</Project>

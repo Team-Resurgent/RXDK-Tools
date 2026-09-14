@@ -1,0 +1,79 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Rule Name="LIB"
+      DisplayName="Librarian"
+      SwitchPrefix="-"
+      Order="40"
+      PageTemplate="tool"
+      xmlns="http://schemas.microsoft.com/build/2009/properties"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:sys="clr-namespace:System;assembly=mscorlib" >
+    <Rule.Categories>
+        <Category Name="General" DisplayName="General" />
+        <Category Name="Command Line" DisplayName="Command Line" Subtype="CommandLine" />
+    </Rule.Categories>
+    <Rule.DataSource>
+        <DataSource Persistence="ProjectFile"
+                    ItemType="Lib"
+                    Label=""
+                    HasConfigurationCondition="true" />
+    </Rule.DataSource>
+    <EnumProperty Name="Command"
+                  DisplayName="Command"
+                  Description="Command for AR."
+                  Visible="false" >
+        <EnumValue Name="Delete"
+                   Switch="d" />
+        <EnumValue Name="Move"
+                   Switch="m" />
+        <EnumValue Name="Print"
+                   Switch="p" />
+        <EnumValue Name="Quick"
+                   Switch="q" />
+        <EnumValue Name="Replacement"
+                   Switch="r" />
+        <EnumValue Name="Table"
+                   Switch="t" />
+        <EnumValue Name="Extract"
+                   Switch="x" />
+    </EnumProperty>
+    <BoolProperty Name="CreateIndex"
+                  DisplayName="Create an archive index"
+                  Description="Create an archive index (cf. ranlib).  This can speed up linking and reduce dependency within its own library."
+                  Category="General"
+                  Switch="s" />
+    <BoolProperty Name="CreateThinArchive"
+                  DisplayName="Create Thin Archive"
+                  Description="Create a thin archive.  A thin archive contains relativepaths to the objects instead of embedding the objects.  Switching between Thin and Normal requires deleting the existing library."
+                  Category="General"
+                  Switch="T" />
+    <BoolProperty Name="NoWarnOnCreate"
+                  DisplayName="No Warning on Create"
+                  Description="Do not warn if when the library is created."
+                  Category="General"
+                  Switch="c" />
+    <BoolProperty Name="TruncateTimestamp"
+                  DisplayName="Truncate Timestamp"
+                  Description="Use zero for timestamps and uids/gids."
+                  Category="General"
+                  Switch="D" />
+    <BoolProperty Name="SuppressStartupBanner"
+                  DisplayName="Suppress Startup Banner"
+                  Description="Don't show version number."
+                  Category="General" />
+    <BoolProperty Name="Verbose"
+                  DisplayName="Verbose"
+                  Description="Verbose"
+                  Switch="v"
+                  Category="General" />
+    <StringProperty Name="OutputFile"
+                    DisplayName="Output File"
+                    Description="Override the default name and location of the library."
+                    Category="General" />
+    <StringProperty
+       Name="AdditionalOptions"
+       DisplayName="Additional Options"
+       Description="Additional Options."
+       Category="Command Line"
+       F1Keyword="vc.project.AdditionalOptionsPage">
+    </StringProperty>
+</Rule>

@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  "Xbox Image" project property page (mirrors the original XDK's Xbox Image > General page).
+  Surfaces the imagebld settings that produce the .xbe as editable, per-configuration
+  properties persisted to the .vcxproj. Rxdk.Xbox.targets reads these Rxdk* properties and
+  writes them into the generated build manifest; Rxdk.Cli passes them to imagebld.
+
+  Contributed as a generic property page via <PropertyPageSchema Context="Project"> in
+  Rxdk.Xbox.props (same mechanism VS uses for its own general.xml / nmake.xml pages).
+-->
+<Rule Name="XboxImage"
+      DisplayName="Xbox Image Builder"
+      PageTemplate="tool"
+      Description="imagebld settings used to build the Xbox .xbe."
+      Order="30"
+      xmlns="http://schemas.microsoft.com/build/2009/properties">
+
+  <Rule.Categories>
+    <Category Name="General" DisplayName="General" Description="Core XBE image settings." />
+    <Category Name="UtilityDrive" DisplayName="Utility Drive" Description="Utility (Z:) drive behavior at launch." />
+    <Category Name="Advanced" DisplayName="Advanced" Description="Advanced imagebld options." />
+    <Category Name="Command Line"
+              DisplayName="Command Line"
+              Subtype="CommandLine" />
+  </Rule.Categories>
+
+  <Rule.DataSource>
+    <DataSource Persistence="ProjectFile" HasConfigurationCondition="true" />
+  </Rule.DataSource>
+
+  <!-- ===== General ===== -->
+  <StringProperty Name="StackSize" DisplayName="Stack Size"
+                  Category="General"
+                  Description="Title thread stack size in bytes. (/stack)" />
+
+  <BoolProperty Name="ImageDebug" DisplayName="Include Debug Info"
+                Category="General"
+                Description="Include the debug directory in the XBE so the debugger can resolve symbols. (/debug)" />
+
+  <BoolProperty Name="NoLogo" DisplayName="Suppress Startup Banner"
+                Category="General"
+                Description="Do not print the imagebld banner. (/nologo)" />
+
+  <BoolProperty Name="NoLibWarn" DisplayName="Disable Library Warnings"
+                Category="General"
+                Description="Suppress library-version warnings from imagebld. (/nolibwarn)" />
+
+  <BoolProperty Name="LimitMemory" DisplayName="Limit Memory (64 MB)"
+                Category="General"
+                Description="Run the title as if the console has only 64 MB of RAM. (/limitmem)" />
+
+  <!-- ===== Utility Drive ===== -->
+  <BoolProperty Name="DontModifyHardDisk" DisplayName="Don't Modify Hard Disk"
+                Category="UtilityDrive"
+                Description="Prevent the title from modifying the retail hard disk layout. (/dontmodifyhd)" />
+
+  <BoolProperty Name="DontMountUtilityDrive" DisplayName="Don't Mount Utility Drive"
+                Category="UtilityDrive"
+                Description="Do not mount the utility (Z:) drive at launch (/dontmountud).  Cannot be combined with Format Utility Drive." />
+
+  <BoolProperty Name="FormatUtilityDrive" DisplayName="Format Utility Drive"
+                Category="UtilityDrive"
+                Description="Format the utility (Z:) drive at launch (/formatud).  Cannot be combined with Don't Mount Utility Drive." />
+
+  <EnumProperty Name="UtilityDriveClusterSize" DisplayName="Utility Drive Cluster Size"
+                Category="UtilityDrive"
+                Description="Cluster size for the utility drive (/udcluster). Default lets imagebld choose.">
+    <EnumValue Name="Default" DisplayName="Default" />
+    <EnumValue Name="16KB" DisplayName="16 KB" />
+    <EnumValue Name="32KB" DisplayName="32 KB" />
+    <EnumValue Name="64KB" DisplayName="64 KB" />
+    <EnumValue Name="128KB" DisplayName="128 KB" />
+    <EnumValue Name="256KB" DisplayName="256 KB" />
+  </EnumProperty>
+
+  <!-- ===== Advanced ===== -->
+  <StringListProperty Name="NoPreload" DisplayName="Suppress Preloading"
+                      Category="Advanced" Separator=";"
+                      Description="Section names that should NOT be preloaded at launch (/nopreload). One entry per section." />
+  <StringProperty
+     Name="AdditionalOptions"
+     DisplayName="Additional Options"
+     Description="Additional Options."
+     Category="Command Line"
+     F1Keyword="vc.project.AdditionalOptionsPage">
+  </StringProperty>
+
+</Rule>
