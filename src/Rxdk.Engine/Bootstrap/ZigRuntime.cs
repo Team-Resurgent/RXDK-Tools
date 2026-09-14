@@ -1,24 +1,39 @@
 using System.IO.Compression;
+using System.Runtime.InteropServices;
 using Rxdk.Engine.Platform;
 
 namespace Rxdk.Engine.Bootstrap;
 
 /// <summary>
-/// Manages the RXDK-pinned Zig toolchain used to build titles. C# port of the Windows
-/// path of RXDK-VSCode zigRuntime.ts. Visual Studio is Windows-only, so only the Windows
-/// (.zip) archive is handled — no tar.xz/bsdtar/xz plumbing. The SDK libraries are built
-/// and tested against exactly ZIG_VERSION, so the managed install is preferred over any
-/// zig on PATH (a different Clang can diverge in codegen/predefined macros).
+/// Manages the RXDK-pinned Zig toolchain used to build titles. C# port of RXDK-VSCode
+/// zigRuntime.ts. The SDK libraries are built and tested against exactly ZIG_VERSION, so the
+/// managed install is preferred over any zig on PATH (a different Clang can diverge in
+/// codegen/predefined macros).
 /// </summary>
 public static class ZigRuntime
 {
     public const string ZigVersion = "0.16.0";
     private const string ZigDownloadPage = "https://ziglang.org/download/";
 
-    // Zig release archives are named arch-first: zig-x86_64-windows-<version>.
-    private static string ArchiveBaseName => $"zig-x86_64-windows-{ZigVersion}";
-    private static string ArchiveFileName => $"{ArchiveBaseName}.zip";
     private static string ZigExe => OperatingSystem.IsWindows() ? "zig.exe" : "zig";
+
+    /// <summary>
+    /// Zig release archives are named arch-first: zig-x86_64-linux-0.16.0.tar.xz.
+    /// The older os-first names (zig-linux-x86_64-…) 404.
+    /// </summary>
+    private static string ArchiveBaseName
+    {
+        get
+        {
+            var arch = RuntimeInformation.OSArchitecture == Architecture.Arm64 ? "aarch64" : "x86_64";
+            if (OperatingSystem.IsWindows()) return $"zig-x86_64-windows-{ZigVersion}";
+            if (OperatingSystem.IsMacOS()) return $"zig-{arch}-macos-{ZigVersion}";
+            return $"zig-{arch}-linux-{ZigVersion}";
+        }
+    }
+
+    private static string ArchiveFileName =>
+        OperatingSystem.IsWindows() ? $"{ArchiveBaseName}.zip" : $"{ArchiveBaseName}.tar.xz";
 
     private static IEnumerable<string> InstalledZigCandidates()
     {
@@ -28,8 +43,9 @@ public static class ZigRuntime
     }
 
     /// <summary>
-    /// Resolve the zig.exe to use for a build. Order: explicit override → RXDK_ZIG env →
-    /// managed pinned install → `zig` on PATH. Returns null if none is available.
+    /// Resolve the zig executable to use for a build. Order: explicit override → RXDK_ZIG env →
+    /// managed pinned install → <c>zig</c> on PATH (pinned version only). Returns null if none
+    /// is available.
     /// </summary>
     public static async Task<string?> ResolveZigExecutableAsync(
         string? overridePath = null, CancellationToken ct = default)
@@ -52,18 +68,25 @@ public static class ZigRuntime
         }
 
         foreach (var candidate in InstalledZigCandidates())
+        {
             if (File.Exists(candidate))
                 return candidate;
+        }
 
         // Fallback: `zig` on PATH — but ONLY when it is exactly the pinned version. A different
-        // Zig bundles a different Clang, which diverges from the SDK: its libc++ headers require
-        // Clang 21+ (pinned Zig 0.16.0), so an older PATH zig fails to compile them with cryptic
-        // "#pragma clang attribute … __visibility__" errors. Rejecting a mismatch here makes
-        // zig-status report "not installed" so setup installs the managed pinned Zig, instead of
-        // silently building with the wrong Clang. Use RXDK_ZIG to force a specific zig.
-        var probe = await ProcessRunner.RunAsync("zig", new[] { "version" }, ct: ct);
-        if (probe.Success && probe.StdOut.Trim().Split('\n')[0].Trim() == ZigVersion)
-            return "zig";
+        // Zig bundles a different Clang, which diverges from the SDK. Process.Start throws when
+        // `zig` is not on PATH (Linux: "No such file or directory"); that is "not installed",
+        // not a build failure.
+        try
+        {
+            var probe = await ProcessRunner.RunAsync("zig", new[] { "version" }, ct: ct);
+            if (probe.Success && probe.StdOut.Trim().Split('\n')[0].Trim() == ZigVersion)
+                return "zig";
+        }
+        catch
+        {
+            /* no PATH zig */
+        }
         return null;
     }
 
@@ -79,14 +102,11 @@ public static class ZigRuntime
     }
 
     /// <summary>
-    /// Download + install the pinned Zig into the managed root. Returns the resolved zig.exe.
-    /// Does not mutate PATH — the build resolves Zig by absolute path; a PATH entry for user
-    /// terminals is a UI concern the VS extension can add separately.
+    /// Download + install the pinned Zig into the managed root. Returns the resolved zig path.
+    /// Does not mutate PATH — the build resolves Zig by absolute path.
     /// </summary>
     public static async Task<string> InstallAsync(Action<string>? log = null, CancellationToken ct = default)
     {
-        // Idempotent: if the pinned Zig is already extracted in the managed root, reuse it
-        // instead of re-downloading (so "Complete Setup" is cheap to re-run).
         foreach (var candidate in InstalledZigCandidates())
         {
             if (File.Exists(candidate))
@@ -110,9 +130,8 @@ public static class ZigRuntime
 
         log?.Invoke($"RXDK: extracting Zig to {installRoot}");
         Directory.CreateDirectory(extractDir);
-        ZipFile.ExtractToDirectory(archivePath, extractDir, overwriteFiles: true);
+        await ExtractArchiveAsync(archivePath, extractDir, ct);
 
-        // The archive contains a nested zig-x86_64-windows-<ver>/ folder; move it into place.
         var nestedDir = Path.Combine(extractDir, ArchiveBaseName);
         var binDir = Path.Combine(installRoot, ArchiveBaseName);
         if (File.Exists(Path.Combine(nestedDir, ZigExe)))
@@ -136,7 +155,53 @@ public static class ZigRuntime
         var zig = await ResolveZigExecutableAsync(ct: ct)
             ?? throw new InvalidOperationException(
                 $"Zig {ZigVersion} was not detected after installation.");
+        EnsureUnixExecutable(zig);
         log?.Invoke($"RXDK: Zig {ZigVersion} ready ({zig})");
         return zig;
+    }
+
+    private static async Task ExtractArchiveAsync(string archivePath, string destDir, CancellationToken ct)
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            ZipFile.ExtractToDirectory(archivePath, destDir, overwriteFiles: true);
+            return;
+        }
+
+        ProcessResult tar;
+        try
+        {
+            tar = await ProcessRunner.RunAsync("tar", new[] { "-xf", archivePath, "-C", destDir }, ct: ct);
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException(
+                $"Failed to run tar to unpack the Zig archive: {ex.Message}", ex);
+        }
+
+        if (!tar.Success)
+        {
+            var detail = string.IsNullOrWhiteSpace(tar.StdErr) ? tar.StdOut : tar.StdErr;
+            throw new InvalidOperationException(
+                "Failed to extract the Zig archive. On Linux GNU tar needs xz " +
+                $"(Arch: pacman -S xz; Debian/Ubuntu: apt install xz-utils). {detail}".Trim());
+        }
+    }
+
+    private static void EnsureUnixExecutable(string filePath)
+    {
+        if (OperatingSystem.IsWindows()) return;
+        try
+        {
+            var mode = File.GetUnixFileMode(filePath);
+            const UnixFileMode execute = UnixFileMode.UserExecute | UnixFileMode.GroupExecute | UnixFileMode.OtherExecute;
+            if ((mode & execute) == 0)
+                File.SetUnixFileMode(filePath, mode | UnixFileMode.UserRead | UnixFileMode.UserWrite | execute
+                    | UnixFileMode.GroupRead | UnixFileMode.OtherRead);
+        }
+        catch
+        {
+            /* ignore */
+        }
     }
 }

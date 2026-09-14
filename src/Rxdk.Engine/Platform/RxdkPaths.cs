@@ -21,19 +21,34 @@ public static class RxdkPaths
     public static string HostToolExecutableName(string baseName) =>
         OperatingSystem.IsWindows() ? $"{baseName}.exe" : baseName;
 
-    // The machine-wide data root: %ProgramData% on Windows, the platform CommonApplicationData
-    // elsewhere. In practice the caller (VS Code / VS20XX) overrides each …/RXDK root via the
-    // RXDK_STAGED_* env vars below, so this is only the last-resort default.
-    private static string ProgramData()
+    /// <summary>
+    /// Persistent RXDK data root, matching RXDK-VSCode:
+    /// Windows <c>%ProgramData%\RXDK</c>, macOS <c>~/Library/Application Support/RXDK</c>,
+    /// Linux <c>$XDG_DATA_HOME/rxdk</c> (default <c>~/.local/share/rxdk</c>).
+    /// </summary>
+    public static string RxdkDataRoot()
     {
-        var programData = Environment.GetEnvironmentVariable("ProgramData");
-        if (!string.IsNullOrEmpty(programData))
+        if (OperatingSystem.IsWindows())
         {
-            return programData;
+            var programData = Environment.GetEnvironmentVariable("ProgramData");
+            if (string.IsNullOrEmpty(programData))
+                programData = @"C:\ProgramData";
+            return Path.Combine(programData, "RXDK");
         }
-        return OperatingSystem.IsWindows()
-            ? @"C:\ProgramData"
-            : Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
+        if (OperatingSystem.IsMacOS())
+            return Path.Combine(HomeDirectory(), "Library", "Application Support", "RXDK");
+        var xdg = Environment.GetEnvironmentVariable("XDG_DATA_HOME");
+        if (string.IsNullOrEmpty(xdg))
+            xdg = Path.Combine(HomeDirectory(), ".local", "share");
+        return Path.Combine(xdg, "rxdk");
+    }
+
+    private static string HomeDirectory()
+    {
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        return string.IsNullOrEmpty(home)
+            ? (Environment.GetEnvironmentVariable("HOME") ?? "/")
+            : home;
     }
 
     private static string LocalAppData() =>
@@ -42,7 +57,7 @@ public static class RxdkPaths
     // ---- Staged host tools (…/RXDK/tools) ----
 
     public static string GetDefaultStagedToolsRoot() =>
-        Path.Combine(ProgramData(), "RXDK", "tools");
+        Path.Combine(RxdkDataRoot(), "tools");
 
     /// <summary>Effective staged tools root, honoring the RXDK_STAGED_TOOLS override.</summary>
     public static string GetStagedToolsRoot() =>
@@ -55,7 +70,7 @@ public static class RxdkPaths
     // ---- Staged SDK (headers + libs, …/RXDK/sdk) ----
 
     public static string GetDefaultStagedSdkRoot() =>
-        Path.Combine(ProgramData(), "RXDK", "sdk");
+        Path.Combine(RxdkDataRoot(), "sdk");
 
     /// <summary>Effective staged SDK root, honoring the RXDK_STAGED_SDK override.</summary>
     public static string GetStagedSdkRoot() =>
@@ -64,7 +79,7 @@ public static class RxdkPaths
     // ---- Staged docs (RXDK-Docs, …/RXDK/docs) ----
 
     public static string GetDefaultStagedDocsRoot() =>
-        Path.Combine(ProgramData(), "RXDK", "docs");
+        Path.Combine(RxdkDataRoot(), "docs");
 
     /// <summary>Effective staged docs root, honoring the RXDK_STAGED_DOCS override.</summary>
     public static string GetStagedDocsRoot() =>
@@ -73,17 +88,21 @@ public static class RxdkPaths
     // ---- Staged samples (RXDK-Samples, …/RXDK/samples) ----
 
     public static string GetDefaultStagedSamplesRoot() =>
-        Path.Combine(ProgramData(), "RXDK", "samples");
+        Path.Combine(RxdkDataRoot(), "samples");
 
     /// <summary>Effective staged samples root, honoring the RXDK_STAGED_SAMPLES override.</summary>
     public static string GetStagedSamplesRoot() =>
         EnvOverride("RXDK_STAGED_SAMPLES") ?? GetDefaultStagedSamplesRoot();
 
-    // ---- Managed Zig install (…/RXDK/zig under LocalAppData) ----
+    // ---- Managed Zig install ----
+    // Windows: %LocalAppData%\RXDK\zig (user-local; not ProgramData).
+    // Linux/macOS: sibling of tools/sdk under the same RXDK data root.
 
     /// <summary>Persistent Zig install root.</summary>
     public static string GetZigInstallRoot() =>
-        Path.Combine(LocalAppData(), "RXDK", "zig");
+        OperatingSystem.IsWindows()
+            ? Path.Combine(LocalAppData(), "RXDK", "zig")
+            : Path.Combine(RxdkDataRoot(), "zig");
 
     private static string? EnvOverride(string name)
     {

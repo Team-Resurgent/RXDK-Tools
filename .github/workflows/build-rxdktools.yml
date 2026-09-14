@@ -154,7 +154,11 @@ jobs:
             -p:PackageVersion="$VERSION"
 
       - name: Publish managed tools package (single-file + .NET runtime)
-        run: bash scripts/stage-managed-tools-package.sh linux-x64 out/publish/managed/linux-x64
+        run: |
+          set -euo pipefail
+          bash scripts/stage-managed-tools-package.sh linux-x64 out/publish/managed/linux-x64
+          # upload-artifact / re-zip often drop Unix execute bits; pin them before upload.
+          chmod a+x out/publish/managed/linux-x64/tools/*
 
       - name: Upload NuGet packages
         uses: actions/upload-artifact@v4
@@ -209,10 +213,16 @@ jobs:
       #   run: dotnet test src/Rxdk.XbeImage.Tests/Rxdk.XbeImage.Tests.csproj -c Release --no-restore
 
       - name: Publish managed tools package (macOS arm64)
-        run: bash scripts/stage-managed-tools-package.sh osx-arm64 out/publish/managed/osx-arm64
+        run: |
+          set -euo pipefail
+          bash scripts/stage-managed-tools-package.sh osx-arm64 out/publish/managed/osx-arm64
+          chmod a+x out/publish/managed/osx-arm64/tools/*
 
       - name: Publish managed tools package (macOS x64)
-        run: bash scripts/stage-managed-tools-package.sh osx-x64 out/publish/managed/osx-x64
+        run: |
+          set -euo pipefail
+          bash scripts/stage-managed-tools-package.sh osx-x64 out/publish/managed/osx-x64
+          chmod a+x out/publish/managed/osx-x64/tools/*
 
       - name: Upload managed tools (macOS arm64)
         uses: actions/upload-artifact@v4
@@ -276,6 +286,9 @@ jobs:
           for artifact in dist/rxdk-managed-*; do
             if [[ -d "$artifact" ]]; then
               find "$artifact" -name '*.pdb' -delete
+              # download-artifact does not reliably keep +x; zip stores whatever is on disk.
+              find "$artifact" -type f -path '*/tools/*' -exec chmod a+x {} +
+              chmod a+x "$artifact"/install-dotnet-runtime.sh 2>/dev/null || true
               zip -r "dist/zips/$(basename "$artifact").zip" "$artifact" -x '*.pdb'
             fi
           done

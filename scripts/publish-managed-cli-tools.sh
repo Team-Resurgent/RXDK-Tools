@@ -54,8 +54,10 @@ echo "Publishing $tool_name (single-file framework-dependent, $runtime)..."
     exit 1
   fi
 
-  cp -f "$published_file" "$tools_dir/"
-  echo "  -> $tools_dir/$(basename "$published_file")"
+  dest="$tools_dir/$(basename "$published_file")"
+  cp -f "$published_file" "$dest"
+  chmod a+x "$dest"
+  echo "  -> $dest"
 done
 
 echo "Published ${#cli_tools[@]} single-file framework-dependent tools to: $tools_dir"
