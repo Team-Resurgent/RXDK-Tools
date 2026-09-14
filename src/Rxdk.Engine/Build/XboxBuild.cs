@@ -779,8 +779,12 @@ public static class XboxBuild
             return lib;
         }
         if (File.Exists(lib)) File.Delete(lib);
-        var arArgs = new List<string> { "ar", "rcs", lib };
-        arArgs.AddRange(objs);
+        // A library with hundreds of objects overflows the Windows command line
+        // ("The filename or extension is too long"). llvm-ar reads an @response-file,
+        // one token per line, exactly like the clang driver in XdkLink. Mirror it.
+        var arRsp = Path.Combine(outDir, "archive_objs.rsp");
+        await File.WriteAllLinesAsync(arRsp, objs.Select(o => "\"" + o.Replace('\\', '/') + "\""), ct);
+        var arArgs = new List<string> { "ar", "rcs", lib, "@" + arRsp };
         var ar = await ProcessRunner.RunStreamedAsync(zig, arArgs, log, ct: ct);
         if (!ar.Success) throw new InvalidOperationException($"Archiving {lib} failed (exit {ar.ExitCode})");
         log?.Invoke($"Archived {lib}");
