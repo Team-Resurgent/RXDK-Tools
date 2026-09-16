@@ -82,6 +82,17 @@
 
                 <!-- C doesn't support 'RuntimeTypeInfo' -->
                 <RuntimeTypeInfo Condition="'%(ClCompile.CompileAs)' == 'CompileAsC'" />
+
+                <!-- libcpp.lib (RXDK-Libs/libs/libcpp/build.zig) is itself built with _WIN32 and
+                     __MINGW32__ undefined so its <locale> takes libc++'s newlib (not Win32/MSVCRT)
+                     locale + support backend; a consuming C++ TU that doesn't match pulls libc++'s
+                     Windows backend instead and fails on MSVC-only types like _locale_t that
+                     picolibc doesn't provide. _GNU_SOURCE is needed alongside it: the newlib locale
+                     backend calls picolibc's *_l functions (strtod_l, ...), which picolibc only
+                     declares under __GNU_VISIBLE. _LIBCPP_ENABLE_CXX17_REMOVED_AUTO_PTR opts back
+                     into std::auto_ptr (removed in C++17, which the default -std=c++23 selects) for
+                     ported XDK-era C++ that still uses it. Matches the old engine's XboxBuild.cs. -->
+                <AdditionalOptions Condition="'%(ClCompile.CompileAs)' == 'CompileAsCpp'">%(ClCompile.AdditionalOptions) -U_WIN32 -U__MINGW32__ -D_GNU_SOURCE -D_LIBCPP_ENABLE_CXX17_REMOVED_AUTO_PTR</AdditionalOptions>
             </ClCompile>
         </ItemGroup>
     </Target>
