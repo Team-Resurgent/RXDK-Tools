@@ -35,7 +35,6 @@ public sealed partial class XboxDebugAdapter : DebugAdapterBase
     private readonly Dictionary<int, string> _varChildren = new();
     private int _nextChildRef = 100;
     private readonly Dictionary<string, Dictionary<int, string>> _fileBreakpointAddrs = new();
-    private bool _launchAutoRun;
     private volatile bool _launchStartupInProgress;
     private JObject? _pendingLaunchArgs;
     private int _breakpointSetupInFlight;

@@ -60,18 +60,26 @@ public sealed partial class XboxDebugAdapter
         if (!dir.EndsWith('\\')) dir += "\\";
         var title = GetStr(args, "xbeTitle") ?? (slash >= 0 ? xbePath[(slash + 1)..] : xbePath);
         var bpCount = CountUserBreakpoints();
-        var autoRun = bpCount == 0;
-        Console_($"xbox-dap: launch plan breakpoints={bpCount} autoRun={autoRun}\n");
-        if (bpCount > 0 && autoRun) throw new InvalidOperationException("internal: autoRun with breakpoints");
+        Console_($"xbox-dap: launch plan breakpoints={bpCount}\n");
 
+        // Always stop at the title thread's creation (before any of the title's own code --
+        // including InitHardware/D3D CreateDevice -- runs) and connect the debugger there. The
+        // bridge's "clean start" (autoRun) path used to be chosen whenever no breakpoints were set
+        // yet, skipping ConnectDebugger entirely -- on the theory that DmConnectDebugger(TRUE)
+        // hangs CreateDevice. That hang is real but was about connecting LATE, after the title was
+        // already running; connecting at this pre-CreateDevice halt is exactly what the
+        // breakpoints-already-set path already did safely (and what RXDK-360's debug adapter always
+        // does, regardless of breakpoint count). Skipping the connect just because no breakpoints
+        // existed yet left the debugger permanently unconnected for the rest of the session, so any
+        // breakpoint set LIVE afterward armed (BREAK ADDR= succeeds) but never actually triggered --
+        // the INT3 has nowhere connected to report the stop to.
         var launch = await _bridge.RequestAsync("launch", Args(
             ("dir", dir), ("title", title), ("reboot", GetBool(args, "reboot")),
-            ("timeout", 120000), ("console", GetStr(args, "consoleName")), ("autoRun", autoRun)));
+            ("timeout", 120000), ("console", GetStr(args, "consoleName")), ("autoRun", false)));
         var threadId = (int)launch.GetNumber("threadId");
         if (threadId > 0) _stoppedThreadId = threadId;
-        _launchAutoRun = launch.GetBool("running");
         _launchFinished = true;
-        Console_($"xbox-dap: launch result threadId={threadId} moduleBase={launch.GetString("moduleBase") ?? "?"} running={_launchAutoRun}\n");
+        Console_($"xbox-dap: launch result threadId={threadId} moduleBase={launch.GetString("moduleBase") ?? "?"}\n");
         await PrintDiagAsync("after launch");
     }
 
@@ -211,32 +219,7 @@ public sealed partial class XboxDebugAdapter
         _configurationFallbackTimer = null;
 
         var bpCount = CountUserBreakpoints();
-        Console_($"xbox-dap: startup path launchAutoRun={_launchAutoRun} breakpoints={bpCount}\n");
-        if (_launchAutoRun)
-        {
-            if (HasUserBreakpoints())
-            {
-                await ApplyAllBreakpointsAsync(false);
-                await EnsureDebuggerConnectedAsync();
-                if (await TryNotifyStoppedAtUserBreakpointAsync("startup autoRun")) return;
-                Console_("xbox-dap: title running — waiting for a title breakpoint (e.g. InitD3D)...\n");
-                _startupGoInProgress = true;
-                try
-                {
-                    if (await ContinueToFirstBreakpointAsync("startup autoRun")) return;
-                    Console_("xbox-dap: title running.\n");
-                    await PrintDiagAsync("startup autoRun running");
-                }
-                catch (Exception e) { Console_($"continue failed: {e.Message}\n"); }
-                finally { _startupGoInProgress = false; }
-            }
-            else
-            {
-                Console_("xbox-dap: title launched and running (clean start, no breakpoints).\n");
-                await PrintDiagAsync("startup autoRun");
-            }
-            return;
-        }
+        Console_($"xbox-dap: startup path breakpoints={bpCount}\n");
 
         await ApplyAllBreakpointsAsync(false);
         if (!HasUserBreakpoints())
@@ -295,33 +278,6 @@ public sealed partial class XboxDebugAdapter
     private bool IsBridgeUserBreakpointStop(BridgeMessage ev, string addr) =>
         ev.GetBool("atUserBreakpoint") ? !string.IsNullOrEmpty(addr)
         : !string.IsNullOrEmpty(addr) && AddressMatchesUserBreakpoint(addr);
-
-    private async Task EnsureDebuggerConnectedAsync()
-    {
-        var d = await _bridge.RequestAsync("diag");
-        if (!d.GetBool("connected")) await _bridge.RequestAsync("attach");
-    }
-
-    private static bool IsMainThreadStoppedOnKit(BridgeMessage d)
-    {
-        if (d.GetBool("threadStopped") || d.GetBool("mainStoppedOnKit")) return true;
-        var main = (int)d.GetNumber("mainThread");
-        if (main > 0 && d.TryGet("threads", out var threads) && threads.ValueKind == System.Text.Json.JsonValueKind.Array)
-        {
-            foreach (var t in threads.EnumerateArray())
-                if (t.TryGetProperty("id", out var id) && id.GetInt32() == main
-                    && t.TryGetProperty("stopped", out var st) && st.ValueKind == System.Text.Json.JsonValueKind.True)
-                    return true;
-        }
-        return false;
-    }
-
-    private static string EffectiveStoppedAddr(BridgeMessage d)
-    {
-        var text = d.GetString("stoppedAddr") ?? "";
-        if (text.Length > 0 && text is not "0x00000000" and not "0x0") return text;
-        return d.GetString("mainEip") ?? text;
-    }
 
     private async Task<bool> ContinueToFirstBreakpointAsync(string label)
     {
@@ -395,27 +351,6 @@ public sealed partial class XboxDebugAdapter
         return false;
     }
 
-    private bool NotifyUserBreakpointFromDiag(BridgeMessage d)
-    {
-        var stoppedAddr = EffectiveStoppedAddr(d);
-        var eip = d.GetString("mainEip");
-        var atUserBp = d.GetBool("atUserBreakpoint") || AddressMatchesUserBreakpoint(stoppedAddr) || AddressMatchesUserBreakpoint(eip);
-        if (!atUserBp) return false;
-        if (!IsMainThreadStoppedOnKit(d) && !AddressMatchesUserBreakpoint(eip) && !d.GetBool("atUserBreakpoint"))
-            return false;
-        var threadId = (int)(d.GetNumber("stoppedThread") is var s && s > 0 ? s : d.GetNumber("mainThread"));
-        if (threadId > 0) _stoppedThreadId = threadId;
-        Console_($"xbox-dap: stopped at {(AddressMatchesUserBreakpoint(eip) ? eip : stoppedAddr)}.\n");
-        NotifyStopped("breakpoint", _stoppedThreadId);
-        return true;
-    }
-
-    private async Task<bool> TryNotifyStoppedAtUserBreakpointAsync(string label)
-    {
-        await PrintDiagAsync(label);
-        var d = await _bridge.RequestAsync("diag");
-        return NotifyUserBreakpointFromDiag(d);
-    }
 
     private async Task PrintDiagAsync(string label)
     {
