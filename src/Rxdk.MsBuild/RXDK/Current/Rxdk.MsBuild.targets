@@ -5,6 +5,9 @@
     <UsingTask TaskName="Rxdk.MsBuild.Tasks.ImageBld" AssemblyFile="$(MSBuildThisFileDirectory)Rxdk.MsBuild.dll"/>
     <UsingTask TaskName="Rxdk.MsBuild.Tasks.ImageBldFlatten" AssemblyFile="$(MSBuildThisFileDirectory)Rxdk.MsBuild.dll"/>
     <UsingTask TaskName="Rxdk.MsBuild.Tasks.Xiso" AssemblyFile="$(MSBuildThisFileDirectory)Rxdk.MsBuild.dll"/>
+    <UsingTask TaskName="Rxdk.MsBuild.Tasks.RxdkBundler" AssemblyFile="$(MSBuildThisFileDirectory)Rxdk.MsBuild.dll"/>
+    <UsingTask TaskName="Rxdk.MsBuild.Tasks.RxdkXactBld" AssemblyFile="$(MSBuildThisFileDirectory)Rxdk.MsBuild.dll"/>
+    <UsingTask TaskName="Rxdk.MsBuild.Tasks.RxdkShaderAssemble" AssemblyFile="$(MSBuildThisFileDirectory)Rxdk.MsBuild.dll"/>
 
     <!-- cleanup properties which are not supported by clang -->
     <Import Project="$(VCTargetsPath)\Microsoft.Cpp.ClangCl.Exclusion.props" />
@@ -97,11 +100,35 @@
         </ItemGroup>
     </Target>
 
+    <!-- @(RxdkResource): project-declared .rdf/.xap/.vsh/.psh files (see TemplateSrc/VideoPlayer for
+         the .rdf shape), matching the manifest's own generic "resources" bucket (RxdkProjectManifest.
+         Resources, filtered by extension the same way XboxBuild.cs's CompileResourcesAsync/
+         CompileXactProjectsAsync/CompileShadersAsync did). Runs before ClCompile: a .rdf's generated
+         Resource.h (bundler's own out_header directive, defaulting next to the .rdf) is #included by
+         C/C++ sources, so it must exist before any of them compile. -->
+    <Target Name="RxdkBuildResources" Condition="'@(RxdkResource)' != ''">
+        <ItemGroup>
+            <_RxdkRdf Include="@(RxdkResource)" Condition="'%(Extension)' == '.rdf'" />
+            <_RxdkXap Include="@(RxdkResource)" Condition="'%(Extension)' == '.xap'" />
+            <_RxdkVsh Include="@(RxdkResource)" Condition="'%(Extension)' == '.vsh'">
+                <_XsasmOut>%(RootDir)%(Directory)%(Filename).xvu</_XsasmOut>
+            </_RxdkVsh>
+            <_RxdkPsh Include="@(RxdkResource)" Condition="'%(Extension)' == '.psh'">
+                <_XsasmOut>%(RootDir)%(Directory)%(Filename).xpu</_XsasmOut>
+            </_RxdkPsh>
+        </ItemGroup>
+
+        <RxdkBundler Condition="'@(_RxdkRdf)' != ''" InputFile="%(_RxdkRdf.Identity)" />
+        <RxdkXactBld Condition="'@(_RxdkXap)' != ''" InputFile="%(_RxdkXap.Identity)" />
+        <RxdkShaderAssemble Condition="'@(_RxdkVsh)' != ''" InputFile="%(_RxdkVsh.Identity)" OutputFile="%(_RxdkVsh._XsasmOut)" />
+        <RxdkShaderAssemble Condition="'@(_RxdkPsh)' != ''" InputFile="%(_RxdkPsh.Identity)" OutputFile="%(_RxdkPsh._XsasmOut)" />
+    </Target>
+
     <Target Name="ClCompile"
             Condition="'@(ClCompile)' != ''"
             Inputs="@(ClCompile)"
             Outputs="@(ClCompile->'%(ObjectFileName)');$(IntDir)eh_start.obj;$(IntDir)eh_end.obj"
-            DependsOnTargets="SelectClCompile" >
+            DependsOnTargets="SelectClCompile;RxdkBuildResources" >
 
         <PropertyGroup>
             <CLToolArchitecture Condition="'$(CLToolArchitecture)' == ''">$(VCToolArchitecture)</CLToolArchitecture>

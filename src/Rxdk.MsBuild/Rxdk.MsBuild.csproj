@@ -77,7 +77,10 @@
     <None Include="Scripts\Generate-Targets.ps1" />
     <Compile Include="Tasks\ImageBld.cs" />
     <Compile Include="Tasks\ImageBldFlatten.cs" />
+    <Compile Include="Tasks\RxdkBundler.cs" />
+    <Compile Include="Tasks\RxdkShaderAssemble.cs" />
     <Compile Include="Tasks\RxdkToolTask.cs" />
+    <Compile Include="Tasks\RxdkXactBld.cs" />
     <Compile Include="Tasks\Xiso.cs" />
     <Compile Include="Tasks\ZigAr.cs" />
     <Compile Include="Tasks\ZigCompile.cs" />

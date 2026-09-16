@@ -329,16 +329,17 @@ public sealed class VcxprojExporterTests
     }
 
     [Fact]
-    public void Resources_export_as_None_items_with_a_warning_the_bundler_isnt_wired_up()
+    public void Resources_export_as_RxdkResource_items()
     {
-        var (result, doc, projectRoot) = ExportFullManifest();
+        // One generic item type for .rdf/.xap/.vsh/.psh -- Rxdk.MsBuild.targets' RxdkBuildResources
+        // target classifies by extension and runs bundler/xactbld/xsasm before ClCompile.
+        var (_, doc, projectRoot) = ExportFullManifest();
         try
         {
             XNamespace ns = doc.Root!.GetDefaultNamespace();
-            var resources = doc.Root!.Elements(ns + "ItemGroup").Elements(ns + "None")
+            var resources = doc.Root!.Elements(ns + "ItemGroup").Elements(ns + "RxdkResource")
                 .Select(e => e.Attribute("Include")!.Value).ToList();
             Assert.Equal(new[] { "font.rdf", "gamepad.rdf" }, resources);
-            Assert.Contains(result.Warnings, w => w.Contains("resource"));
         }
         finally { Directory.Delete(projectRoot, recursive: true); }
     }

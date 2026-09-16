@@ -59,8 +59,6 @@ public static class VcxprojExporter
             ? new Dictionary<string, Dictionary<string, string>>()
             : configNames.ToDictionary(c => c, c => ImageBldMeta(manifest.ResolveConfiguration(c)));
 
-        if (defaultManifest.Resources is { Count: > 0 })
-            result.Warnings.Add($"{defaultManifest.Resources.Count} resource (.rdf) file(s) are listed but not compiled: the bundler pipeline isn't wired into the MSBuild toolset yet. They're added to the project as non-built items.");
         if (defaultManifest.ForceCopy == true)
             result.Warnings.Add("forceCopy has no vcxproj equivalent (deploy-to-devkit incremental copy is a VS Code launch setting) and was not exported.");
         if (defaultManifest.CreateIso == false)
@@ -317,8 +315,12 @@ public static class VcxprojExporter
         }
         if (defaultManifest.Resources is { Count: > 0 })
         {
+            // One generic item type for .rdf/.xap/.vsh/.psh, matching the manifest's own generic
+            // "resources" bucket; Rxdk.MsBuild.targets' RxdkBuildResources target classifies by
+            // extension and runs bundler/xactbld/xsasm before ClCompile, same as XboxBuild.cs's
+            // CompileResourcesAsync/CompileXactProjectsAsync/CompileShadersAsync did.
             sb.AppendLine("  <ItemGroup>");
-            foreach (var r in defaultManifest.Resources) sb.AppendLine($"    <None Include=\"{Esc(r.Replace('/', '\\'))}\" />");
+            foreach (var r in defaultManifest.Resources) sb.AppendLine($"    <RxdkResource Include=\"{Esc(r.Replace('/', '\\'))}\" />");
             sb.AppendLine("  </ItemGroup>");
         }
         if (defaultManifest.Embed is { Count: > 0 })
