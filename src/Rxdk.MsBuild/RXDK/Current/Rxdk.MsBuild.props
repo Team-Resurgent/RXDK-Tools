@@ -3,7 +3,22 @@
 
     <PropertyGroup>
         <EnableStdModules>false</EnableStdModules>
+        <!-- The MultiToolTask path (Rxdk.MsBuild.targets' ClCompile target, when this is true) is
+             Microsoft's own multi-proc cl.exe orchestrator: even when pointed at ZigCompile via
+             TaskName, it independently adds the real MSVC/Windows SDK include dirs on top of
+             whatever %(ClCompile.AdditionalIncludeDirectories) says, which a freestanding clang
+             build can't tolerate (redeclared builtins, __crt_va_start/end undeclared, etc). The
+             plain per-source ZigCompile invocations further down the same target honor our
+             AdditionalIncludeDirectories override exactly, so force that path always. -->
+        <UseMultiToolTask>false</UseMultiToolTask>
         <IncludePath>$(RXDK)\sdk\include\c++\v1;$(RXDK)\sdk\include</IncludePath>
+        <!-- A second, dedicated copy of the same paths: Microsoft.Cpp.targets (imported after this
+             file, at the bottom of the .vcxproj) redefines $(IncludePath) itself as
+             $(VC_IncludePath);$(WindowsSDK_IncludePath);... with %(IncludePath) folded in: it
+             appends the real MSVC/Windows SDK dirs onto ours rather than the other way around, so by
+             the time the ClCompile target runs, $(IncludePath) is no longer just the SDK's own
+             clean-room headers. This name is ours alone, so nothing downstream touches it. -->
+        <RxdkSdkIncludePath>$(RXDK)\sdk\include\c++\v1;$(RXDK)\sdk\include</RxdkSdkIncludePath>
         <!-- One flat dir, XDK-style: Debug and Release variants of a library live side by side,
              distinguished by a "d" suffix on the filename (libxapi.lib / libxapid.lib) — picked
              by whatever names the project's own LibraryDependencies/AdditionalDependencies list,
@@ -87,15 +102,17 @@
             <OutputFile>$(OutDir)$(TargetName).exe</OutputFile>
             <EntryPointSymbol Condition="'$(ConfigurationType)' == 'Application'">XapiTitleStartup</EntryPointSymbol>
             <EntryPointSymbol Condition="'$(ConfigurationType)' == 'DebuggerExtension'">DxtEntry</EntryPointSymbol>
-            <!-- LibraryDependencies maps to -lNAME, which already implies the "lib" prefix and
-                 ".lib" extension — so these are bare names (d3d8, not libd3d8), same as a real
-                 "Additional Dependencies" list naming d3d8$(D).lib. -->
-            <LibraryDependencies>d3d8$(D);d3dx8$(D);xapi$(D);c$(D);cpp$(D);kernel$(D)</LibraryDependencies>
+            <!-- LibraryDependencies maps to -lNAME. Verified against the real zig cc / ld.lld search
+                 strategy on this target (x86-windows-gnu): -lNAME only tries NAME.dll, NAME.lib and
+                 libNAME.a — never libNAME.lib, so with our libs actually named libd3d8d.lib etc
+                 (the "lib" is part of the real filename, not an implied prefix), the -l value has to
+                 spell that out in full: libd3d8$(D), not d3d8$(D). -->
+            <LibraryDependencies>libd3d8$(D);libd3dx8$(D);libxapi$(D);libc$(D);libcpp$(D);libkernel$(D)</LibraryDependencies>
             <AdditionalDependencies />
             <!-- libcompat[d].lib is an explicit dependency like any other above, just force-linked
                  whole-archive (see XdkLink.cs's IsWholeArchiveLib for the matching Rxdk.Engine
                  logic and the hardware rationale) — projects name it themselves, same as this list. -->
-            <AdditionalOptions>-rtlib=compiler-rt -Wl,--whole-archive -lcompat$(D) -Wl,--no-whole-archive</AdditionalOptions>
+            <AdditionalOptions>-rtlib=compiler-rt -Wl,--whole-archive -llibcompat$(D) -Wl,--no-whole-archive</AdditionalOptions>
         </Link>
 
         <ImageBld>

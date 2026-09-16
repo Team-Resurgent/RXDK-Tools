@@ -101,8 +101,16 @@
 
         <ItemGroup>
             <ClCompile>
-                <!-- Moved to this target to avoid adding add $(IncludePath) for intellisense -->
-                <AdditionalIncludeDirectories>%(ClCompile.AdditionalIncludeDirectories);$(IncludePath)</AdditionalIncludeDirectories>
+                <!-- Replaces (not appends to) %(ClCompile.AdditionalIncludeDirectories): by this point
+                     it already holds the backing PlatformToolset's own real MSVC/Windows SDK include
+                     dirs (set by the standard Microsoft.Cpp.props toolset defaults, evaluated before
+                     this target runs), which -nostdinc on the zig cc line does not strip (it only
+                     drops the compiler's own builtin search paths, not explicit -I flags). Only the
+                     SDK's own clean-room headers ($(RxdkSdkIncludePath), set in Rxdk.MsBuild.props)
+                     belong on a freestanding clang build, not $(IncludePath), which
+                     Microsoft.Cpp.targets redefines with the real MSVC/Windows SDK dirs folded back
+                     in by the time this target runs. -->
+                <AdditionalIncludeDirectories>$(RxdkSdkIncludePath)</AdditionalIncludeDirectories>
                 <ExcludedInputPaths>$(ExcludePath)</ExcludedInputPaths>
                 <TimestampSurrogate Condition="'%(ClCompile.TimestampSurrogate)' == ''">$(CompileUpToDateFile)</TimestampSurrogate>
             </ClCompile>
