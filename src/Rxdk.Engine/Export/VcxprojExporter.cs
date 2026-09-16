@@ -48,6 +48,9 @@ public static class VcxprojExporter
         var perConfigFields = configNames.ToDictionary(
             c => c,
             c => Fields(manifest.ResolveConfiguration(c), c, projectRoot, manifest.ConfigurationNames.Count > 0, result.Warnings));
+        var perConfigItemMeta = configNames.ToDictionary(
+            c => c,
+            c => ItemMetadata(manifest.ResolveConfiguration(c)));
 
         var defaultCfg = !string.IsNullOrEmpty(manifest.DefaultConfiguration) && configNames.Contains(manifest.DefaultConfiguration!)
             ? manifest.DefaultConfiguration!
@@ -59,7 +62,7 @@ public static class VcxprojExporter
         result.VcxprojPath = Path.Combine(projectRoot, name + ".vcxproj");
         File.WriteAllText(
             result.VcxprojPath,
-            BuildVcxproj(name, result.ProjectGuid, defaultManifest, configNames, perConfigFields, nativeRefs, extraRefs),
+            BuildVcxproj(name, result.ProjectGuid, defaultManifest, configNames, perConfigFields, perConfigItemMeta, nativeRefs, extraRefs),
             new UTF8Encoding(false));
 
         // Reuse the VS2003 importer's single-project .sln writer -- same shape, no need to duplicate it.
@@ -146,12 +149,8 @@ public static class VcxprojExporter
         if (m.Configuration.HasValue)
             Add("RxdkConfig", m.EffectiveConfiguration.ToString().ToLowerInvariant());
 
-        Add("RxdkLibraries", Join(m.Libraries));
-        Add("RxdkLibraryPaths", Join(m.LibraryPaths));
         Add("RxdkAdditionalLibraries", Join(m.AdditionalLibraries));
         Add("RxdkPublicIncludePaths", Join(m.PublicIncludePaths));
-        Add("RxdkIncludePaths", Join(m.IncludePaths));
-        Add("RxdkDefines", Join(m.Defines));
         if (!string.IsNullOrWhiteSpace(m.CppStandard)) Add("RxdkCppStandard", m.CppStandard!.Trim());
         if (m.Exceptions.HasValue) Add("RxdkExceptions", m.Exceptions.Value ? "true" : "false");
         if (m.Incremental.HasValue) Add("RxdkIncrementalBuild", m.Incremental.Value ? "true" : "false");
@@ -205,11 +204,36 @@ public static class VcxprojExporter
         return f;
     }
 
+    // Libraries/LibraryPaths/IncludePaths/Defines persist as real VC++ item metadata
+    // (Link.AdditionalDependencies / Link.AdditionalLibraryDirectories /
+    // ClCompile.AdditionalIncludeDirectories / ClCompile.PreprocessorDefinitions), the reverse of
+    // Platform.props' _RxdkCollectConfig, which now reads them the same way -- not the flat
+    // RxdkLibraries-style properties Fields() above writes. Outer key is the item type
+    // ("Link"/"ClCompile"), inner is metadata name -> value.
+    private static Dictionary<string, Dictionary<string, string>> ItemMetadata(RxdkProjectManifest m)
+    {
+        var result = new Dictionary<string, Dictionary<string, string>>();
+        void AddMeta(string itemType, string metaName, string? value)
+        {
+            if (string.IsNullOrEmpty(value)) return;
+            if (!result.TryGetValue(itemType, out var inner)) result[itemType] = inner = new();
+            inner[metaName] = value;
+        }
+        string Join(IEnumerable<string>? xs) => string.Join(";", (xs ?? Enumerable.Empty<string>()).Select(x => x.Replace('/', '\\')));
+
+        AddMeta("Link", "AdditionalDependencies", Join(m.Libraries));
+        AddMeta("Link", "AdditionalLibraryDirectories", Join(m.LibraryPaths));
+        AddMeta("ClCompile", "AdditionalIncludeDirectories", Join(m.IncludePaths));
+        AddMeta("ClCompile", "PreprocessorDefinitions", Join(m.Defines));
+        return result;
+    }
+
     // ---- .vcxproj text ----
 
     private static string BuildVcxproj(
         string name, string projectGuid, RxdkProjectManifest defaultManifest, List<string> configNames,
         Dictionary<string, Dictionary<string, string>> perConfigFields,
+        Dictionary<string, Dictionary<string, Dictionary<string, string>>> perConfigItemMeta,
         List<(string RelPath, string Guid)> nativeRefs, List<string> extraRefs)
     {
         var sb = new StringBuilder();
@@ -265,6 +289,56 @@ public static class VcxprojExporter
             sb.AppendLine($"  <PropertyGroup Condition=\"'$(Configuration)|$(Platform)'=='{Esc(c)}|Xbox'\">");
             foreach (var (k, v) in perCfg) sb.AppendLine($"    <{k}>{Esc(v)}</{k}>");
             sb.AppendLine("  </PropertyGroup>");
+        }
+
+        // Libraries/LibraryPaths/IncludePaths/Defines as real VC++ item metadata (see ItemMetadata),
+        // hoisting fields identical across every config the same way the flat properties above do.
+        var itemTypes = perConfigItemMeta.Values.SelectMany(d => d.Keys).Distinct().ToList();
+        var commonMeta = new Dictionary<string, Dictionary<string, string>>();
+        foreach (var itemType in itemTypes)
+        {
+            var metaNames = perConfigItemMeta.Values
+                .Select(d => d.TryGetValue(itemType, out var inner) ? inner.Keys : Enumerable.Empty<string>())
+                .SelectMany(k => k).Distinct().ToList();
+            foreach (var metaName in metaNames)
+            {
+                string? Get(string c) => perConfigItemMeta[c].TryGetValue(itemType, out var inner) && inner.TryGetValue(metaName, out var v) ? v : null;
+                var values = configNames.Select(Get).ToList();
+                if (values.All(v => v != null) && values.Distinct().Count() == 1)
+                {
+                    if (!commonMeta.TryGetValue(itemType, out var outInner)) commonMeta[itemType] = outInner = new();
+                    outInner[metaName] = values[0]!;
+                }
+            }
+        }
+
+        void WriteItemDefinitionGroup(Dictionary<string, Dictionary<string, string>> meta, string? condition)
+        {
+            if (meta.Count == 0) return;
+            sb.AppendLine(condition is null
+                ? "  <ItemDefinitionGroup>"
+                : $"  <ItemDefinitionGroup Condition=\"'$(Configuration)|$(Platform)'=='{Esc(condition)}|Xbox'\">");
+            foreach (var (itemType, inner) in meta)
+            {
+                sb.AppendLine($"    <{itemType}>");
+                foreach (var (metaName, value) in inner) sb.AppendLine($"      <{metaName}>{Esc(value)}</{metaName}>");
+                sb.AppendLine($"    </{itemType}>");
+            }
+            sb.AppendLine("  </ItemDefinitionGroup>");
+        }
+
+        WriteItemDefinitionGroup(commonMeta, null);
+        foreach (var c in configNames)
+        {
+            var perCfgMeta = new Dictionary<string, Dictionary<string, string>>();
+            foreach (var itemType in itemTypes)
+            {
+                if (!perConfigItemMeta[c].TryGetValue(itemType, out var inner)) continue;
+                var commonInner = commonMeta.TryGetValue(itemType, out var ci) ? ci : new Dictionary<string, string>();
+                var remaining = inner.Where(kv => !commonInner.ContainsKey(kv.Key)).ToDictionary(kv => kv.Key, kv => kv.Value);
+                if (remaining.Count > 0) perCfgMeta[itemType] = remaining;
+            }
+            WriteItemDefinitionGroup(perCfgMeta, c);
         }
 
         if (defaultManifest.Sources is { Count: > 0 })

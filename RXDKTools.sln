@@ -1,3 +1,4 @@
+﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.14.37314.3
@@ -91,6 +92,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rxdk.Dap", "src\Rxdk.Dap\Rxdk.Dap.csproj", "{C110E73E-DB58-4279-9929-0EC4711E15E2}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rxdk.MsBuild", "src\Rxdk.MsBuild\Rxdk.MsBuild.csproj", "{72C2CD82-4280-44FE-B5C9-8362611DC6F9}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rxdk.Engine.Tests", "src\Rxdk.Engine.Tests\Rxdk.Engine.Tests.csproj", "{414258E5-82FC-44E7-8A25-969510EE0F1B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -570,6 +573,18 @@ Global
 		{72C2CD82-4280-44FE-B5C9-8362611DC6F9}.Release|x64.Build.0 = Release|Any CPU
 		{72C2CD82-4280-44FE-B5C9-8362611DC6F9}.Release|x86.ActiveCfg = Release|Any CPU
 		{72C2CD82-4280-44FE-B5C9-8362611DC6F9}.Release|x86.Build.0 = Release|Any CPU
+		{414258E5-82FC-44E7-8A25-969510EE0F1B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{414258E5-82FC-44E7-8A25-969510EE0F1B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{414258E5-82FC-44E7-8A25-969510EE0F1B}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{414258E5-82FC-44E7-8A25-969510EE0F1B}.Debug|x64.Build.0 = Debug|Any CPU
+		{414258E5-82FC-44E7-8A25-969510EE0F1B}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{414258E5-82FC-44E7-8A25-969510EE0F1B}.Debug|x86.Build.0 = Debug|Any CPU
+		{414258E5-82FC-44E7-8A25-969510EE0F1B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{414258E5-82FC-44E7-8A25-969510EE0F1B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{414258E5-82FC-44E7-8A25-969510EE0F1B}.Release|x64.ActiveCfg = Release|Any CPU
+		{414258E5-82FC-44E7-8A25-969510EE0F1B}.Release|x64.Build.0 = Release|Any CPU
+		{414258E5-82FC-44E7-8A25-969510EE0F1B}.Release|x86.ActiveCfg = Release|Any CPU
+		{414258E5-82FC-44E7-8A25-969510EE0F1B}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -614,6 +629,7 @@ Global
 		{4877E05A-2B40-4395-A1BC-CD045A610CF7} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{C110E73E-DB58-4279-9929-0EC4711E15E2} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{72C2CD82-4280-44FE-B5C9-8362611DC6F9} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+		{414258E5-82FC-44E7-8A25-969510EE0F1B} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {9BAC8E47-428E-4F44-9A01-7EFE5823358F}
