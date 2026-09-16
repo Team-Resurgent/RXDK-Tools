@@ -1,6 +1,7 @@
 using Rxdk.Engine.Bootstrap;
 using Rxdk.Engine.Build;
 using Rxdk.Engine.Deploy;
+using Rxdk.Engine.Export;
 using Rxdk.Engine.Import;
 using Rxdk.Engine.Model;
 using Rxdk.Engine.Platform;
@@ -37,6 +38,7 @@ if (args.Length == 0)
     Console.Error.WriteLine("  xbox-ip                     Print the resolved devkit address");
     Console.Error.WriteLine("  import-vcproj --in <file.vcproj> [--out <dir>] [--scaffold <dir>] [--copy-sources]   Import a VS2003 XDK project");
     Console.Error.WriteLine("  import-sln --in <file.sln> [--out <dir>] [--scaffold <dir>] [--copy-sources]   Import a VS2003 XDK solution (multi-project)");
+    Console.Error.WriteLine("  generate-vcxproj --project-root <dir>   Generate a .vcxproj + .sln from rxdk.project.json (open a VS Code project in Visual Studio)");
     return 2;
 }
 
@@ -93,6 +95,8 @@ switch (command)
         return CmdImportVcproj(opts);
     case "import-sln":
         return CmdImportSln(opts);
+    case "generate-vcxproj":
+        return CmdGenerateVcxproj(opts);
     default:
         Console.Error.WriteLine($"unknown command: {command}");
         return 2;
@@ -145,6 +149,27 @@ static int CmdImportSln(Dictionary<string, string> opts)
     catch (Exception ex)
     {
         Console.Error.WriteLine($"import-sln failed: {ex.Message}");
+        return 1;
+    }
+}
+
+static int CmdGenerateVcxproj(Dictionary<string, string> opts)
+{
+    if (!opts.TryGetValue("project-root", out var root) || string.IsNullOrEmpty(root))
+    {
+        Console.Error.WriteLine("missing required --project-root <dir>");
+        return 2;
+    }
+    try
+    {
+        var r = VcxprojExporter.Export(root);
+        Console.WriteLine($"OK: generated {r.ProjectName} -> {r.VcxprojPath}");
+        foreach (var w in r.Warnings) Console.WriteLine($"Warning: {w}");
+        return 0;
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"generate-vcxproj failed: {ex.Message}");
         return 1;
     }
 }
