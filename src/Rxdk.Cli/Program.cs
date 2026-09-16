@@ -114,11 +114,10 @@ static int CmdImportVcproj(Dictionary<string, string> opts)
     var copySources = opts.ContainsKey("copy-sources");
     try
     {
+        // Import() already writes a single-project .sln via VcxprojExporter.Export (the multi-project
+        // import-sln path additionally writes its own umbrella .sln alongside each project's own).
         var r = Vcproj2003Importer.Import(input, outDir ?? "",
             string.IsNullOrEmpty(scaffold) ? null : scaffold, copySources, log: msg => Console.WriteLine(msg));
-        // A single-project import gets its own .sln so it opens directly in Visual Studio (the
-        // multi-project import-sln path writes its own umbrella solution instead).
-        Vcproj2003Importer.WriteSolution(System.IO.Path.GetDirectoryName(r.VcxprojPath) ?? "", r);
         Console.WriteLine($"OK: imported {r.ProjectName} ({r.ConfigurationCount} config(s), {r.SourceCount} source(s)) -> {r.VcxprojPath}");
         return 0;
     }

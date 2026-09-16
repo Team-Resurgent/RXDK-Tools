@@ -7,37 +7,39 @@ using Xunit;
 namespace Rxdk.Engine.Tests;
 
 /// <summary>
-/// VcxprojExporter is the reverse of Platform.props' RxdkGenerateProjectJson MSBuild target: it
-/// writes a .vcxproj FROM an rxdk.project.json, so a project created the VS Code / Open Folder way
-/// can be opened in Visual Studio ("Import VSCode Project"). This file exercises every field the
-/// manifest schema supports, so a field silently dropped (or written to a container Platform.props
-/// no longer reads -- the exact bug this suite was written after: RxdkLibraries kept being written
-/// as a flat property after the engine switched to reading Link.AdditionalDependencies item
-/// metadata, so an imported project would silently lose every library) fails a test instead of
-/// only surfacing on a real "Import VSCode Project" click.
-///
-/// The reverse direction (.vcxproj -> rxdk.project.json, RxdkGenerateProjectJson) lives entirely in
-/// Platform.props as an inline RoslynCodeTaskFactory target, not in this C# codebase, and needs a
-/// real MSBuild.exe to run -- it is NOT exercised here. These tests only guarantee the export half:
-/// every manifest field lands in the .vcxproj under the name/container the MSBuild side actually
-/// reads (see Platform.props' _RxdkCollectConfig for the reader).
+/// VcxprojExporter writes a native Rxdk.MsBuild .vcxproj (ApplicationType=RXDK, real ClCompile/Link/
+/// ImageBld items -- see TemplateSrc/Dxt for the hand-authored shape it mirrors) FROM an
+/// rxdk.project.json, so a project created the VS Code / Open Folder way can be opened in Visual
+/// Studio ("Import VSCode Project"). This file exercises every field the manifest schema supports,
+/// so a field silently dropped fails a test instead of only surfacing on a real click.
 /// </summary>
 public sealed class VcxprojExporterTests
 {
     // Every field RxdkProjectManifest / RxdkImageBuildOptions supports, non-default where a default
-    // exists, so a field that round-trips to its own default value can't hide a bug.
+    // exists, so a field that round-trips to its own default value can't hide a bug. Two named
+    // configurations (Debug/Release) matching what RXDK-VSCode actually writes today, since the new
+    // toolset derives UseDebugLibraries from the VS configuration name rather than a manifest field.
     private static RxdkProjectManifest FullManifest() => new()
     {
         Name = "FullFieldsSample",
+        DefaultConfiguration = "Debug",
+        Configurations = new()
+        {
+            ["Debug"] = new RxdkProjectManifest
+            {
+                Libraries = new() { "libd3d8d.lib", "libxapid.lib", "libcd.lib", "libcppd.lib", "libkerneld.lib" },
+            },
+            ["Release"] = new RxdkProjectManifest
+            {
+                Libraries = new() { "libd3d8.lib", "libxapi.lib", "libc.lib", "libcpp.lib", "libkernel.lib" },
+            },
+        },
         Type = RxdkProjectKind.Executable,
-        Configuration = RxdkConfiguration.Debug,
         Sources = new() { "src/main.cpp", "src/helper.c" },
-        Libraries = new() { "libd3d8d.lib", "libxapid.lib", "libcd.lib", "libcppd.lib", "libkerneld.lib", "libcompatd.lib" },
         Resources = new() { "font.rdf", "gamepad.rdf" },
         LibraryPaths = new() { "vendor/lib" },
         AdditionalLibraries = new() { "vendor/prebuilt/thirdparty.lib" },
         ProjectReferences = new() { "../SharedLib" },
-        OutputDir = "out/Custom",
         DeployPaths = new() { "Media" },
         Embed = new() { new RxdkEmbedFile { Path = "assets/icon.xpr", Name = "IconXpr" } },
         CreateIso = false,
@@ -72,8 +74,6 @@ public sealed class VcxprojExporterTests
         Defines = new() { "MY_FLAG", "NAME=VALUE" },
         CompileFlags = new() { "-mno-ms-bitfields" },
         CppStandard = "c++20",
-        Exceptions = false,
-        Incremental = false,
     };
 
     private static (VcxprojExporter.ExportResult Result, XDocument Doc, string ProjectRoot) ExportFullManifest()
@@ -96,19 +96,22 @@ public sealed class VcxprojExporterTests
         }
     }
 
-    // Item metadata (Link.AdditionalDependencies etc.) lives inside possibly-multiple
-    // ItemDefinitionGroup elements (a common/unconditioned one plus per-config ones); a flat
-    // manifest hoists everything into the single unconditioned block, so concatenating every
-    // ItemDefinitionGroup's values for one item-type/metadata pair is safe here.
-    private static string? ItemMetaValue(XDocument doc, string itemType, string metaName)
+    // Metadata (Link.LibraryDependencies etc.) lives inside possibly-multiple ItemDefinitionGroup
+    // elements (a common/unconditioned one plus per-config ones, or just per-config ones when the
+    // value legitimately differs by configuration, like library names). A specific config's value
+    // is whatever's in its own conditioned block, falling back to the unconditioned one.
+    private static string? ItemMetaValue(XDocument doc, string itemType, string metaName, string? config = null)
     {
         XNamespace ns = doc.Root!.GetDefaultNamespace();
-        var values = doc.Root!.Elements(ns + "ItemDefinitionGroup")
-            .Elements(ns + itemType)
-            .Elements(ns + metaName)
-            .Select(e => e.Value)
-            .ToList();
-        return values.Count == 0 ? null : string.Join(";", values);
+        foreach (var idg in doc.Root!.Elements(ns + "ItemDefinitionGroup"))
+        {
+            var cond = idg.Attribute("Condition")?.Value ?? "";
+            var matches = config is null ? cond == "" : cond.Contains($"=='{config}|Xbox'");
+            if (!matches) continue;
+            var val = idg.Element(ns + itemType)?.Element(ns + metaName)?.Value;
+            if (val != null) return val;
+        }
+        return null;
     }
 
     private static string? FlatPropertyValue(XDocument doc, string name)
@@ -118,16 +121,31 @@ public sealed class VcxprojExporterTests
     }
 
     [Fact]
-    public void Libraries_export_as_LinkAdditionalDependencies_with_extension_verbatim()
+    public void Libraries_export_per_config_as_LibraryDependencies_without_the_lib_extension()
+    {
+        // Debug and Release keep their own literal names (the manifest already spells out the
+        // config-appropriate "d"-suffixed name) -- no attempt to collapse them into one "$(D)"
+        // value; that's exactly what a hand-authored template does too.
+        var (_, doc, projectRoot) = ExportFullManifest();
+        try
+        {
+            Assert.Equal(
+                "libd3d8d;libxapid;libcd;libcppd;libkerneld",
+                ItemMetaValue(doc, "Link", "LibraryDependencies", "Debug"));
+            Assert.Equal(
+                "libd3d8;libxapi;libc;libcpp;libkernel",
+                ItemMetaValue(doc, "Link", "LibraryDependencies", "Release"));
+        }
+        finally { Directory.Delete(projectRoot, recursive: true); }
+    }
+
+    [Fact]
+    public void AdditionalLibraries_export_as_LinkAdditionalDependencies_verbatim_paths()
     {
         var (_, doc, projectRoot) = ExportFullManifest();
         try
         {
-            // Exact join, in order, extensions untouched -- the engine must never append/strip ".lib"
-            // or a "d" suffix; the manifest already names the precise file it wants.
-            Assert.Equal(
-                "libd3d8d.lib;libxapid.lib;libcd.lib;libcppd.lib;libkerneld.lib;libcompatd.lib",
-                ItemMetaValue(doc, "Link", "AdditionalDependencies"));
+            Assert.Equal("vendor\\prebuilt\\thirdparty.lib", ItemMetaValue(doc, "Link", "AdditionalDependencies"));
         }
         finally { Directory.Delete(projectRoot, recursive: true); }
     }
@@ -144,12 +162,17 @@ public sealed class VcxprojExporterTests
     }
 
     [Fact]
-    public void IncludePaths_export_as_ClCompileAdditionalIncludeDirectories()
+    public void IncludePaths_and_own_PublicIncludePaths_export_as_ClCompileRxdkAdditionalIncludeDirectories()
     {
+        // The real AdditionalIncludeDirectories name can't be used (Microsoft.Cpp.targets clobbers
+        // it) -- Rxdk.MsBuild.targets' ClCompile target reads RxdkAdditionalIncludeDirectories
+        // instead (see TemplateSrc/Cube/child/cubemesh.vcxproj for the same pattern). Own
+        // PublicIncludePaths is folded in too: it doesn't add itself to this project's own compile
+        // otherwise, the same self-reference gap every library template needs.
         var (_, doc, projectRoot) = ExportFullManifest();
         try
         {
-            Assert.Equal("src\\include;vendor\\include", ItemMetaValue(doc, "ClCompile", "AdditionalIncludeDirectories"));
+            Assert.Equal("src\\include;vendor\\include;include", ItemMetaValue(doc, "ClCompile", "RxdkAdditionalIncludeDirectories"));
         }
         finally { Directory.Delete(projectRoot, recursive: true); }
     }
@@ -166,78 +189,123 @@ public sealed class VcxprojExporterTests
     }
 
     [Fact]
-    public void AdditionalLibraries_and_PublicIncludePaths_stay_flat_Rxdk_properties()
+    public void CompileFlags_export_as_ClCompileAdditionalOptions()
     {
-        // These two have no real VC++ item-metadata equivalent (verbatim prebuilt-lib paths and
-        // RXDK's own multi-project "public include" concept), so they must stay as plain
-        // Rxdk*-prefixed properties, not move into an ItemDefinitionGroup.
+        // Unlike the old Makefile engine, the real ClCompile target passes AdditionalOptions
+        // straight to ZigCompile, so this now has a real, working equivalent.
         var (_, doc, projectRoot) = ExportFullManifest();
         try
         {
-            Assert.Equal("vendor\\prebuilt\\thirdparty.lib", FlatPropertyValue(doc, "RxdkAdditionalLibraries"));
-            Assert.Equal("include", FlatPropertyValue(doc, "RxdkPublicIncludePaths"));
+            Assert.Equal("-mno-ms-bitfields", ItemMetaValue(doc, "ClCompile", "AdditionalOptions"));
         }
         finally { Directory.Delete(projectRoot, recursive: true); }
     }
 
     [Fact]
-    public void ImageBuild_fields_export_to_matching_Rxdk_properties()
+    public void CppStandard_exports_only_when_non_default()
     {
         var (_, doc, projectRoot) = ExportFullManifest();
         try
         {
-            Assert.Equal("131072", FlatPropertyValue(doc, "RxdkStackSize"));
-            Assert.Equal("false", FlatPropertyValue(doc, "RxdkImageDebug"));
-            Assert.Equal("false", FlatPropertyValue(doc, "RxdkNoLogo"));
-            Assert.Equal("false", FlatPropertyValue(doc, "RxdkNoLibWarn"));
-            Assert.Equal("true", FlatPropertyValue(doc, "RxdkLimitMemory"));
-            Assert.Equal("true", FlatPropertyValue(doc, "RxdkDontModifyHardDisk"));
-            Assert.Equal("true", FlatPropertyValue(doc, "RxdkDontMountUtilityDrive"));
-            Assert.Equal("true", FlatPropertyValue(doc, "RxdkFormatUtilityDrive"));
-            Assert.Equal("32768", FlatPropertyValue(doc, "RxdkUtilityDriveClusterSize"));
-            Assert.Equal("Audio;Video", FlatPropertyValue(doc, "RxdkNoPreload"));
-            Assert.Equal("0xffff1234", FlatPropertyValue(doc, "RxdkTestId"));
-            Assert.Equal("0xffff5678,00112233", FlatPropertyValue(doc, "RxdkTestAltId"));
-            Assert.Equal("7", FlatPropertyValue(doc, "RxdkTestRegion"));
-            Assert.Equal("1", FlatPropertyValue(doc, "RxdkTestRatings"));
-            Assert.Equal("0xffffffff", FlatPropertyValue(doc, "RxdkTestMediaTypes"));
-            Assert.Equal("AABBCCDD", FlatPropertyValue(doc, "RxdkTestLanKey"));
-            Assert.Equal("EEFF0011", FlatPropertyValue(doc, "RxdkTestSignKey"));
-            Assert.Equal("Full Fields Sample", FlatPropertyValue(doc, "RxdkTestName"));
-            Assert.Equal("4096", FlatPropertyValue(doc, "RxdkTestVersion"));
-            Assert.Equal("titleinfo.bin", FlatPropertyValue(doc, "RxdkTitleInfo"));
-            Assert.Equal("titleimage.xpr", FlatPropertyValue(doc, "RxdkTitleImage"));
-            Assert.Equal("saveimage.xpr", FlatPropertyValue(doc, "RxdkDefaultSaveImage"));
+            Assert.Equal("c++20", ItemMetaValue(doc, "ClCompile", "CppLanguageStandard"));
         }
         finally { Directory.Delete(projectRoot, recursive: true); }
     }
 
     [Fact]
-    public void Remaining_scalar_and_list_fields_export_correctly()
+    public void PublicIncludePaths_stays_a_flat_property_too()
+    {
+        // Still emitted as the real PublicIncludePaths property (correct per-toolset convention,
+        // matches every hand-authored library template), even though it only documents intent for
+        // now (a ProjectReference consumer needs its own explicit RxdkAdditionalIncludeDirectories).
+        var (_, doc, projectRoot) = ExportFullManifest();
+        try
+        {
+            Assert.Equal("include", FlatPropertyValue(doc, "PublicIncludePaths"));
+        }
+        finally { Directory.Delete(projectRoot, recursive: true); }
+    }
+
+    [Fact]
+    public void ImageBuild_fields_export_to_matching_ImageBld_item_metadata()
+    {
+        var (_, doc, projectRoot) = ExportFullManifest();
+        try
+        {
+            Assert.Equal("131072", ItemMetaValue(doc, "ImageBld", "StackSize"));
+            Assert.Equal("false", ItemMetaValue(doc, "ImageBld", "Debug"));
+            Assert.Equal("false", ItemMetaValue(doc, "ImageBld", "NoLogo"));
+            Assert.Equal("false", ItemMetaValue(doc, "ImageBld", "NoLibWarn"));
+            Assert.Equal("true", ItemMetaValue(doc, "ImageBld", "LimitMemory"));
+            Assert.Equal("true", ItemMetaValue(doc, "ImageBld", "DontModifyHardDisk"));
+            Assert.Equal("true", ItemMetaValue(doc, "ImageBld", "DontMountUtilityDrive"));
+            Assert.Equal("true", ItemMetaValue(doc, "ImageBld", "FormatUtilityDrive"));
+            Assert.Equal("32768", ItemMetaValue(doc, "ImageBld", "UtilityDriveClusterSize"));
+            Assert.Equal("Audio;Video", ItemMetaValue(doc, "ImageBld", "NoPreload"));
+            Assert.Equal("0xffff1234", ItemMetaValue(doc, "ImageBld", "TestId"));
+            Assert.Equal("0xffff5678,00112233", ItemMetaValue(doc, "ImageBld", "TestAltId"));
+            Assert.Equal("7", ItemMetaValue(doc, "ImageBld", "TestRegion"));
+            Assert.Equal("1", ItemMetaValue(doc, "ImageBld", "TestRatings"));
+            Assert.Equal("0xffffffff", ItemMetaValue(doc, "ImageBld", "TestMediaTypes"));
+            Assert.Equal("AABBCCDD", ItemMetaValue(doc, "ImageBld", "TestLanKey"));
+            Assert.Equal("EEFF0011", ItemMetaValue(doc, "ImageBld", "TestSignKey"));
+            Assert.Equal("Full Fields Sample", ItemMetaValue(doc, "ImageBld", "TestName"));
+            Assert.Equal("4096", ItemMetaValue(doc, "ImageBld", "TestVersion"));
+            Assert.Equal("titleinfo.bin", ItemMetaValue(doc, "ImageBld", "TitleInfo"));
+            Assert.Equal("titleimage.xpr", ItemMetaValue(doc, "ImageBld", "TitleImage"));
+            Assert.Equal("saveimage.xpr", ItemMetaValue(doc, "ImageBld", "DefaultSaveImage"));
+        }
+        finally { Directory.Delete(projectRoot, recursive: true); }
+    }
+
+    [Fact]
+    public void DeployPaths_and_Embed_export_as_IsoCopy_and_RxdkEmbed_items()
+    {
+        var (_, doc, projectRoot) = ExportFullManifest();
+        try
+        {
+            XNamespace ns = doc.Root!.GetDefaultNamespace();
+            var isoCopy = doc.Root!.Elements(ns + "ItemGroup").Elements(ns + "IsoCopy")
+                .Select(e => e.Attribute("Include")!.Value).ToList();
+            Assert.Equal(new[] { "Media\\**" }, isoCopy);
+
+            var embed = doc.Root!.Elements(ns + "ItemGroup").Elements(ns + "RxdkEmbed").ToList();
+            Assert.Single(embed);
+            Assert.Equal("assets\\icon.xpr", embed[0].Attribute("Include")!.Value);
+            Assert.Equal("IconXpr", embed[0].Element(ns + "Name")!.Value);
+        }
+        finally { Directory.Delete(projectRoot, recursive: true); }
+    }
+
+    [Fact]
+    public void CreateIso_false_and_ForceCopy_surface_as_warnings_not_silently_dropped()
+    {
+        var (result, _, projectRoot) = ExportFullManifest();
+        try
+        {
+            Assert.Contains(result.Warnings, w => w.StartsWith("createIso:false"));
+            Assert.Contains(result.Warnings, w => w.StartsWith("forceCopy"));
+        }
+        finally { Directory.Delete(projectRoot, recursive: true); }
+    }
+
+    [Fact]
+    public void Resources_export_as_None_items_with_a_warning_the_bundler_isnt_wired_up()
     {
         var (result, doc, projectRoot) = ExportFullManifest();
         try
         {
-            Assert.Equal("debug", FlatPropertyValue(doc, "RxdkConfig"));
-            Assert.Equal("Media", FlatPropertyValue(doc, "RxdkDeployPaths"));
-            Assert.Equal("assets\\icon.xpr|IconXpr", FlatPropertyValue(doc, "RxdkEmbed"));
-            Assert.Equal("false", FlatPropertyValue(doc, "RxdkCreateIso"));
-            Assert.Equal("true", FlatPropertyValue(doc, "RxdkForceCopy"));
-            Assert.Equal("c++20", FlatPropertyValue(doc, "RxdkCppStandard"));
-            Assert.Equal("false", FlatPropertyValue(doc, "RxdkExceptions"));
-            Assert.Equal("false", FlatPropertyValue(doc, "RxdkIncrementalBuild"));
-            Assert.Equal("out\\Custom", FlatPropertyValue(doc, "RxdkOutDir"));
-
-            // No RxdkGenerateProjectJson-side property reads compileFlags back (see VcxprojExporter's
-            // own comment) -- it can't round-trip, so the exporter must not silently drop it: it has
-            // to surface as a warning instead.
-            Assert.Contains(result.Warnings, w => w.StartsWith("compileFlags"));
+            XNamespace ns = doc.Root!.GetDefaultNamespace();
+            var resources = doc.Root!.Elements(ns + "ItemGroup").Elements(ns + "None")
+                .Select(e => e.Attribute("Include")!.Value).ToList();
+            Assert.Equal(new[] { "font.rdf", "gamepad.rdf" }, resources);
+            Assert.Contains(result.Warnings, w => w.Contains("resource"));
         }
         finally { Directory.Delete(projectRoot, recursive: true); }
     }
 
     [Fact]
-    public void Sources_and_resources_export_as_ClCompile_and_None_items()
+    public void Sources_export_as_ClCompile_items_in_order()
     {
         var (_, doc, projectRoot) = ExportFullManifest();
         try
@@ -246,34 +314,32 @@ public sealed class VcxprojExporterTests
             var sources = doc.Root!.Elements(ns + "ItemGroup").Elements(ns + "ClCompile")
                 .Select(e => e.Attribute("Include")!.Value).ToList();
             Assert.Equal(new[] { "src\\main.cpp", "src\\helper.c" }, sources);
-
-            var resources = doc.Root!.Elements(ns + "ItemGroup").Elements(ns + "None")
-                .Select(e => e.Attribute("Include")!.Value).ToList();
-            Assert.Equal(new[] { "font.rdf", "gamepad.rdf" }, resources);
         }
         finally { Directory.Delete(projectRoot, recursive: true); }
     }
 
     [Fact]
-    public void Unresolved_project_reference_falls_back_to_RxdkProjectReferences_with_a_warning()
+    public void Unresolved_project_reference_warns_and_is_not_linkable()
     {
-        // "../SharedLib" (FullManifest) has no .vcxproj on disk next to this temp project, so it
-        // can't become a native <ProjectReference> -- it must still reach the build as a manifest-
-        // style reference (RxdkProjectReferences), not silently vanish, with a warning explaining why.
+        // "../SharedLib" (FullManifest) has no .vcxproj on disk next to this temp project, so unlike
+        // the old Makefile engine (which had a manifest-driven RxdkProjectReferences fallback link
+        // path) the new toolset simply can't link it yet -- it needs "Import VSCode Project" run on
+        // it first. The exporter must still say so instead of silently dropping the reference.
         var (result, doc, projectRoot) = ExportFullManifest();
         try
         {
-            Assert.Equal("../SharedLib", FlatPropertyValue(doc, "RxdkProjectReferences"));
+            XNamespace ns = doc.Root!.GetDefaultNamespace();
+            Assert.Empty(doc.Root!.Elements(ns + "ItemGroup").Elements(ns + "ProjectReference"));
             Assert.Contains(result.Warnings, w => w.Contains("../SharedLib"));
         }
         finally { Directory.Delete(projectRoot, recursive: true); }
     }
 
     [Theory]
-    [InlineData(RxdkProjectKind.Library, "library")]
-    [InlineData(RxdkProjectKind.Dxt, "dxt")]
-    [InlineData(RxdkProjectKind.Executable, null)] // Executable is the Platform.props default: omitted, not written
-    public void Type_exports_only_for_non_default_kinds(RxdkProjectKind kind, string? expected)
+    [InlineData(RxdkProjectKind.Library, "StaticLibrary")]
+    [InlineData(RxdkProjectKind.Dxt, "DebuggerExtension")]
+    [InlineData(RxdkProjectKind.Executable, "Application")]
+    public void Type_exports_to_the_matching_ConfigurationType(RxdkProjectKind kind, string expected)
     {
         var projectRoot = Directory.CreateTempSubdirectory("rxdk-vcxproj-export-test-").FullName;
         try
@@ -289,7 +355,12 @@ public sealed class VcxprojExporterTests
 
             var result = VcxprojExporter.Export(projectRoot);
             var doc = XDocument.Load(result.VcxprojPath);
-            Assert.Equal(expected, FlatPropertyValue(doc, "RxdkType"));
+            XNamespace ns = doc.Root!.GetDefaultNamespace();
+            var configTypes = doc.Root!.Elements(ns + "PropertyGroup")
+                .Where(pg => (string?)pg.Attribute("Label") == "Configuration")
+                .Select(pg => pg.Element(ns + "ConfigurationType")?.Value)
+                .Distinct().ToList();
+            Assert.Equal(new[] { expected }, configTypes);
         }
         finally { Directory.Delete(projectRoot, recursive: true); }
     }

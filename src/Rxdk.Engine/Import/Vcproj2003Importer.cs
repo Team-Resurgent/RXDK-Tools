@@ -4,19 +4,21 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
+using Rxdk.Engine.Export;
 using Rxdk.Engine.Model;
 
 namespace Rxdk.Engine.Import;
 
 /// <summary>
 /// Imports a Visual Studio .NET 2003 XDK project (<c>.vcproj</c>, VisualStudioProject format) into
-/// a native RXDK Visual Studio project (<c>.vcxproj</c> Makefile-type) plus its <c>.filters</c>.
-/// Each VS2003 configuration is preserved; its compiler/linker/XboxImage/XboxDeployment settings
-/// are mapped onto the RXDK per-configuration properties the property pages drive.
-/// The RXDK scaffolding (Rxdk.Xbox.props/targets + the property-page rule XMLs) is copied from a
-/// scaffold directory. By default source files are referenced in place (relative to the output
-/// directory); pass <paramref name="copySources"/> to mirror them into the output folder so the
-/// imported project is self-contained.
+/// an <c>rxdk.project.json</c>, then hands that straight to <see cref="Export.VcxprojExporter"/> to
+/// generate the native Rxdk.MsBuild <c>.vcxproj</c> + <c>.sln</c> -- one code path writes the vcxproj
+/// shape everywhere (fresh VS Code projects, and VS2003 imports alike), and the imported project
+/// ends up usable from both RXDK-VSCode and RXDK-VS20XX, not just the IDE it was imported through.
+/// Each VS2003 configuration is preserved; its compiler/linker/XboxImage/XboxDeployment settings are
+/// mapped onto the manifest fields RxdkProjectManifest defines. By default source files are
+/// referenced in place (relative to the output directory); pass <paramref name="copySources"/> to
+/// mirror them into the output folder so the imported project is self-contained.
 /// </summary>
 public static class Vcproj2003Importer
 {
@@ -162,38 +164,41 @@ public static class Vcproj2003Importer
         ScanForInlineAsm(rawFiles, result);
         ScanForLegacyForScope(rawFiles, result);
 
-        // ---- write .vcxproj + .filters ----
-        var projectGuid = "{" + Guid.NewGuid().ToString().ToUpperInvariant() + "}";
-        result.ProjectGuid = projectGuid;
-        var vcxprojPath = Path.Combine(outDir, name + ".vcxproj");
-        File.WriteAllText(vcxprojPath, BuildVcxproj(name, isLib, projectGuid, configs, sources, projectRefs), new UTF8Encoding(false));
-        File.WriteAllText(vcxprojPath + ".filters", BuildFilters(sources, filters), new UTF8Encoding(false));
-        result.VcxprojPath = vcxprojPath;
-
-        // Also emit rxdk.project.json from the SAME parsed data. It's the project file VS Code opens,
-        // and the committed manifest VS20XX's unified project model uses -- so an imported VS2003
-        // project loads in both IDEs. Only adds a file; the .vcxproj flow above is unchanged.
-        var manifestPath = Path.Combine(outDir, "rxdk.project.json");
+        // ---- write rxdk.project.json, then generate the .vcxproj + .sln FROM it ----
+        // Native project references (build order + include propagation): resolved siblings that
+        // already have a .vcxproj (a solution import passes these; a plain "import-vcproj" of one
+        // project has none). VcxprojExporter's manifest reads ProjectReferences as project-root
+        // directories, not vcxproj file paths, so unwrap each one.
+        var manifest = BuildManifest(name, isLib, configs, sources);
+        if (projectRefs is { Count: > 0 })
+            manifest.ProjectReferences = projectRefs
+                .Select(r => Path.GetDirectoryName(r.RelPath)?.Replace('\\', '/') ?? "")
+                .Where(d => d.Length > 0).ToList();
         // The source list was built vcxproj-style (backslashes). The committed json must be
         // forward-slash: it is read on Linux/macOS too, and only '/' is portable there.
-        var manifest = BuildManifest(name, isLib, configs, sources);
         RxdkManifestLoader.NormalizeSeparators(manifest);
+        var manifestPath = Path.Combine(outDir, RxdkManifestLoader.ManifestFileName);
         File.WriteAllText(manifestPath,
             JsonSerializer.Serialize(manifest, ManifestWriteOptions) + "\n",
             new UTF8Encoding(false));
         result.ManifestPath = manifestPath;
 
-        // No scaffold is copied per-project: the RXDK MSBuild integration (props/targets +
-        // property-page rules) lives in the installed "Xbox" platform (VCTargetsPath\Platforms\Xbox),
-        // which the imported project inherits from Platform=Xbox. The scaffoldDir parameter is kept
-        // for API compatibility but is no longer used.
+        var exported = VcxprojExporter.Export(outDir);
+        result.VcxprojPath = exported.VcxprojPath;
+        result.ProjectGuid = exported.ProjectGuid;
+        result.Warnings.AddRange(exported.Warnings);
+
+        // No scaffold is copied per-project: the RXDK MSBuild integration (Rxdk.MsBuild.props/
+        // targets + property-page rules) lives in the installed ApplicationType (VCTargetsPath\
+        // Application Type\RXDK), which the imported project inherits from ApplicationType=RXDK.
+        // The scaffoldDir parameter is kept for API compatibility but is no longer used.
         _ = scaffoldDir;
 
         if (result.UnmappedLibraries.Count > 0)
             result.Warnings.Add("libraries with no RXDK equivalent (dropped): " +
                 string.Join(", ", result.UnmappedLibraries) + " - the title may not link until those APIs are available.");
 
-        log?.Invoke($"Imported {name}: {result.ConfigurationCount} configuration(s), {result.SourceCount} source file(s) -> {vcxprojPath}");
+        log?.Invoke($"Imported {name}: {result.ConfigurationCount} configuration(s), {result.SourceCount} source file(s) -> {result.VcxprojPath}");
         foreach (var w in result.Warnings) log?.Invoke($"Warning: {w}");
         // Emit the clickable per-file diagnostics raw (no "Warning:" prefix) so the IDEs' gcc-style
         // parsers pick them up as navigable Error-List / Problems entries.
@@ -661,135 +666,7 @@ public static class Vcproj2003Importer
     private static bool PathEquals(string a, string b) =>
         string.Equals(Path.GetFullPath(a), Path.GetFullPath(b), StringComparison.OrdinalIgnoreCase);
 
-    // ---- .vcxproj / .filters emit ----
-
-    private static string BuildVcxproj(string name, bool isLib, string projectGuid, List<Cfg> configs,
-        List<(string include, string tag, string? filter)> sources, IReadOnlyList<ProjRef>? projectRefs)
-    {
-        var ext = isLib ? "lib" : "xbe";
-        var sb = new StringBuilder();
-        sb.AppendLine("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
-        sb.AppendLine("<Project DefaultTargets=\"Build\" xmlns=\"http://schemas.microsoft.com/developer/msbuild/2003\">");
-        sb.AppendLine("  <ItemGroup Label=\"ProjectConfigurations\">");
-        foreach (var c in configs)
-        {
-            sb.AppendLine($"    <ProjectConfiguration Include=\"{Esc(c.Name)}|Xbox\">");
-            sb.AppendLine($"      <Configuration>{Esc(c.Name)}</Configuration>");
-            sb.AppendLine("      <Platform>Xbox</Platform>");
-            sb.AppendLine("    </ProjectConfiguration>");
-        }
-        sb.AppendLine("  </ItemGroup>");
-        sb.AppendLine("  <PropertyGroup Label=\"Globals\">");
-        sb.AppendLine("    <VCProjectVersion>16.0</VCProjectVersion>");
-        sb.AppendLine($"    <ProjectGuid>{projectGuid}</ProjectGuid>");
-        sb.AppendLine("    <RootNamespace>XboxNamespace</RootNamespace>");
-        sb.AppendLine("    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>");
-        sb.AppendLine($"    <ProjectName>{Esc(name)}</ProjectName>");
-        sb.AppendLine("  </PropertyGroup>");
-        sb.AppendLine("  <Import Project=\"$(VCTargetsPath)\\Microsoft.Cpp.Default.props\" />");
-        sb.AppendLine("  <PropertyGroup Label=\"Configuration\">");
-        sb.AppendLine("    <ConfigurationType>Makefile</ConfigurationType>");
-        sb.AppendLine("    <PlatformToolset Condition=\"'$(VisualStudioVersion)' == '17.0'\">v143</PlatformToolset>");
-        sb.AppendLine("    <PlatformToolset Condition=\"'$(VisualStudioVersion)' == '18.0'\">v145</PlatformToolset>");
-        sb.AppendLine("    <PlatformToolset Condition=\"'$(PlatformToolset)' == ''\">v143</PlatformToolset>");
-        sb.AppendLine("  </PropertyGroup>");
-        sb.AppendLine("  <Import Project=\"$(VCTargetsPath)\\Microsoft.Cpp.props\" />");
-        sb.AppendLine("  <PropertyGroup>");
-        if (isLib) sb.AppendLine("    <RxdkType>library</RxdkType>");
-        sb.AppendLine($"    <NMakeOutput>$(MSBuildProjectDirectory)\\$(RxdkOutDir)\\$(MSBuildProjectName).{ext}</NMakeOutput>");
-        sb.AppendLine("  </PropertyGroup>");
-
-        foreach (var c in configs)
-        {
-            sb.AppendLine($"  <PropertyGroup Condition=\"'$(Configuration)|$(Platform)'=='{Esc(c.Name)}|Xbox'\">");
-            sb.AppendLine($"    <RxdkBuildFlavor>{c.Flavor}</RxdkBuildFlavor>");
-            if (c.ReleaseOptimize != null) sb.AppendLine($"    <RxdkReleaseOptimize>{c.ReleaseOptimize}</RxdkReleaseOptimize>");
-            Prop(sb, "RxdkDefines", c.Defines);
-            Prop(sb, "RxdkIncludePaths", c.IncludePaths);
-            Prop(sb, "RxdkLibraries", c.Libraries);
-            Prop(sb, "RxdkDeployPaths", c.DeployPaths);
-            Prop(sb, "RxdkStackSize", c.StackSize);
-            Prop(sb, "RxdkImageDebug", c.ImageDebug);
-            Prop(sb, "RxdkLimitMemory", c.LimitMemory);
-            Prop(sb, "RxdkDontModifyHardDisk", c.DontModifyHd);
-            Prop(sb, "RxdkDontMountUtilityDrive", c.DontMountUd);
-            Prop(sb, "RxdkNoLibWarn", c.NoLibWarn);
-            Prop(sb, "RxdkTestId", c.TitleId);
-            Prop(sb, "RxdkTestName", c.TitleName);
-            Prop(sb, "RxdkTitleImage", c.TitleImage);
-            Prop(sb, "RxdkTestVersion", c.XbeVersion);
-            sb.AppendLine("  </PropertyGroup>");
-        }
-
-        EmitItems(sb, sources, "ClCompile");
-        EmitItems(sb, sources, "ClInclude");
-        EmitItems(sb, sources, "None");
-        // Native project references (build order); RXDK links each child .lib via the manifest
-        // projectReferences the targets derive from @(ProjectReference). The ItemDefinitionGroup in
-        // the Xbox platform already marks these build-order-only, so no per-item metadata is needed.
-        if (projectRefs is { Count: > 0 })
-        {
-            sb.AppendLine("  <ItemGroup>");
-            foreach (var r in projectRefs) sb.AppendLine($"    <ProjectReference Include=\"{Esc(r.RelPath)}\" />");
-            sb.AppendLine("  </ItemGroup>");
-        }
-        sb.AppendLine("  <Import Project=\"$(VCTargetsPath)\\Microsoft.Cpp.targets\" />");
-        sb.AppendLine("</Project>");
-        return sb.ToString();
-    }
-
-    private static void EmitItems(StringBuilder sb, List<(string include, string tag, string? filter)> sources, string tag)
-    {
-        var items = sources.Where(s => s.tag == tag).ToList();
-        if (items.Count == 0) return;
-        sb.AppendLine("  <ItemGroup>");
-        foreach (var s in items) sb.AppendLine($"    <{tag} Include=\"{Esc(s.include)}\" />");
-        sb.AppendLine("  </ItemGroup>");
-    }
-
-    private static string BuildFilters(List<(string include, string tag, string? filter)> sources, SortedSet<string> filters)
-    {
-        var sb = new StringBuilder();
-        sb.AppendLine("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
-        sb.AppendLine("<Project ToolsVersion=\"4.0\" xmlns=\"http://schemas.microsoft.com/developer/msbuild/2003\">");
-        if (filters.Count > 0)
-        {
-            sb.AppendLine("  <ItemGroup>");
-            foreach (var f in filters)
-            {
-                sb.AppendLine($"    <Filter Include=\"{Esc(f)}\">");
-                sb.AppendLine($"      <UniqueIdentifier>{{{Guid.NewGuid().ToString().ToUpperInvariant()}}}</UniqueIdentifier>");
-                sb.AppendLine("    </Filter>");
-            }
-            sb.AppendLine("  </ItemGroup>");
-        }
-        foreach (var tag in new[] { "ClCompile", "ClInclude", "None" })
-        {
-            var items = sources.Where(s => s.tag == tag).ToList();
-            if (items.Count == 0) continue;
-            sb.AppendLine("  <ItemGroup>");
-            foreach (var s in items)
-            {
-                if (string.IsNullOrEmpty(s.filter)) sb.AppendLine($"    <{tag} Include=\"{Esc(s.include)}\" />");
-                else
-                {
-                    sb.AppendLine($"    <{tag} Include=\"{Esc(s.include)}\">");
-                    sb.AppendLine($"      <Filter>{Esc(s.filter)}</Filter>");
-                    sb.AppendLine($"    </{tag}>");
-                }
-            }
-            sb.AppendLine("  </ItemGroup>");
-        }
-        sb.AppendLine("</Project>");
-        return sb.ToString();
-    }
-
     // ---- small helpers ----
-
-    private static void Prop(StringBuilder sb, string name, string? value)
-    {
-        if (!string.IsNullOrEmpty(value)) sb.AppendLine($"    <{name}>{Esc(value)}</{name}>");
-    }
 
     private static IEnumerable<string> SplitList(string? s) =>
         (s ?? "").Split(new[] { ';', ',' }, StringSplitOptions.RemoveEmptyEntries).Select(x => x.Trim()).Where(x => x.Length > 0);
@@ -836,7 +713,4 @@ public static class Vcproj2003Importer
                 : MakeRelative(toDir, Path.GetFullPath(Path.Combine(fromDir, p))));
         return string.Join(";", rebased);
     }
-
-    private static string Esc(string s) =>
-        s.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;").Replace("\"", "&quot;");
 }
