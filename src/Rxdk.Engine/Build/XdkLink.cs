@@ -7,12 +7,24 @@ namespace Rxdk.Engine.Build;
 /// Links Xbox title objects with Zig, mirroring the SDK's own title link (build/link_pe.zig).
 /// C# port of RXDK-VSCode xdkLink.ts. A title is: its objects + SDK libs, linked
 /// -nostdlib -nostartfiles at the XBE image base, with compiler-rt and an explicit entry.
-/// libcompat.lib is always force-linked whole-archive ahead of everything to win the
-/// compiler-rt/picolibc comdat tie-break (see xdkLink.ts for the full hardware rationale).
+/// libcompat[d].lib is like any other "Additional Dependencies" entry -- the project must name
+/// it explicitly (it is NOT auto-injected) -- except it is force-linked whole-archive, since a
+/// normal link only pulls in symbols something else already references, and the whole point of
+/// libcompat is to win a COMDAT tie-break against zig's compiler-rt even when nothing in the
+/// title calls its functions directly (see xdkLink.ts for the full hardware rationale).
 /// </summary>
 public static class XdkLink
 {
-    private const string ComdatFixLib = "libcompat.lib";
+    /// <summary>True for a resolved lib path whose base name (case-insensitive, minus ".lib") is
+    /// "libcompat" or "libcompatd" -- the one dependency that needs --whole-archive, not a normal
+    /// link. Matched by name, not a fixed path, since the caller resolves it like any other
+    /// "Additional Dependencies" entry.</summary>
+    public static bool IsWholeArchiveLib(string resolvedPath)
+    {
+        var stem = Path.GetFileNameWithoutExtension(resolvedPath);
+        return stem.Equals("libcompat", StringComparison.OrdinalIgnoreCase)
+            || stem.Equals("libcompatd", StringComparison.OrdinalIgnoreCase);
+    }
 
     public static async Task<ProcessResult> LinkAsync(
         string zig,
@@ -20,7 +32,6 @@ public static class XdkLink
         IReadOnlyList<string> libs,
         string outExe,
         string entry = "start",
-        string? libDir = null,
         bool debugInfo = true,
         Action<string>? log = null,
         CancellationToken ct = default)
@@ -44,24 +55,6 @@ public static class XdkLink
         var rsp = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(outExe))!, "link_objs.rsp");
         await File.WriteAllLinesAsync(rsp, objs.Select(o => "\"" + o.Replace('\\', '/') + "\""), ct);
         args.Add("@" + rsp);
-
-        if (libDir is not null)
-        {
-            var comdatFix = Path.Combine(libDir, ComdatFixLib);
-            if (File.Exists(comdatFix))
-            {
-                args.Add("-Wl,--whole-archive");
-                args.Add(comdatFix);
-                args.Add("-Wl,--no-whole-archive");
-            }
-            else
-            {
-                log?.Invoke(
-                    $"Warning: Missing {comdatFix} — SDK predates the compiler-rt comdat fix; " +
-                    "picolibc's memmove/fabs/etc. may lose to zig's compiler-rt on real hardware. " +
-                    "Reinstall/update the RXDK SDK.");
-            }
-        }
 
         args.AddRange(libs);
         if (ehEnd is not null) args.Add(ehEnd); // ___eh_frame_end must follow every .eh_frame contributor

@@ -4,8 +4,16 @@
     <PropertyGroup>
         <EnableStdModules>false</EnableStdModules>
         <IncludePath>$(RXDK)\sdk\include\c++\v1;$(RXDK)\sdk\include</IncludePath>
-        <LibraryPath Condition="'$(UseDebugLibraries)' == 'true'">$(RXDK)\sdk\lib\debug</LibraryPath>
-        <LibraryPath Condition="'$(UseDebugLibraries)' != 'true'">$(RXDK)\sdk\lib\release</LibraryPath>
+        <!-- One flat dir, XDK-style: Debug and Release variants of a library live side by side,
+             distinguished by a "d" suffix on the filename (libxapi.lib / libxapid.lib) -- picked
+             by whatever names the project's own LibraryDependencies/AdditionalDependencies list,
+             same as a real "Additional Dependencies" flow. Not chosen by this property. -->
+        <LibraryPath>$(RXDK)\sdk\lib</LibraryPath>
+        <!-- The classic XDK "$(D)" token: Debug appends it to every lib name below, Release
+             leaves it empty, so the two configs pick libd3d8d.lib / libd3d8.lib etc. themselves --
+             the engine never appends it on its own. -->
+        <D Condition="'$(UseDebugLibraries)' == 'true'">d</D>
+        <D Condition="'$(UseDebugLibraries)' != 'true'"></D>
         <NeedImageBld Condition="'$(ConfigurationType)' == 'Application' or '$(ConfigurationType)' == 'DebuggerExtension'">true</NeedImageBld>
         <!-- This happens because of how ImageBld is set up -->
         <MSBuildWarningsAsMessages Condition="'$(NeedImageBld)' != ''">$(MSBuildWarningsAsMessages);MSB8012</MSBuildWarningsAsMessages>
@@ -79,9 +87,15 @@
             <OutputFile>$(OutDir)$(TargetName).exe</OutputFile>
             <EntryPointSymbol Condition="'$(ConfigurationType)' == 'Application'">XapiTitleStartup</EntryPointSymbol>
             <EntryPointSymbol Condition="'$(ConfigurationType)' == 'DebuggerExtension'">DxtEntry</EntryPointSymbol>
-            <LibraryDependencies>libd3d8;libd3dx8;libxapi;libc;libcpp;libkernel</LibraryDependencies>
+            <!-- LibraryDependencies maps to -lNAME, which already implies the "lib" prefix and
+                 ".lib" extension -- so these are bare names (d3d8, not libd3d8), same as a real
+                 "Additional Dependencies" list naming d3d8$(D).lib. -->
+            <LibraryDependencies>d3d8$(D);d3dx8$(D);xapi$(D);c$(D);cpp$(D);kernel$(D)</LibraryDependencies>
             <AdditionalDependencies />
-            <AdditionalOptions>-rtlib=compiler-rt -Wl,--whole-archive -llibcompat -Wl,--no-whole-archive</AdditionalOptions>
+            <!-- libcompat[d].lib is an explicit dependency like any other above, just force-linked
+                 whole-archive (see XdkLink.cs's IsWholeArchiveLib for the matching Rxdk.Engine
+                 logic and the hardware rationale) -- projects name it themselves, same as this list. -->
+            <AdditionalOptions>-rtlib=compiler-rt -Wl,--whole-archive -lcompat$(D) -Wl,--no-whole-archive</AdditionalOptions>
         </Link>
 
         <ImageBld>

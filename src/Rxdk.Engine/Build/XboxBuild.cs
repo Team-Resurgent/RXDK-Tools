@@ -15,8 +15,10 @@ public sealed class BuildOptions
     /// <summary>
     /// Configuration name to select from a multi-config manifest (e.g. "Debug"/"Release"). Ignored
     /// for a flat single-config manifest. Null = the manifest's defaultConfiguration (or first). The
-    /// compiler optimize level and the SDK lib variant both follow the resolved configuration's
-    /// debug/release flag (see <see cref="DeriveOptimize"/>) -- there is no separate optimize knob.
+    /// compiler optimize level follows the resolved configuration's debug/release flag (see
+    /// <see cref="DeriveOptimize"/>). Which SDK library variant links is a separate, explicit
+    /// concern -- like "Additional Dependencies", the manifest names the exact file it wants
+    /// (libxapi.lib or libxapid.lib).
     /// </summary>
     public string? Configuration { get; init; }
     public Action<string>? Log { get; init; }
@@ -32,9 +34,10 @@ public static class XboxBuild
 {
     /// <summary>
     /// Compiler optimize level for a build, derived from the resolved manifest's debug/release flag:
-    /// a Debug configuration builds -O0 with debug info; a Release one builds ReleaseFast. This is the
-    /// single source of truth -- the configuration's debug/release flag drives both the optimize level
-    /// and the SDK lib variant, so there is no separate optimize override.
+    /// a Debug configuration builds -O0 with debug info; a Release one builds ReleaseFast. This drives
+    /// how the project's OWN code compiles, not which SDK library variant gets linked -- like a real
+    /// "Additional Dependencies" list, the manifest/project names the exact SDK lib it wants
+    /// (libxapi.lib or libxapid.lib); the engine never appends a Debug suffix on its own.
     /// </summary>
     public static RxdkOptimizeMode DeriveOptimize(RxdkProjectManifest manifest) =>
         manifest.EffectiveConfiguration == RxdkConfiguration.Debug
@@ -804,9 +807,8 @@ public static class XboxBuild
             var projectName = manifest.Name;
             var outDir = SdkLayout.GetProjectOutDir(projectRoot, manifest);
             Directory.CreateDirectory(outDir);
-            // Optimize follows the config's debug/release flag. This keeps the compiler opt level and
-            // the SDK lib variant (both read from the same `configuration` flag below) in lockstep
-            // regardless of the configuration's name.
+            // Optimize follows the config's debug/release flag, regardless of the configuration's
+            // own name. Which SDK library variant links is unrelated -- see BuildOptions.Configuration.
             var optimize = DeriveOptimize(manifest);
 
             // Prerequisite preflight: on a machine where nothing has been set up yet (a user who
@@ -851,10 +853,9 @@ public static class XboxBuild
                 ?? throw new InvalidOperationException(
                     "Zig not found. Install Zig (install-zig), or add zig to PATH.");
 
-            var configuration = manifest.EffectiveConfiguration;
-            var sdkLibDir = SdkLayout.ResolveSdkLibVariantDir(sdkLib, configuration);
-            log?.Invoke($"Linking SDK libraries (configuration: {configuration.ToString().ToLowerInvariant()})");
-            // Library search dirs: the SDK lib variant dir first, then any user libraryPaths.
+            var sdkLibDir = sdkLib;
+            log?.Invoke($"Linking SDK libraries (configuration: {manifest.EffectiveConfiguration.ToString().ToLowerInvariant()})");
+            // Library search dirs: the flat SDK lib dir first, then any user libraryPaths.
             var libSearchDirs = new List<string> { sdkLibDir };
             foreach (var rel in manifest.LibraryPaths ?? new())
             {
@@ -953,12 +954,27 @@ public static class XboxBuild
             }
             foreach (var libName in libNames)
             {
+                // Verbatim, like a real "Additional Dependencies" list: the manifest/project names
+                // the exact file it wants (libxapi.lib or libxapid.lib), same as the retail XDK's
+                // d3d8$(D).lib flow -- the engine never appends the Debug "d" suffix on its own.
                 var resolved = ResolveLib($"{libName}.lib")
                     ?? (libName == "libkernel" ? ResolveLib("xboxkrnl.lib") : null);
                 if (resolved is null)
                     throw new InvalidOperationException(
                         $"Missing library: {libName}.lib under sdk/lib - run RXDK SDK install");
-                linkLibs.Add(resolved);
+                // libcompat[d] must be force-linked whole-archive to win the compiler-rt comdat
+                // tie-break (see XdkLink.IsWholeArchiveLib) even though nothing in the title calls
+                // its functions directly; every other library links the normal, referenced-only way.
+                if (XdkLink.IsWholeArchiveLib(resolved))
+                {
+                    linkLibs.Add("-Wl,--whole-archive");
+                    linkLibs.Add(resolved);
+                    linkLibs.Add("-Wl,--no-whole-archive");
+                }
+                else
+                {
+                    linkLibs.Add(resolved);
+                }
             }
 
             // Incremental link/package skip: when no object was recompiled, the final product
@@ -994,7 +1010,7 @@ public static class XboxBuild
 
             var exe = Path.GetFullPath(Path.Combine(outDir, $"{projectName}.exe"));
             var linkResult = await XdkLink.LinkAsync(
-                zig, objs, linkLibs, exe, entry, sdkLibDir,
+                zig, objs, linkLibs, exe, entry,
                 OptimizeMode.KeepsDebugInfo(optimize), log, ct);
             if (!linkResult.Success)
                 throw new InvalidOperationException($"Link failed (exit {linkResult.ExitCode})");
