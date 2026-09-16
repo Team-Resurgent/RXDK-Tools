@@ -188,6 +188,30 @@ public static class Vcproj2003Importer
         result.ProjectGuid = exported.ProjectGuid;
         result.Warnings.AddRange(exported.Warnings);
 
+        // VcxprojExporter only knows manifest.Sources (-> ClCompile) and manifest.Resources (->
+        // RxdkResource): headers and other non-build files (readme.txt, ...) have no manifest
+        // equivalent (VS Code's file tree doesn't need one -- this is purely a VS20XX Solution
+        // Explorer concern), so a VS2003 import adds its own ClInclude/None items, plus the
+        // .filters file recreating the original filter-folder tree, straight from the CollectFiles
+        // data gathered earlier. Skipped entirely for a project with no filter folders and nothing
+        // beyond ClCompile (e.g. one freshly authored in VS Code, or a solution import whose
+        // .vcproj had no <Filter> nesting) so a plain flat project doesn't gain a no-op .filters file.
+        if (filters.Count > 0 || sources.Any(s => s.tag != "ClCompile"))
+        {
+            var extraItems = BuildExtraItemGroups(sources);
+            if (extraItems.Length > 0)
+            {
+                const string importLine = "  <Import Project=\"$(VCTargetsPath)\\Microsoft.Cpp.targets\" />";
+                var vcxprojText = File.ReadAllText(exported.VcxprojPath);
+                if (vcxprojText.Contains(importLine))
+                {
+                    vcxprojText = vcxprojText.Replace(importLine, extraItems + importLine);
+                    File.WriteAllText(exported.VcxprojPath, vcxprojText, new UTF8Encoding(false));
+                }
+            }
+            File.WriteAllText(exported.VcxprojPath + ".filters", BuildFilters(sources, filters), new UTF8Encoding(false));
+        }
+
         // No scaffold is copied per-project: the RXDK MSBuild integration (Rxdk.MsBuild.props/
         // targets + property-page rules) lives in the installed ApplicationType (VCTargetsPath\
         // Application Type\RXDK), which the imported project inherits from ApplicationType=RXDK.
@@ -665,6 +689,65 @@ public static class Vcproj2003Importer
 
     private static bool PathEquals(string a, string b) =>
         string.Equals(Path.GetFullPath(a), Path.GetFullPath(b), StringComparison.OrdinalIgnoreCase);
+
+    // ---- ClInclude/None items + .filters (VS20XX Solution Explorer only; see the comment at the
+    // call site for why these have no manifest/VcxprojExporter equivalent) ----
+
+    // ClCompile is already written by VcxprojExporter from manifest.Sources; only add the tags it
+    // doesn't know about.
+    private static string BuildExtraItemGroups(List<(string include, string tag, string? filter)> sources)
+    {
+        var sb = new StringBuilder();
+        foreach (var tag in new[] { "ClInclude", "None" })
+        {
+            var items = sources.Where(s => s.tag == tag).ToList();
+            if (items.Count == 0) continue;
+            sb.AppendLine("  <ItemGroup>");
+            foreach (var s in items) sb.AppendLine($"    <{tag} Include=\"{Esc(s.include)}\" />");
+            sb.AppendLine("  </ItemGroup>");
+        }
+        return sb.ToString();
+    }
+
+    private static string BuildFilters(List<(string include, string tag, string? filter)> sources, SortedSet<string> filters)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
+        sb.AppendLine("<Project ToolsVersion=\"4.0\" xmlns=\"http://schemas.microsoft.com/developer/msbuild/2003\">");
+        if (filters.Count > 0)
+        {
+            sb.AppendLine("  <ItemGroup>");
+            foreach (var f in filters)
+            {
+                sb.AppendLine($"    <Filter Include=\"{Esc(f)}\">");
+                sb.AppendLine($"      <UniqueIdentifier>{{{Guid.NewGuid().ToString().ToUpperInvariant()}}}</UniqueIdentifier>");
+                sb.AppendLine("    </Filter>");
+            }
+            sb.AppendLine("  </ItemGroup>");
+        }
+        foreach (var tag in new[] { "ClCompile", "ClInclude", "None" })
+        {
+            var items = sources.Where(s => s.tag == tag).ToList();
+            if (items.Count == 0) continue;
+            sb.AppendLine("  <ItemGroup>");
+            foreach (var s in items)
+            {
+                if (string.IsNullOrEmpty(s.filter)) sb.AppendLine($"    <{tag} Include=\"{Esc(s.include)}\" />");
+                else
+                {
+                    sb.AppendLine($"    <{tag} Include=\"{Esc(s.include)}\">");
+                    sb.AppendLine($"      <Filter>{Esc(s.filter)}</Filter>");
+                    sb.AppendLine($"    </{tag}>");
+                }
+            }
+            sb.AppendLine("  </ItemGroup>");
+        }
+        sb.AppendLine("</Project>");
+        return sb.ToString();
+    }
+
+    private static string Esc(string s) =>
+        s.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;").Replace("\"", "&quot;");
 
     // ---- small helpers ----
 
