@@ -152,7 +152,12 @@
     </ItemGroup>
     
     <ItemGroup Condition="'$(ConfigurationType)' == 'Application'">
-        <IsoCopy Include="$(ProjectDir)Media\**" />
+        <!-- A plain "Media\**" glob here would be a static ItemGroup, evaluated once at project
+             load: before RxdkBuildResources runs, so a bundler/xactbld output generated fresh
+             this same build (nothing checked in yet) would never make it into the ISO until a
+             second build. IsoCopyDir is a literal directory name, not a glob, so it can't go stale
+             the same way; StageIsoFiles re-globs it at the point it actually needs the file list. -->
+        <IsoCopyDir Include="Media" />
         <Xiso Include="$(OutDir)XISO" />
     </ItemGroup>
 

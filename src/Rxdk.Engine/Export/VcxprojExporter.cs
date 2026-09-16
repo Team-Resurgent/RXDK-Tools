@@ -336,8 +336,12 @@ public static class VcxprojExporter
         }
         if (defaultManifest.DeployPaths is { Count: > 0 })
         {
+            // IsoCopyDir (a literal directory name, not a "dir\**" glob) so StageIsoFiles re-globs
+            // it fresh at the point the ISO is staged, picking up anything RxdkBuildResources
+            // generates this same build -- a static glob item would be evaluated once at project
+            // load, before RxdkBuildResources ever ran.
             sb.AppendLine("  <ItemGroup>");
-            foreach (var d in defaultManifest.DeployPaths) sb.AppendLine($"    <IsoCopy Include=\"{Esc(d.Replace('/', '\\'))}\\**\" />");
+            foreach (var d in defaultManifest.DeployPaths) sb.AppendLine($"    <IsoCopyDir Include=\"{Esc(d.Replace('/', '\\'))}\" />");
             sb.AppendLine("  </ItemGroup>");
         }
         if (nativeRefs.Count > 0)

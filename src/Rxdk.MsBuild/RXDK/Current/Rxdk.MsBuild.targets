@@ -407,9 +407,19 @@ ___eh_frame_end:
     </Target>
 
     <Target Name="StageIsoFiles"
-            Inputs="%(ImageBld.OutputFile);@(IsoCopy)"
+            Inputs="%(ImageBld.OutputFile);@(IsoCopy);@(IsoCopyDir)"
             Outputs="@(Xiso)"
-            Condition="'@(Xiso)' != ''">
+            Condition="'@(Xiso)' != ''"
+            DependsOnTargets="RxdkBuildResources">
+        <!-- @(IsoCopyDir) is a literal directory name (e.g. "Media"), not a glob: re-globbing it
+             here, at the point the ISO is actually staged, picks up files RxdkBuildResources just
+             generated this same build. A plain "Media\**" IsoCopy item, by contrast, is a static
+             ItemGroup evaluated once at project load: before RxdkBuildResources ever ran, so on
+             a from-scratch project with no resource outputs already on disk, its first build would
+             never see them (a second build, with the files now present, would). -->
+        <ItemGroup>
+            <IsoCopy Include="%(IsoCopyDir.Identity)\**" Condition="'@(IsoCopyDir)' != ''" />
+        </ItemGroup>
         <PropertyGroup>
             <_XisoDir>@(Xiso)</_XisoDir>
         </PropertyGroup>

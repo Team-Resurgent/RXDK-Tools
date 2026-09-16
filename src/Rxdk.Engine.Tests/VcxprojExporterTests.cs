@@ -298,15 +298,18 @@ public sealed class VcxprojExporterTests
     }
 
     [Fact]
-    public void DeployPaths_and_Embed_export_as_IsoCopy_and_RxdkEmbed_items()
+    public void DeployPaths_and_Embed_export_as_IsoCopyDir_and_RxdkEmbed_items()
     {
+        // IsoCopyDir (a bare directory name), not a "dir\**" glob: StageIsoFiles re-globs it fresh
+        // at ISO-staging time so a resource output RxdkBuildResources generates this same build
+        // still makes it in, instead of only on a second build (see Rxdk.MsBuild.targets).
         var (_, doc, projectRoot) = ExportFullManifest();
         try
         {
             XNamespace ns = doc.Root!.GetDefaultNamespace();
-            var isoCopy = doc.Root!.Elements(ns + "ItemGroup").Elements(ns + "IsoCopy")
+            var isoCopy = doc.Root!.Elements(ns + "ItemGroup").Elements(ns + "IsoCopyDir")
                 .Select(e => e.Attribute("Include")!.Value).ToList();
-            Assert.Equal(new[] { "Media\\**" }, isoCopy);
+            Assert.Equal(new[] { "Media" }, isoCopy);
 
             var embed = doc.Root!.Elements(ns + "ItemGroup").Elements(ns + "RxdkEmbed").ToList();
             Assert.Single(embed);
