@@ -76,6 +76,7 @@
     <None Include="Scripts\Generate-Lang.ps1" />
     <None Include="Scripts\Generate-Targets.ps1" />
     <Compile Include="Tasks\ImageBld.cs" />
+    <Compile Include="Tasks\ImageBldFlatten.cs" />
     <Compile Include="Tasks\RxdkToolTask.cs" />
     <Compile Include="Tasks\Xiso.cs" />
     <Compile Include="Tasks\ZigAr.cs" />

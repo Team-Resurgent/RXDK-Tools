@@ -46,9 +46,13 @@
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(ConfigurationType)' == 'DebuggerExtension'">
-        <LibCompiled>true</LibCompiled>
+        <!-- A DXT is linked exactly like an Application (Zig, not archived with Lib/ar); imagebld
+             /dxt afterward is what turns the linked executable into a flat PE, not the archiver.
+             LibCompiled here was a bug: it routed DXT builds through the Lib/ar target instead of
+             Link, producing a bogus .dxt "archive" and never actually linking against the SDK. -->
+        <LinkCompiled>true</LinkCompiled>
         <TargetExt>.dxt</TargetExt>
-        <OutputType>library</OutputType>
+        <OutputType>exe</OutputType>
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(ConfigurationType)' == 'StaticLibrary'">

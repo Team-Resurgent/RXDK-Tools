@@ -19,7 +19,6 @@ namespace Rxdk.MsBuild.Tasks
             {
                 "OutputFile",
                 "InputFile",
-                "Dxt",
                 "StackSize",
                 "Debug",
                 "NoLogo",
@@ -42,6 +41,7 @@ namespace Rxdk.MsBuild.Tasks
                 "TitleInfo",
                 "TitleImage",
                 "DefaultSaveImage",
+                "InsertFiles",
             };
         }
 
@@ -75,23 +75,6 @@ namespace Rxdk.MsBuild.Tasks
                     {
                         SwitchValue = "/in:",
                         Required = true,
-                    },
-                    value
-                );
-            }
-        }
-
-        public bool Dxt
-        {
-            get => PropertyOrNull<bool>();
-            set
-            {
-                UpdateSwitch(
-                    new ToolSwitch(ToolSwitchType.Boolean)
-                    {
-                        DisplayName = "Build Debugger Extension",
-                        Description = "Build a debugger extension (.dxt) instead of an Xbox title (.xbe). (/dxt)",
-                        SwitchValue = "/dxt"
                     },
                     value
                 );
@@ -453,6 +436,25 @@ namespace Rxdk.MsBuild.Tasks
                     new ToolSwitch(ToolSwitchType.String)
                     {
                         SwitchValue = "/defaultsaveimage:"
+                    },
+                    value
+                );
+            }
+        }
+
+        /// <summary>Pre-built "path,name,R"-style imagebld /INSERTFILE arguments (one per file
+        /// embedded into the XBE as a named section), passed through opaquely.</summary>
+        public string[] InsertFiles
+        {
+            get => PropertyOrNull<string[]>();
+            set
+            {
+                UpdateSwitch(
+                    new ToolSwitch(ToolSwitchType.StringArray)
+                    {
+                        DisplayName = "Insert Files",
+                        Description = "Files to embed into the XBE as named sections, \"path,name,R\" per entry. (/insertfile)",
+                        SwitchValue = "/insertfile:",
                     },
                     value
                 );

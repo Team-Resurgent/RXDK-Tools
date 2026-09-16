@@ -3,6 +3,7 @@
     <UsingTask TaskName="Rxdk.MsBuild.Tasks.ZigLd" AssemblyFile="$(MSBuildThisFileDirectory)Rxdk.MsBuild.dll"/>
     <UsingTask TaskName="Rxdk.MsBuild.Tasks.ZigAr" AssemblyFile="$(MSBuildThisFileDirectory)Rxdk.MsBuild.dll"/>
     <UsingTask TaskName="Rxdk.MsBuild.Tasks.ImageBld" AssemblyFile="$(MSBuildThisFileDirectory)Rxdk.MsBuild.dll"/>
+    <UsingTask TaskName="Rxdk.MsBuild.Tasks.ImageBldFlatten" AssemblyFile="$(MSBuildThisFileDirectory)Rxdk.MsBuild.dll"/>
     <UsingTask TaskName="Rxdk.MsBuild.Tasks.Xiso" AssemblyFile="$(MSBuildThisFileDirectory)Rxdk.MsBuild.dll"/>
 
     <!-- cleanup properties which are not supported by clang -->
@@ -109,8 +110,11 @@
                      SDK's own clean-room headers ($(RxdkSdkIncludePath), set in Rxdk.MsBuild.props)
                      belong on a freestanding clang build, not $(IncludePath), which
                      Microsoft.Cpp.targets redefines with the real MSVC/Windows SDK dirs folded back
-                     in by the time this target runs. -->
-                <AdditionalIncludeDirectories>$(RxdkSdkIncludePath)</AdditionalIncludeDirectories>
+                     in by the time this target runs. A project's own extra include dirs (e.g. a
+                     library's own "include" folder) go through %(ClCompile.RxdkAdditionalIncludeDirectories)
+                     instead of the real AdditionalIncludeDirectories name for the same reason:
+                     nothing else touches it, so it survives untouched to this point. -->
+                <AdditionalIncludeDirectories>$(RxdkSdkIncludePath);%(ClCompile.RxdkAdditionalIncludeDirectories)</AdditionalIncludeDirectories>
                 <ExcludedInputPaths>$(ExcludePath)</ExcludedInputPaths>
                 <TimestampSurrogate Condition="'%(ClCompile.TimestampSurrogate)' == ''">$(CompileUpToDateFile)</TimestampSurrogate>
             </ClCompile>
@@ -317,14 +321,25 @@ ___eh_frame_end:
         <ItemGroup>
             <ImageBld>
                 <TimestampSurrogate Condition="'%(ImageBld.TimestampSurrogate)' == ''">$(CompileUpToDateFile)</TimestampSurrogate>
+                <!-- @(RxdkEmbed): project-declared files embedded into the XBE as named sections
+                     (imagebld /insertfile), e.g. <RxdkEmbed Include="media\x.bin"><Name>x</Name></RxdkEmbed>. -->
+                <InsertFiles>@(RxdkEmbed->'%(FullPath),%(Name),R')</InsertFiles>
             </ImageBld>
         </ItemGroup>
 
-        <ImageBld Condition="'@(ImageBld)' != ''"
+        <!-- A DXT (debug-monitor extension) skips the normal XBE-wrapping call below entirely:
+             imagebld's "/DXT <in> <out>" is a completely separate command-line mode (see
+             ImageBldFlatten.cs) that flattens the linked .exe directly, no /stack, /debug,
+             certificate, etc. switches involved. -->
+        <ImageBldFlatten Condition="'@(ImageBld)' != '' and '%(ImageBld.Dxt)' == 'true'"
+                          InputFile="@(ImageBld)"
+                          OutputFile="%(ImageBld.OutputFile)" />
+
+        <ImageBld Condition="'@(ImageBld)' != '' and '%(ImageBld.Dxt)' != 'true'"
                   OutputFile="%(ImageBld.OutputFile)"
                   InputFile="@(ImageBld)"
-                          
-                  Dxt="%(ImageBld.Dxt)"
+                  InsertFiles="%(ImageBld.InsertFiles)"
+
                   StackSize="%(ImageBld.StackSize)"
                   Debug="%(ImageBld.Debug)"
                   NoLogo="%(ImageBld.NoLogo)"
