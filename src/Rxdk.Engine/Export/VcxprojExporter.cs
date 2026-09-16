@@ -149,7 +149,24 @@ public static class VcxprojExporter
         void Add(string k, string v) { if (!string.IsNullOrEmpty(v)) meta[k] = v; }
 
         static string StripLibExt(string s) => s.EndsWith(".lib", StringComparison.OrdinalIgnoreCase) ? s[..^4] : s;
-        Add("LibraryDependencies", Join((m.Libraries ?? new()).Select(StripLibExt)));
+        var libNames = (m.Libraries ?? new()).Select(StripLibExt).ToList();
+
+        // libcompat[d] needs an explicit whole-archive wrap to win its COMDAT tie-break against
+        // zig's bundled compiler-rt (fabs/sqrt/sin/...; see Rxdk.MsBuild.props' own comment): a
+        // plain "-lNAME" only pulls referenced objects, which defeats the point. No toolset-side
+        // auto-detection (see the same comment) -- the manifest already names it explicitly like
+        // any other library (carried over from the old engine's XdkLink.IsWholeArchiveLib opt-in),
+        // so it's pulled out of the plain list here and given the matching whole-archive/
+        // no-whole-archive AdditionalOptions instead of a second, redundant plain "-l" entry.
+        var compatName = libNames.FirstOrDefault(n =>
+            n.Equals("libcompat", StringComparison.OrdinalIgnoreCase) || n.Equals("libcompatd", StringComparison.OrdinalIgnoreCase));
+        if (compatName != null)
+        {
+            libNames.Remove(compatName);
+            Add("AdditionalOptions", $"%(Link.AdditionalOptions) -Wl,--whole-archive -l{compatName} -Wl,--no-whole-archive");
+        }
+
+        Add("LibraryDependencies", Join(libNames));
         Add("AdditionalLibraryDirectories", Join(m.LibraryPaths));
 
         // Explicit prebuilt .lib files, linked verbatim (full paths, not "-lNAME" search targets).

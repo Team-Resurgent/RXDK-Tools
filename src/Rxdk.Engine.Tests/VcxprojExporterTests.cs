@@ -140,6 +140,45 @@ public sealed class VcxprojExporterTests
     }
 
     [Fact]
+    public void Libcompat_is_pulled_out_of_LibraryDependencies_into_a_whole_archive_AdditionalOptions()
+    {
+        // libcompat[d] needs -Wl,--whole-archive wrapping to win its COMDAT tie-break against zig's
+        // bundled compiler-rt -- a plain "-lNAME" (LibraryDependencies) only pulls referenced
+        // objects, defeating the point. No toolset-side auto-detection (Rxdk.MsBuild.props no
+        // longer force-links it for every project): the exporter does this once, per project, at
+        // generation time, and must never emit it as a second, redundant plain entry too.
+        var projectRoot = Directory.CreateTempSubdirectory("rxdk-vcxproj-export-test-").FullName;
+        try
+        {
+            var manifest = new RxdkProjectManifest
+            {
+                Name = "CompatSample",
+                DefaultConfiguration = "Debug",
+                Configurations = new()
+                {
+                    ["Debug"] = new RxdkProjectManifest { Libraries = new() { "libc.lib", "libcompatd.lib" } },
+                    ["Release"] = new RxdkProjectManifest { Libraries = new() { "libc.lib", "libcompat.lib" } },
+                },
+                Sources = new() { "src/main.c" },
+            };
+            var json = JsonSerializer.Serialize(manifest, RxdkManifestLoader.JsonOptions);
+            File.WriteAllText(Path.Combine(projectRoot, RxdkManifestLoader.ManifestFileName), json);
+
+            var result = VcxprojExporter.Export(projectRoot);
+            var doc = XDocument.Load(result.VcxprojPath);
+
+            // "libc" is identical once libcompat is pulled out of both configs, so it hoists into
+            // the common (unconditioned) ItemDefinitionGroup rather than staying per-config.
+            Assert.Equal("libc", ItemMetaValue(doc, "Link", "LibraryDependencies"));
+            Assert.Equal("%(Link.AdditionalOptions) -Wl,--whole-archive -llibcompatd -Wl,--no-whole-archive",
+                ItemMetaValue(doc, "Link", "AdditionalOptions", "Debug"));
+            Assert.Equal("%(Link.AdditionalOptions) -Wl,--whole-archive -llibcompat -Wl,--no-whole-archive",
+                ItemMetaValue(doc, "Link", "AdditionalOptions", "Release"));
+        }
+        finally { Directory.Delete(projectRoot, recursive: true); }
+    }
+
+    [Fact]
     public void AdditionalLibraries_export_as_LinkAdditionalDependencies_verbatim_paths()
     {
         var (_, doc, projectRoot) = ExportFullManifest();

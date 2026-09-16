@@ -113,10 +113,18 @@
                  spell that out in full: libd3d8$(D), not d3d8$(D). -->
             <LibraryDependencies>libd3d8$(D);libd3dx8$(D);libxapi$(D);libc$(D);libcpp$(D);libkernel$(D)</LibraryDependencies>
             <AdditionalDependencies />
-            <!-- libcompat[d].lib is an explicit dependency like any other above, just force-linked
-                 whole-archive (see XdkLink.cs's IsWholeArchiveLib for the matching Rxdk.Engine
-                 logic and the hardware rationale) — projects name it themselves, same as this list. -->
-            <AdditionalOptions>-rtlib=compiler-rt -Wl,--whole-archive -llibcompat$(D) -Wl,--no-whole-archive</AdditionalOptions>
+            <!-- No automatic libcompat[d] handling here: whether a project needs it (it wins a COMDAT
+                 tie-break against zig's bundled compiler-rt for fabs/sqrt/sin/...; see
+                 RXDK-Libs/build.ps1's Copy-DistCompatLib) is a per-project decision, not a toolset
+                 default. A project that needs it names libcompat$(D) in its own LibraryDependencies,
+                 same as any other library, AND wraps that one entry in a linker whole-archive/
+                 no-whole-archive pair via its own AdditionalOptions (appending to, not replacing,
+                 %(Link.AdditionalOptions) so this file's own -rtlib flag survives): a plain -lNAME
+                 only pulls referenced objects, which defeats the COMDAT tie-break. See any
+                 TemplateSrc project that links libcompat for the exact syntax. Every RXDK-Samples
+                 manifest already lists libcompat[d].lib in "libraries" for this reason, carried over
+                 from the old engine's XdkLink.IsWholeArchiveLib opt-in. -->
+            <AdditionalOptions>-rtlib=compiler-rt</AdditionalOptions>
         </Link>
 
         <ImageBld>
