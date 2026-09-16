@@ -4,3 +4,8 @@ out/
 **/obj/
 *.vcxproj.user
 packages/
+
+# Rebuilt by Rxdk.MsBuild.csproj's RxdkCopyToApplicationType target on every build (see that
+# target's comment) -- never commit a machine-specific copy/symlink of these again.
+src/Rxdk.MsBuild/RXDK/Current/Rxdk.MsBuild.dll
+src/Rxdk.MsBuild/RXDK/Current/Rxdk.MsBuild.pdb

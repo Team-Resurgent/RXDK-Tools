@@ -87,4 +87,18 @@
     <Content Include="RXDK\Current\1033\ImageBld.xml" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+
+  <!-- RXDK\Current\Rxdk.MsBuild.dll is the ApplicationType-visible copy the VSIX packages
+       (RxdkVs.Package.csproj: Content Include="...\Rxdk.MsBuild\RXDK\**\*") and that
+       Install Xbox Platform stages into VCTargetsPath\Application Type\RXDK\Current\: it must be
+       a real file next to Rxdk.MsBuild.props/.targets, not something only this machine's own build
+       output path resolves (a personal NTFS symlink to bin\... was committed here before, which only
+       worked on the machine that created it). Rebuilt on every build so it never goes stale. -->
+  <Target Name="RxdkCopyToApplicationType" AfterTargets="Build">
+    <ItemGroup>
+      <RxdkAppTypeDllOutput Include="$(OutputPath)Rxdk.MsBuild.dll" />
+      <RxdkAppTypeDllOutput Include="$(OutputPath)Rxdk.MsBuild.pdb" Condition="Exists('$(OutputPath)Rxdk.MsBuild.pdb')" />
+    </ItemGroup>
+    <Copy SourceFiles="@(RxdkAppTypeDllOutput)" DestinationFolder="$(MSBuildProjectDirectory)\RXDK\Current" SkipUnchangedFiles="true" />
+  </Target>
 </Project>
