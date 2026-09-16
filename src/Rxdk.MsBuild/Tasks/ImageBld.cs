@@ -270,7 +270,6 @@ namespace Rxdk.MsBuild.Tasks
                     new ToolSwitch(ToolSwitchType.String)
                     {
                         SwitchValue = "/testid:",
-                        Separator = ";",
                     },
                     value
                 );
