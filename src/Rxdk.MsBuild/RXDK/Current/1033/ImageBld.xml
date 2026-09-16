@@ -18,14 +18,20 @@
   <Rule.Categories>
     <Category Name="General" DisplayName="General" Description="Core XBE image settings." />
     <Category Name="UtilityDrive" DisplayName="Utility Drive" Description="Utility (Z:) drive behavior at launch." />
+    <Category Name="Certificate" DisplayName="Certificate" Description="XBE certificate fields." />
+    <Category Name="TitleInfo" DisplayName="Title Info" Description="Title identity and images." />
     <Category Name="Advanced" DisplayName="Advanced" Description="Advanced imagebld options." />
     <Category Name="Command Line"
               DisplayName="Command Line"
               Subtype="CommandLine" />
   </Rule.Categories>
 
+  <!-- ItemType="ImageBld": these persist as %(ImageBld.*) item metadata, the same item the
+       ImageBld target in Rxdk.MsBuild.targets batches over (Inputs="@(ImageBld);@(Link)"), not a
+       flat property. Without this the property page would write $(StackSize) etc. as ordinary
+       properties that the Task's %(ImageBld.StackSize)-style parameters never read. -->
   <Rule.DataSource>
-    <DataSource Persistence="ProjectFile" HasConfigurationCondition="true" />
+    <DataSource Persistence="ProjectFile" ItemType="ImageBld" HasConfigurationCondition="true" />
   </Rule.DataSource>
 
   <!-- ===== General ===== -->
@@ -72,6 +78,56 @@
     <EnumValue Name="128KB" DisplayName="128 KB" />
     <EnumValue Name="256KB" DisplayName="256 KB" />
   </EnumProperty>
+
+  <!-- ===== Certificate ===== -->
+  <StringProperty Name="TestId" DisplayName="Title ID"
+                  Category="Certificate"
+                  Description="XBE Title ID. (/TESTID) Decimal or 0x-hex." />
+
+  <StringProperty Name="TestAltId" DisplayName="Alternate ID"
+                  Category="Certificate"
+                  Description="Alternate title ID for access by alternate images. (/TESTALTID) 'number' or 'number,key'." />
+
+  <StringProperty Name="TestRegion" DisplayName="Xbox Game Region"
+                  Category="Certificate"
+                  Description="Allowed regions bitmask. (/TESTREGION) 1=North America, 2=Japan, 4=Rest of World, 0x80000000=Manufacturing." />
+
+  <StringProperty Name="TestRatings" DisplayName="Xbox Game Rating"
+                  Category="Certificate"
+                  Description="Ratings value. (/TESTRATINGS)" />
+
+  <StringProperty Name="TestMediaTypes" DisplayName="Media Types"
+                  Category="Certificate"
+                  Description="Allowed media types bitmask. (/TESTMEDIATYPES)" />
+
+  <StringProperty Name="TestLanKey" DisplayName="LAN Key"
+                  Category="Certificate"
+                  Description="LAN key for this image. (/TESTLANKEY)" />
+
+  <StringProperty Name="TestSignKey" DisplayName="Sign Key"
+                  Category="Certificate"
+                  Description="Signature key for this image. (/TESTSIGNKEY)" />
+
+  <!-- ===== Title Info ===== -->
+  <StringProperty Name="TestName" DisplayName="Title Name"
+                  Category="TitleInfo"
+                  Description="Title name baked into the XBE certificate. (/TESTNAME)" />
+
+  <StringProperty Name="TestVersion" DisplayName="XBE Version"
+                  Category="TitleInfo"
+                  Description="Title version number. (/TESTVERSION)" />
+
+  <StringProperty Name="TitleInfo" DisplayName="Title Info File"
+                  Subtype="file" Category="TitleInfo"
+                  Description="Project-relative title info file. (/TITLEINFO)" />
+
+  <StringProperty Name="TitleImage" DisplayName="Title Image"
+                  Subtype="file" Category="TitleInfo"
+                  Description="Project-relative title image in XPR format. (/TITLEIMAGE)" />
+
+  <StringProperty Name="DefaultSaveImage" DisplayName="Save Game Image"
+                  Subtype="file" Category="TitleInfo"
+                  Description="Project-relative default save image in XPR format. (/DEFAULTSAVEIMAGE)" />
 
   <!-- ===== Advanced ===== -->
   <StringListProperty Name="NoPreload" DisplayName="Suppress Preloading"

@@ -935,14 +935,14 @@ public static class XboxBuild
             foreach (var n in manifest.Libraries ?? new()) AddLibName(n);
             foreach (var dep in depOrder)
                 foreach (var n in ReadManifest(dep).Libraries ?? new()) AddLibName(n);
-            if (libNames.Contains("libkernel"))
+            if (libNames.Contains("libkernel.lib"))
             {
-                libNames.Remove("libkernel");
-                libNames.Add("libkernel");
+                libNames.Remove("libkernel.lib");
+                libNames.Add("libkernel.lib");
             }
 
             var isDxt = manifest.Type == RxdkProjectKind.Dxt;
-            var entry = isDxt ? "DxtEntry" : libNames.Contains("libxapi") ? "XapiTitleStartup" : "start";
+            var entry = isDxt ? "DxtEntry" : libNames.Contains("libxapi.lib") ? "XapiTitleStartup" : "start";
 
             var linkLibs = new List<string>();
             if (isDxt) linkLibs.Add("-Wl,--dynamicbase"); // DXT keeps its base-reloc table.
@@ -954,14 +954,15 @@ public static class XboxBuild
             }
             foreach (var libName in libNames)
             {
-                // Verbatim, like a real "Additional Dependencies" list: the manifest/project names
-                // the exact file it wants (libxapi.lib or libxapid.lib), same as the retail XDK's
-                // d3d8$(D).lib flow -- the engine never appends the Debug "d" suffix on its own.
-                var resolved = ResolveLib($"{libName}.lib")
-                    ?? (libName == "libkernel" ? ResolveLib("xboxkrnl.lib") : null);
+                // Fully verbatim, like a real "Additional Dependencies" list: the manifest/project
+                // names the exact file it wants, extension included (libxapi.lib / libxapid.lib),
+                // same as the retail XDK's d3d8$(D).lib flow -- the engine never appends the Debug
+                // "d" suffix, or the ".lib" extension, on its own.
+                var resolved = ResolveLib(libName)
+                    ?? (libName == "libkernel.lib" ? ResolveLib("xboxkrnl.lib") : null);
                 if (resolved is null)
                     throw new InvalidOperationException(
-                        $"Missing library: {libName}.lib under sdk/lib - run RXDK SDK install");
+                        $"Missing library: {libName} under sdk/lib - run RXDK SDK install");
                 // libcompat[d] must be force-linked whole-archive to win the compiler-rt comdat
                 // tie-break (see XdkLink.IsWholeArchiveLib) even though nothing in the title calls
                 // its functions directly; every other library links the normal, referenced-only way.
