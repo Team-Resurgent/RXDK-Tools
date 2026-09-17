@@ -15,6 +15,22 @@
     
     <Import Project="$(VCTargetsPath)\Microsoft.CppCommon.targets" />
 
+    <!-- IntelliSense include-path fix. A project's own extra include dirs (e.g. a referenced
+         library's "include" folder) go through %(ClCompile.RxdkAdditionalIncludeDirectories), NOT the
+         real AdditionalIncludeDirectories name: the ClCompile build target overwrites the latter (to
+         keep the backing toolset's MSVC/Windows SDK dirs off the freestanding-clang command line).
+         But VS IntelliSense inspects only the standard %(ClCompile.AdditionalIncludeDirectories) and
+         $(IncludePath), so those dirs were invisible to it and their symbols showed as "identifier is
+         undefined". Mirror the RXDK include dirs into the standard metadata so IntelliSense resolves
+         them. Imported after the project body, so %(RxdkAdditionalIncludeDirectories) already holds
+         the project's value; the ClCompile target overwrites AdditionalIncludeDirectories again before
+         compiling, so the real build is unaffected by this. -->
+    <ItemDefinitionGroup>
+        <ClCompile>
+            <AdditionalIncludeDirectories>%(RxdkAdditionalIncludeDirectories);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+        </ClCompile>
+    </ItemDefinitionGroup>
+
     <!-- *******************************************************************************************
         Clang Compile
        ******************************************************************************************* -->
