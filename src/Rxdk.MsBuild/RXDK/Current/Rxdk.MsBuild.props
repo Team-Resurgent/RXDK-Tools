@@ -41,14 +41,18 @@
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(DesignTimeBuild)' == 'true'">
-        <!-- IntelliSense-only include path. The MSVC IntelliSense front-end lacks the clang/freestanding
-             builtin headers (stddef.h, stdarg.h, float.h, stdbool.h, stdalign.h) and the structure-packing
-             / compat stubs (pshpack*.h, poppack.h, cguid.h, ioccom.h) that the SDK/picolibc headers pull
-             in; without them it hits a fatal "cannot open include file" and every symbol in the TU reads
-             as undefined. sdk\intellisense ships MSVC-parseable stand-ins; add it (after include\) so
-             IntelliSense resolves them. Real clang/zig builds never set DesignTimeBuild, so this is
-             invisible to the build. Pairs with the rxdk_intellisense.h forced-include below. -->
-        <IncludePath>$(IncludePath);$(RXDK)\sdk\intellisense</IncludePath>
+        <!-- IntelliSense-only include path (design-time only, so the real clang/zig build never sees it).
+             Two things differ from the build path:
+             1. sdk\intellisense is added: the MSVC IntelliSense front-end lacks the clang/freestanding
+                builtin headers (stddef.h, stdarg.h, float.h, stdbool.h, stdalign.h) and the packing/compat
+                stubs (pshpack*.h, poppack.h, cguid.h, ioccom.h); without those stand-ins it aborts the TU.
+             2. The plain C headers (include\) come BEFORE libc++ (include\c++\v1). Under clang the reverse
+                order is fine, but the MSVC front-end can't parse libc++'s C-header wrappers (they pull
+                <__config>, which #errors on "libc++ only supports C++03 with Clang" and a missing
+                __BYTE_ORDER__). Searching plain C first means a C #include <math.h>/<stdlib.h> resolves to
+                picolibc's real header instead of libc++'s wrapper; libc++ stays last so <vector>/<string>
+                still resolve for std::. Pairs with rxdk_intellisense.h (forced-include below). -->
+        <IncludePath>$(RXDK)\sdk\intellisense;$(RXDK)\sdk\include;$(RXDK)\sdk\include\c++\v1</IncludePath>
     </PropertyGroup>
 
     <!-- Specific values -->
@@ -119,6 +123,12 @@
                  is inert under the real clang build. Resolved by name from sdk\intellisense (added to the
                  IntelliSense IncludePath above). -->
             <ForcedIncludeFiles>rxdk_intellisense.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
+            <!-- Clang predefines these; the MSVC IntelliSense front-end does not. libc++'s
+                 <__configuration/platform.h> #errors without __BYTE_ORDER__, and picolibc's headers
+                 expose their POSIX/GNU surface under _GNU_SOURCE (matching the C++ build's -D_GNU_SOURCE).
+                 Xbox is little-endian. Insurance for any libc++ header still pulled (e.g. <cmath>); inert
+                 for the real clang build, which never sets DesignTimeBuild. -->
+            <PreprocessorDefinitions>__ORDER_LITTLE_ENDIAN__=1234;__ORDER_BIG_ENDIAN__=4321;__ORDER_PDP_ENDIAN__=3412;__BYTE_ORDER__=1234;__Picolibc__;_GNU_SOURCE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
         </ClCompile>
 
         <Link>
