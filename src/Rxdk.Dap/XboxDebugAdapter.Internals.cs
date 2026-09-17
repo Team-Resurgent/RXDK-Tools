@@ -222,25 +222,21 @@ public sealed partial class XboxDebugAdapter
         Console_($"xbox-dap: startup path breakpoints={bpCount}\n");
 
         await ApplyAllBreakpointsAsync(false);
-        if (!HasUserBreakpoints())
-        {
-            Console_("xbox-dap: no breakpoints set — starting title (go)...\n");
-            try
-            {
-                await _bridge.RequestAsync("go");
-                Console_("xbox-dap: title running.\n");
-                await PrintDiagAsync("after go");
-            }
-            catch (Exception e) { Console_($"xbox-dap: go failed: {e.Message}\n"); }
-            return;
-        }
-        Console_("xbox-dap: breakpoints armed at entry — continuing to first breakpoint...\n");
+
+        // Release the entry hold the same way whether or not the user set breakpoints. goUser
+        // unconditionally resumes the held main thread; plain "go" only releases that startup
+        // suspend when it was the entry hold, so a no-breakpoint launch left the title parked at
+        // entry and never ran. goUser then continues to the first user breakpoint, or — with none —
+        // leaves the title running (LeaveTitleRunning). The only real difference between the two
+        // cases is whether breakpoints were armed above; the resume itself is identical.
         _startupGoInProgress = true;
         try
         {
             if (await ContinueToFirstBreakpointAsync("after launch")) return;
-            Console_("xbox-dap: timed out waiting for breakpoint — title may have run past main.\n");
-            await PrintDiagAsync("after continue timeout");
+            Console_(HasUserBreakpoints()
+                ? "xbox-dap: timed out waiting for breakpoint — title may have run past main.\n"
+                : "xbox-dap: no breakpoints — title running.\n");
+            await PrintDiagAsync("after continue");
         }
         catch (Exception e) { Console_($"continue failed: {e.Message}\n"); }
         finally { _startupGoInProgress = false; }
@@ -295,7 +291,10 @@ public sealed partial class XboxDebugAdapter
             await PrintDiagAsync($"{label} breakpoint");
             return true;
         }
-        if (run.GetBool("running") || !string.IsNullOrEmpty(addr))
+        // Only spin waiting for a breakpoint when the user actually set one. With none, goUser has
+        // left the title running (running:true) and there is nothing to wait for — return "no stop"
+        // so the caller reports the title running rather than blocking for the full timeout.
+        if ((run.GetBool("running") || !string.IsNullOrEmpty(addr)) && HasUserBreakpoints())
         {
             Console_("xbox-dap: title running — waiting for a breakpoint...\n");
             return await WaitForBreakpointLoopAsync();
