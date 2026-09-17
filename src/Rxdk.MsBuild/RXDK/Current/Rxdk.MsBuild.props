@@ -7,6 +7,13 @@
              so default to the standard data root ($(ProgramData)\RXDK, matching Rxdk.Engine's
              RxdkPaths.RxdkDataRoot and the C# tasks' own fallback) when the env var is empty. Must
              come before the SDK include/lib paths below, which expand it. -->
+        <!-- A custom install path chosen in the standalone installer, recorded in the registry.
+             MSBuild's $(Registry:) intrinsic resolves through the 32-bit view, so read WOW6432Node
+             first (where the installer writes HKLM32) then the plain key. RXDK (the env var) is a
+             pure override above; a plain-VSIX/VS Code install writes no key, so both fall through to
+             the ProgramData default unchanged. -->
+        <RXDK Condition="'$(RXDK)' == ''">$(Registry:HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\TeamResurgent\RXDK@InstallPath)</RXDK>
+        <RXDK Condition="'$(RXDK)' == ''">$(Registry:HKEY_LOCAL_MACHINE\SOFTWARE\TeamResurgent\RXDK@InstallPath)</RXDK>
         <RXDK Condition="'$(RXDK)' == ''">$(ProgramData)\RXDK</RXDK>
         <EnableStdModules>false</EnableStdModules>
         <!-- The MultiToolTask path (Rxdk.MsBuild.targets' ClCompile target, when this is true) is

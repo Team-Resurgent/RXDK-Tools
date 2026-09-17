@@ -49,6 +49,12 @@ namespace Rxdk.MsBuild.Tasks
             if (!string.IsNullOrEmpty(root))
                 return root.Trim();
 
+            // A custom install path chosen in the standalone installer, recorded in the registry.
+            // Plain-VSIX installs never write it, so they fall through to ProgramData as before.
+            var reg = RegistryInstallPath();
+            if (!string.IsNullOrEmpty(reg))
+                return reg;
+
             var programData = Environment.GetEnvironmentVariable("ProgramData");
             if (string.IsNullOrEmpty(programData))
                 programData = @"C:\ProgramData";
@@ -57,6 +63,30 @@ namespace Rxdk.MsBuild.Tasks
                 return fallback;
 
             Log.LogError("RXDK is not installed. Open the RXDK tool window and run Complete Setup (or set the RXDK environment variable).");
+            return null;
+        }
+
+        /// <summary>
+        /// The RXDK install path the standalone installer recorded, or null. Reads
+        /// HKLM\SOFTWARE\TeamResurgent\RXDK\InstallPath. The installer writes both registry views;
+        /// 32-bit readers (incl. MSBuild's $(Registry:)) resolve through WOW6432Node, so try the
+        /// 32-bit view first, then the 64-bit view. (This task assembly only ever runs on Windows.)
+        /// </summary>
+        private static string RegistryInstallPath()
+        {
+            foreach (var view in new[] { Microsoft.Win32.RegistryView.Registry32, Microsoft.Win32.RegistryView.Registry64 })
+            {
+                try
+                {
+                    using (var baseKey = Microsoft.Win32.RegistryKey.OpenBaseKey(Microsoft.Win32.RegistryHive.LocalMachine, view))
+                    using (var key = baseKey.OpenSubKey(@"SOFTWARE\TeamResurgent\RXDK"))
+                    {
+                        if (key?.GetValue("InstallPath") is string p && !string.IsNullOrWhiteSpace(p) && Directory.Exists(p.Trim()))
+                            return p.Trim();
+                    }
+                }
+                catch { /* registry unavailable / access denied -> fall through */ }
+            }
             return null;
         }
 

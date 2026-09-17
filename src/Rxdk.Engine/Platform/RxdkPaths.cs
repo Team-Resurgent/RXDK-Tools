@@ -30,6 +30,16 @@ public static class RxdkPaths
     {
         if (OperatingSystem.IsWindows())
         {
+            // RXDK env var is a pure OVERRIDE (CI / advanced installs); normally unset.
+            var over = Environment.GetEnvironmentVariable("RXDK");
+            if (!string.IsNullOrWhiteSpace(over))
+                return over.Trim();
+            // A custom install path chosen in the standalone installer, recorded in the registry
+            // (Windows only). VS Code-only / plain-VSIX installs never write it, so they fall
+            // through to the ProgramData default exactly as before.
+            var reg = RegistryInstallPath();
+            if (!string.IsNullOrEmpty(reg))
+                return reg!;
             var programData = Environment.GetEnvironmentVariable("ProgramData");
             if (string.IsNullOrEmpty(programData))
                 programData = @"C:\ProgramData";
@@ -41,6 +51,30 @@ public static class RxdkPaths
         if (string.IsNullOrEmpty(xdg))
             xdg = Path.Combine(HomeDirectory(), ".local", "share");
         return Path.Combine(xdg, "rxdk");
+    }
+
+    /// <summary>
+    /// The RXDK install path the standalone installer recorded, or null. Reads
+    /// <c>HKLM\SOFTWARE\TeamResurgent\RXDK\InstallPath</c>. The installer writes BOTH registry
+    /// views, and 32-bit readers (incl. MSBuild's <c>$(Registry:…)</c>) resolve through
+    /// WOW6432Node, so try the 32-bit view first, then the 64-bit view. Windows only.
+    /// </summary>
+    private static string? RegistryInstallPath()
+    {
+        if (!OperatingSystem.IsWindows())
+            return null;
+        foreach (var view in new[] { Microsoft.Win32.RegistryView.Registry32, Microsoft.Win32.RegistryView.Registry64 })
+        {
+            try
+            {
+                using var baseKey = Microsoft.Win32.RegistryKey.OpenBaseKey(Microsoft.Win32.RegistryHive.LocalMachine, view);
+                using var key = baseKey.OpenSubKey(@"SOFTWARE\TeamResurgent\RXDK");
+                if (key?.GetValue("InstallPath") is string p && !string.IsNullOrWhiteSpace(p) && Directory.Exists(p.Trim()))
+                    return p.Trim();
+            }
+            catch { /* registry unavailable / access denied -> fall through */ }
+        }
+        return null;
     }
 
     private static string HomeDirectory()
