@@ -41,7 +41,14 @@
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(DesignTimeBuild)' == 'true'">
-        <!--<IncludePath>$(AdditionalIncludeDirectories);$(IncludePath);$(RXDK)\sdk\intellisense</IncludePath>-->
+        <!-- IntelliSense-only include path. The MSVC IntelliSense front-end lacks the clang/freestanding
+             builtin headers (stddef.h, stdarg.h, float.h, stdbool.h, stdalign.h) and the structure-packing
+             / compat stubs (pshpack*.h, poppack.h, cguid.h, ioccom.h) that the SDK/picolibc headers pull
+             in; without them it hits a fatal "cannot open include file" and every symbol in the TU reads
+             as undefined. sdk\intellisense ships MSVC-parseable stand-ins -- add it (after include\) so
+             IntelliSense resolves them. Real clang/zig builds never set DesignTimeBuild, so this is
+             invisible to the build. Pairs with the rxdk_intellisense.h forced-include below. -->
+        <IncludePath>$(IncludePath);$(RXDK)\sdk\intellisense</IncludePath>
     </PropertyGroup>
 
     <!-- Specific values -->
@@ -105,7 +112,13 @@
         </ClCompile>
 
         <ClCompile Condition="'$(DesignTimeBuild)' == 'true'">
-            <!--<ForcedIncludeFiles>rxdk_intellisense.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>-->
+            <!-- Force-include the IntelliSense prelude AHEAD of picolibc.h (which the base ClCompile
+                 force-includes and which uses clang builtin type macros): rxdk_intellisense.h defines
+                 those macros (__SIZE_TYPE__ etc., for the 32-bit Xbox ABI) and neutralises GCC attribute
+                 syntax so the MSVC front-end can parse the SDK headers. It is guarded on !__GNUC__, so it
+                 is inert under the real clang build. Resolved by name from sdk\intellisense (added to the
+                 IntelliSense IncludePath above). -->
+            <ForcedIncludeFiles>rxdk_intellisense.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
         </ClCompile>
 
         <Link>
