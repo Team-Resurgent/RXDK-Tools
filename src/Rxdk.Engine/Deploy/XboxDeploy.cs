@@ -29,6 +29,23 @@ public static class XboxDeploy
         /// this picks the per-config outputDir the build wrote to. Ignored for a flat manifest.
         /// </summary>
         public string? Configuration { get; init; }
+        /// <summary>
+        /// Deploy as a DXT (to xe:\dxt) when no explicit RemoteDir is given. For a manifest-less
+        /// (pure-.vcxproj) DXT project the caller sets this from ConfigurationType=DebuggerExtension;
+        /// a manifest's Type=Dxt still implies it on its own.
+        /// </summary>
+        public bool IsDxt { get; init; }
+        /// <summary>Overrides the manifest's forceCopy (Xbox Deployment page). Null = use the manifest / default (incremental).</summary>
+        public bool? ForceCopy { get; init; }
+        /// <summary>Overrides the manifest's deployPaths (Xbox Deployment page "Deploy Files"). Null = use the manifest.</summary>
+        public IReadOnlyList<string>? DeployPaths { get; init; }
+        /// <summary>
+        /// Never read rxdk.project.json; drive deploy entirely from these options. RXDK-VS20XX sets
+        /// this: a .vcxproj is the single source of truth there, so even a sample folder that happens
+        /// to carry an rxdk.project.json (for the VS Code side) must be ignored. VS Code / CLI-direct
+        /// leave it false and the manifest is loaded as before.
+        /// </summary>
+        public bool IgnoreManifest { get; init; }
         public bool Quiet { get; init; }
         public Action<string>? Log { get; init; }
     }
@@ -38,17 +55,36 @@ public static class XboxDeploy
         try
         {
             var projectRoot = Path.GetFullPath(opts.ProjectRoot);
-            // Resolve the selected configuration so the per-config outputDir (out/Debug vs out/Release)
-            // points at the artifacts this configuration's build actually wrote.
-            var manifest = RxdkManifestLoader.Load(projectRoot).ResolveConfiguration(opts.Configuration);
-            var projectName = opts.ProjectName ?? manifest.Name;
-            var localDir = Path.GetFullPath(opts.LocalDir ?? SdkLayout.GetProjectOutDir(projectRoot, manifest));
+            // rxdk.project.json drives deploy for a VS Code / CLI-direct project (its per-config
+            // outputDir/forceCopy/deployPaths). RXDK-VS20XX is purely .vcxproj-driven and sets
+            // IgnoreManifest, passing everything explicitly (LocalDir, RemoteDir, IsDxt, ForceCopy,
+            // DeployPaths from the Xbox Deployment properties) -- so a sample folder that carries an
+            // rxdk.project.json for the VS Code side is never consulted from Visual Studio. The load
+            // is also tolerated as absent (a fresh .vcxproj project simply has no manifest).
+            RxdkProjectManifest? manifest = null;
+            if (!opts.IgnoreManifest)
+            {
+                try { manifest = RxdkManifestLoader.Load(projectRoot).ResolveConfiguration(opts.Configuration); }
+                catch (FileNotFoundException) { /* no manifest -> driven entirely by opts + defaults */ }
+            }
+
+            var projectName = opts.ProjectName ?? manifest?.Name;
+            if (string.IsNullOrWhiteSpace(projectName))
+                projectName = Path.GetFileName(projectRoot.TrimEnd('\\', '/'));
+
+            if (opts.LocalDir == null && manifest == null)
+                return DeployResult.Fail("No rxdk.project.json and no output directory given; cannot locate the build output to deploy.");
+            var localDir = Path.GetFullPath(opts.LocalDir ?? SdkLayout.GetProjectOutDir(projectRoot, manifest!));
             if (!Directory.Exists(localDir))
                 return DeployResult.Fail($"Deploy source directory not found: {localDir}");
 
-            // A DXT deploys to xe:\dxt (xbdm scans E:\dxt\*.DXT non-recursively), not xe:\<name>.
-            var isDxt = manifest.Type == RxdkProjectKind.Dxt;
-            var remoteDir = isDxt ? @"xe:\dxt" : NormalizeRemoteDir(opts.RemoteDir ?? "", projectName);
+            // A DXT deploys to xe:\dxt (xbdm scans E:\dxt\*.DXT non-recursively), not xe:\<name>. An
+            // explicit RemoteDir (Xbox Deployment > Remote Path) always wins; otherwise the console
+            // dir follows the project kind's convention.
+            var isDxt = opts.IsDxt || manifest?.Type == RxdkProjectKind.Dxt;
+            var remoteDir = !string.IsNullOrWhiteSpace(opts.RemoteDir)
+                ? NormalizeRemoteDir(opts.RemoteDir!, projectName!)
+                : (isDxt ? @"xe:\dxt" : NormalizeRemoteDir("", projectName!));
             var xbcp = RxdkPaths.ResolveHostTool("xbcp");
             var displayAddr = string.IsNullOrWhiteSpace(opts.ConsoleName)
                 ? await ConsoleResolver.GetActiveXboxAddressAsync(ct)
@@ -61,7 +97,7 @@ public static class XboxDeploy
             // ForceCopy (default false): incremental deploy sends only files newer than the console
             // copy (xbcp -d); the .xbe/.pdb are freshly built so they always go, but unchanged media
             // is skipped. ForceCopy = true drops -d so everything is re-sent.
-            var incremental = manifest.ForceCopy != true;
+            var incremental = (opts.ForceCopy ?? manifest?.ForceCopy) != true;
             if (incremental && !opts.Quiet) opts.Log?.Invoke("Incremental deploy (only new/changed files; set Force Copy to override).");
 
             var defaultPatterns = isDxt ? new[] { "*.dxt" } : new[] { "*.xbe", "*.pdb", "*.map" };
@@ -82,7 +118,7 @@ public static class XboxDeploy
             // deployPaths: project-relative files/dirs copied next to the output on the console.
             // Copied per-file with an explicit destination (xbcp's own recursive copy misbehaves
             // on a plain local folder source — see xboxDeploy.ts).
-            var deployFiles = PackXiso.ResolveDeployPaths(projectRoot, manifest.DeployPaths, opts.Log);
+            var deployFiles = PackXiso.ResolveDeployPaths(projectRoot, opts.DeployPaths ?? manifest?.DeployPaths, opts.Log);
             foreach (var entry in deployFiles)
             {
                 var dest = $@"{remoteDir}\{entry.RelativeDest.Replace('/', '\\')}";

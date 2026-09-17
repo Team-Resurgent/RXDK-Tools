@@ -368,11 +368,30 @@ static async Task<int> CmdDeploy(Dictionary<string, string> opts)
     }
     opts.TryGetValue("console", out var console);
     opts.TryGetValue("configuration", out var deployConfig);
+    // Explicit deploy inputs used by RXDK-VS20XX (which is .vcxproj-driven and ignores
+    // rxdk.project.json entirely): the built output dir, the console dir, the project kind, the
+    // Xbox Deployment page's Force Copy / Deploy Files. Absent for a VS Code / CLI-direct deploy,
+    // which reads them from rxdk.project.json instead.
+    opts.TryGetValue("local-dir", out var localDir);
+    opts.TryGetValue("remote-dir", out var remoteDir);
+    opts.TryGetValue("name", out var deployProjName);
+    opts.TryGetValue("deploy-paths", out var deployPathsRaw);
+    var deployPaths = string.IsNullOrEmpty(deployPathsRaw)
+        ? null
+        : deployPathsRaw.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    bool? forceCopy = opts.TryGetValue("force-copy", out var fc) ? !string.Equals(fc, "false", StringComparison.OrdinalIgnoreCase) : null;
     var result = await XboxDeploy.DeployProjectAsync(new XboxDeploy.DeployOptions
     {
         ProjectRoot = root,
+        ProjectName = string.IsNullOrEmpty(deployProjName) ? null : deployProjName,
+        LocalDir = string.IsNullOrEmpty(localDir) ? null : localDir,
+        RemoteDir = string.IsNullOrEmpty(remoteDir) ? null : remoteDir,
         ConsoleName = string.IsNullOrEmpty(console) ? null : console,
         Configuration = string.IsNullOrEmpty(deployConfig) ? null : deployConfig,
+        IsDxt = opts.ContainsKey("dxt"),
+        ForceCopy = forceCopy,
+        DeployPaths = deployPaths,
+        IgnoreManifest = opts.ContainsKey("no-manifest"),
         Log = msg => Console.WriteLine(msg),
     });
     if (!result.Ok)
