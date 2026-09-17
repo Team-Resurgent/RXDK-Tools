@@ -57,25 +57,44 @@ public static class RxdkPaths
     /// The RXDK install path the standalone installer recorded, or null. Reads
     /// <c>HKLM\SOFTWARE\TeamResurgent\RXDK\InstallPath</c>. The installer writes BOTH registry
     /// views, and 32-bit readers (incl. MSBuild's <c>$(Registry:…)</c>) resolve through
-    /// WOW6432Node, so try the 32-bit view first, then the 64-bit view. Windows only.
+    /// WOW6432Node, so try the 32-bit view first, then the 64-bit view. Read via a direct
+    /// advapi32 P/Invoke rather than Microsoft.Win32.Registry so it needs no extra assembly in the
+    /// framework-dependent engine (that package is not guaranteed in the net8 runtime users get).
+    /// Windows only; the caller is already IsWindows()-guarded.
     /// </summary>
     private static string? RegistryInstallPath()
     {
         if (!OperatingSystem.IsWindows())
             return null;
-        foreach (var view in new[] { Microsoft.Win32.RegistryView.Registry32, Microsoft.Win32.RegistryView.Registry64 })
+        const uint RRF_RT_REG_SZ = 0x00000002;
+        const uint RRF_SUBKEY_WOW6464KEY = 0x00010000;
+        const uint RRF_SUBKEY_WOW6432KEY = 0x00020000;
+        var HKLM = unchecked((nint)0x80000002);
+        foreach (var view in new[] { RRF_SUBKEY_WOW6432KEY, RRF_SUBKEY_WOW6464KEY })
         {
             try
             {
-                using var baseKey = Microsoft.Win32.RegistryKey.OpenBaseKey(Microsoft.Win32.RegistryHive.LocalMachine, view);
-                using var key = baseKey.OpenSubKey(@"SOFTWARE\TeamResurgent\RXDK");
-                if (key?.GetValue("InstallPath") is string p && !string.IsNullOrWhiteSpace(p) && Directory.Exists(p.Trim()))
-                    return p.Trim();
+                uint cb = 0;
+                if (RegGetValueW(HKLM, @"SOFTWARE\TeamResurgent\RXDK", "InstallPath",
+                                 RRF_RT_REG_SZ | view, out _, null, ref cb) != 0 || cb == 0)
+                    continue;
+                var buf = new byte[cb];
+                if (RegGetValueW(HKLM, @"SOFTWARE\TeamResurgent\RXDK", "InstallPath",
+                                 RRF_RT_REG_SZ | view, out _, buf, ref cb) != 0)
+                    continue;
+                // cb includes the terminating NUL; decode as UTF-16 and trim it.
+                var s = System.Text.Encoding.Unicode.GetString(buf, 0, (int)cb).TrimEnd('\0').Trim();
+                if (!string.IsNullOrEmpty(s) && Directory.Exists(s))
+                    return s;
             }
             catch { /* registry unavailable / access denied -> fall through */ }
         }
         return null;
     }
+
+    [System.Runtime.InteropServices.DllImport("advapi32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode, EntryPoint = "RegGetValueW")]
+    private static extern int RegGetValueW(nint hkey, string subKey, string value, uint flags,
+                                           out uint type, byte[]? data, ref uint cbData);
 
     private static string HomeDirectory()
     {

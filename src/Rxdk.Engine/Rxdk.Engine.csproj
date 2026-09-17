@@ -6,10 +6,4 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
-  <ItemGroup>
-    <!-- HKLM install-path lookup (RxdkPaths.RegistryInstallPath); calls are OperatingSystem.IsWindows()
-         guarded, so this is inert on macOS/Linux. -->
-    <PackageReference Include="Microsoft.Win32.Registry" Version="5.0.0" />
-  </ItemGroup>
-
 </Project>
