@@ -237,6 +237,15 @@ internal sealed class ManagedSymbols
                     expandable = false;
                     return sval;
                 }
+                // LARGE_INTEGER / ULARGE_INTEGER are 64-bit-integer unions (QuadPart overlaps
+                // LowPart/HighPart); a timer-heavy title has these everywhere. The bare type name is
+                // useless, so show QuadPart inline like a real debugger while still letting the row
+                // expand to its members.
+                if (TryFormatLargeInteger(type, address, memory, out var liVal))
+                {
+                    expandable = type.Members.Count > 0;
+                    return liVal;
+                }
                 if (TryContainerSummary(type, address, memory, out var csummary, out expandable))
                     return csummary;
                 expandable = type.Members.Count > 0;
@@ -487,6 +496,26 @@ internal sealed class ManagedSymbols
 
     // A "{ size=N }" summary (and expandability) for a recognized container, so the row shows a count
     // instead of the giant template type name. False for anything not a known container.
+    /// <summary>
+    /// Formats a LARGE_INTEGER / ULARGE_INTEGER union as its 64-bit QuadPart (signed for
+    /// LARGE_INTEGER, unsigned for ULARGE_INTEGER), e.g. <c>133776… (0x01db…)</c>. Returns false for
+    /// any other union so the generic path handles it.
+    /// </summary>
+    private bool TryFormatLargeInteger(PdbType type, nuint address, KitMemoryAccess memory, out string value)
+    {
+        value = string.Empty;
+        var unsigned = string.Equals(type.Name, "_ULARGE_INTEGER", StringComparison.Ordinal);
+        if (!unsigned && !string.Equals(type.Name, "_LARGE_INTEGER", StringComparison.Ordinal))
+            return false;
+        var lo = memory.ReadDword(address);
+        var hi = memory.ReadDword(address + 4);
+        if (lo is null || hi is null)
+            return false;
+        var q = ((ulong)hi.Value << 32) | lo.Value;
+        value = unsigned ? $"{q} (0x{q:x})" : $"{(long)q} (0x{q:x})";
+        return true;
+    }
+
     private bool TryContainerSummary(PdbType type, nuint address, KitMemoryAccess memory, out string summary, out bool expandable)
     {
         summary = string.Empty;
