@@ -2,6 +2,12 @@
     <Import Project="$(MSBuildThisFileDirectory)ImportBefore\*.props" Condition="Exists('$(MSBuildThisFileDirectory)ImportBefore')" />
 
     <PropertyGroup>
+        <!-- RXDK install root. Normally seeded from the RXDK environment variable, but that is only
+             an OVERRIDE now: a bare VSIX install whose "Complete Setup" staged the SDK never sets it,
+             so default to the standard data root ($(ProgramData)\RXDK, matching Rxdk.Engine's
+             RxdkPaths.RxdkDataRoot and the C# tasks' own fallback) when the env var is empty. Must
+             come before the SDK include/lib paths below, which expand it. -->
+        <RXDK Condition="'$(RXDK)' == ''">$(ProgramData)\RXDK</RXDK>
         <EnableStdModules>false</EnableStdModules>
         <!-- The MultiToolTask path (Rxdk.MsBuild.targets' ClCompile target, when this is true) is
              Microsoft's own multi-proc cl.exe orchestrator: even when pointed at ZigCompile via

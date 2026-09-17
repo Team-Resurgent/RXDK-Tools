@@ -41,14 +41,23 @@ namespace Rxdk.MsBuild.Tasks
 
         public string GetRXDKRoot()
         {
+            // RXDK is only an OVERRIDE. The normal case is a bare VSIX install whose "Complete Setup"
+            // staged the SDK + host tools at the default data root with no env var set -- so fall
+            // back to it exactly like Rxdk.Engine's RxdkPaths.RxdkDataRoot (%ProgramData%\RXDK on
+            // Windows), rather than hard-failing on an unset env var.
             var root = Environment.GetEnvironmentVariable("RXDK");
-            if (string.IsNullOrEmpty(root))
-            {
-                FatalError("The RXDK environment variable is not set, did install correctly?");
-                return null;
-            }
+            if (!string.IsNullOrEmpty(root))
+                return root.Trim();
 
-            return root;
+            var programData = Environment.GetEnvironmentVariable("ProgramData");
+            if (string.IsNullOrEmpty(programData))
+                programData = @"C:\ProgramData";
+            var fallback = Path.Combine(programData, "RXDK");
+            if (Directory.Exists(fallback))
+                return fallback;
+
+            FatalError("RXDK is not installed. Open the RXDK tool window and run Complete Setup (or set the RXDK environment variable).");
+            return null;
         }
 
         protected void FatalError(string msg)
