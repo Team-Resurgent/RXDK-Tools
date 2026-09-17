@@ -1,19 +1,17 @@
 using Microsoft.Build.Framework;
+using System.Collections.Generic;
 
 namespace Rxdk.MsBuild.Tasks
 {
     /// <summary>
     /// imagebld's "/DXT &lt;input&gt; &lt;output&gt;" mode: a totally separate command-line shape
-    /// from the normal "/out: /in: /stack: ..." XBE-wrapping invocation (see
-    /// Rxdk.XbeImage.ImageBldOptionsParser.ParseDxtArguments -- /DXT must be the very first
-    /// argument, and only /IN:, /OUT:, or two positional paths are accepted after it). A DXT
-    /// (debug-monitor extension) skips the XBE-wrapping step entirely: it flattens the linked .exe
-    /// directly -- every section laid down at its RVA (file offset == RVA), Xbox subsystem set --
-    /// so xbdm's raw-file loader can jump straight to DxtEntry.
+    /// from the normal "/out: /in: /stack: ..." XBE-wrapping invocation. /DXT must be the very
+    /// first argument. A DXT (debug-monitor extension) skips the XBE-wrapping step entirely: it
+    /// flattens the linked .exe directly so xbdm's raw-file loader can jump straight to DxtEntry.
     /// </summary>
     public class ImageBldFlatten : RxdkToolTask
     {
-        protected override string ToolName => "imagebld.exe";
+        protected string ToolName => "imagebld.exe";
 
         [Required]
         public virtual ITaskItem InputFile { get; set; }
@@ -21,11 +19,18 @@ namespace Rxdk.MsBuild.Tasks
         [Required]
         public virtual string OutputFile { get; set; }
 
-        protected override string GenerateCommandLineCommands() =>
-            $"/DXT {InputFile.ItemSpec} {OutputFile}";
+        public override bool Execute()
+        {
+            var exe = GetToolExe(ToolName);
+            if (exe == null)
+                return false;
 
-        protected override string GenerateResponseFileCommands() => string.Empty;
-
-        protected override ITaskItem[] TrackedInputFiles => new ITaskItem[] { InputFile };
+            var a = new List<string> { "/DXT", Quote(InputFile.ItemSpec), Quote(OutputFile) };
+            var r = Run(exe, a);
+            LogDiagnostics(r.Combined, new System.Text.RegularExpressions.Regex[0]);
+            if (r.ExitCode != 0 && !Log.HasLoggedErrors)
+                Log.LogError("imagebld /DXT failed with exit code {0}", r.ExitCode);
+            return !Log.HasLoggedErrors && r.ExitCode == 0;
+        }
     }
 }

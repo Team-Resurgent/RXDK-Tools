@@ -1,4 +1,4 @@
-using System.Diagnostics;
+using System.Collections.Generic;
 using System.IO;
 using Microsoft.Build.Framework;
 
@@ -6,12 +6,12 @@ namespace Rxdk.MsBuild.Tasks
 {
     /// <summary>
     /// Assembles one Xbox vertex/pixel shader source file (.vsh/.psh) into its binary form
-    /// (.xvu/.xpu), matching XboxBuild.cs's CompileShadersAsync. -I points xsasm at the source's
-    /// own directory so sibling #include fragments resolve, same as the old engine.
+    /// (.xvu/.xpu) with xsasm. -I points xsasm at the source's own directory so sibling #include
+    /// fragments resolve; the source dir is also the working directory.
     /// </summary>
     public class RxdkShaderAssemble : RxdkToolTask
     {
-        protected override string ToolName => "xsasm.exe";
+        protected string ToolName => "xsasm.exe";
 
         [Required]
         public virtual ITaskItem InputFile { get; set; }
@@ -19,20 +19,21 @@ namespace Rxdk.MsBuild.Tasks
         [Required]
         public virtual string OutputFile { get; set; }
 
-        private string InputDir => Path.GetDirectoryName(InputFile.GetMetadata("FullPath"));
-
-        protected override string GenerateCommandLineCommands() =>
-            $"{InputFile.GetMetadata("Filename")}{InputFile.GetMetadata("Extension")} -o \"{OutputFile}\" -I \"{InputDir}\"";
-
-        protected override string GenerateResponseFileCommands() => string.Empty;
-
-        protected override ITaskItem[] TrackedInputFiles => new ITaskItem[] { InputFile };
-
-        protected override ProcessStartInfo GetProcessStartInfo(string pathToTool, string commandLineCommands, string responseFileSwitch)
+        public override bool Execute()
         {
-            var psi = base.GetProcessStartInfo(pathToTool, commandLineCommands, responseFileSwitch);
-            psi.WorkingDirectory = InputDir;
-            return psi;
+            var exe = GetToolExe(ToolName);
+            if (exe == null)
+                return false;
+
+            var name = InputFile.GetMetadata("Filename") + InputFile.GetMetadata("Extension");
+            var inputDir = Path.GetDirectoryName(InputFile.GetMetadata("FullPath"));
+            var a = new List<string> { Quote(name), "-o", Quote(OutputFile), "-I", Quote(inputDir) };
+
+            var r = Run(exe, a, workingDir: inputDir);
+            LogDiagnostics(r.Combined, new System.Text.RegularExpressions.Regex[0]);
+            if (r.ExitCode != 0 && !Log.HasLoggedErrors)
+                Log.LogError("xsasm failed with exit code {0}", r.ExitCode);
+            return !Log.HasLoggedErrors && r.ExitCode == 0;
         }
     }
 }

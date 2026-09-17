@@ -1,36 +1,36 @@
-using System.Diagnostics;
+using System.Collections.Generic;
 using System.IO;
 using Microsoft.Build.Framework;
 
 namespace Rxdk.MsBuild.Tasks
 {
     /// <summary>
-    /// Compiles one .rdf resource-description file into the Resource.h + .xpr pair its own
-    /// out_header/out_packedresource directives name (or bundler's own name-derived defaults when
-    /// a directive is absent), matching XboxBuild.cs's CompileResourcesAsync: bundler resolves
-    /// those output paths relative to the .rdf itself, so it must run with the .rdf's own
-    /// directory as the working directory, given only the bare on-disk filename -- not a full or
-    /// project-relative path.
+    /// Compiles one .rdf resource-description file into the Resource.h + .xpr pair it names.
+    /// bundler resolves those output paths relative to the .rdf itself, so it must run with the
+    /// .rdf's own directory as the working directory, given only the bare on-disk filename.
     /// </summary>
     public class RxdkBundler : RxdkToolTask
     {
-        protected override string ToolName => "bundler.exe";
+        protected string ToolName => "bundler.exe";
 
         [Required]
         public virtual ITaskItem InputFile { get; set; }
 
-        protected override string GenerateCommandLineCommands() =>
-            $"{InputFile.GetMetadata("Filename")}{InputFile.GetMetadata("Extension")} -q";
-
-        protected override string GenerateResponseFileCommands() => string.Empty;
-
-        protected override ITaskItem[] TrackedInputFiles => new ITaskItem[] { InputFile };
-
-        protected override ProcessStartInfo GetProcessStartInfo(string pathToTool, string commandLineCommands, string responseFileSwitch)
+        public override bool Execute()
         {
-            var psi = base.GetProcessStartInfo(pathToTool, commandLineCommands, responseFileSwitch);
-            psi.WorkingDirectory = Path.GetDirectoryName(InputFile.GetMetadata("FullPath"));
-            return psi;
+            var exe = GetToolExe(ToolName);
+            if (exe == null)
+                return false;
+
+            var name = InputFile.GetMetadata("Filename") + InputFile.GetMetadata("Extension");
+            var workDir = Path.GetDirectoryName(InputFile.GetMetadata("FullPath"));
+            var a = new List<string> { Quote(name), "-q" };
+
+            var r = Run(exe, a, workingDir: workDir);
+            LogDiagnostics(r.Combined, new System.Text.RegularExpressions.Regex[0]);
+            if (r.ExitCode != 0 && !Log.HasLoggedErrors)
+                Log.LogError("bundler failed with exit code {0}", r.ExitCode);
+            return !Log.HasLoggedErrors && r.ExitCode == 0;
         }
     }
 }

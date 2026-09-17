@@ -1,52 +1,32 @@
-﻿using Microsoft.Build.CPPTasks;
 using Microsoft.Build.Framework;
-using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Rxdk.MsBuild.Tasks
 {
+    /// <summary>
+    /// Packs a staged directory into an Xbox ISO with xdvdfs ("pack &lt;dir&gt; &lt;out.iso&gt;").
+    /// </summary>
     public class Xiso : RxdkToolTask
     {
-        protected override string ToolName => "xdvdfs.exe";
+        protected string ToolName => "xdvdfs.exe";
 
-        public virtual string OutputFile
-        {
-            get => PropertyOrNull<string>();
-            set
-            {
-                UpdateSwitch(
-                    new ToolSwitch(ToolSwitchType.File),
-                    value
-                );
-            }
-        }
-        
+        public virtual string OutputFile { get; set; }
+
         [Required]
-        public virtual ITaskItem InputDirectory
-        {
-            get => PropertyOrNull<ITaskItem>();
-            set
-            {
-                UpdateSwitch(
-                    new ToolSwitch(ToolSwitchType.ITaskItem),
-                    value
-                );
-            }
-        }
+        public virtual ITaskItem InputDirectory { get; set; }
 
-        protected override string GenerateCommandLineCommands()
+        public override bool Execute()
         {
-            return $"pack {InputDirectory} {OutputFile}";
-        }
+            var exe = GetToolExe(ToolName);
+            if (exe == null)
+                return false;
 
-        protected override string GenerateResponseFileCommands()
-        {
-            return string.Empty;
+            var a = new List<string> { "pack", Quote(InputDirectory.ItemSpec), Quote(OutputFile) };
+            var r = Run(exe, a);
+            LogDiagnostics(r.Combined, new System.Text.RegularExpressions.Regex[0]);
+            if (r.ExitCode != 0 && !Log.HasLoggedErrors)
+                Log.LogError("xdvdfs pack failed with exit code {0}", r.ExitCode);
+            return !Log.HasLoggedErrors && r.ExitCode == 0;
         }
-
-        protected override ITaskItem[] TrackedInputFiles => new ITaskItem[] { InputDirectory };
     }
 }

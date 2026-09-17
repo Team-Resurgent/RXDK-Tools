@@ -1,50 +1,50 @@
-﻿using Microsoft.Build.CPPTasks;
 using Microsoft.Build.Framework;
 using Microsoft.Build.Utilities;
 using System;
-using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
-using System.Linq;
-using System.Reflection;
-using System.Resources;
-using System.Runtime.CompilerServices;
+using System.Text;
+using System.Text.RegularExpressions;
 
 namespace Rxdk.MsBuild.Tasks
 {
-    public abstract class RxdkToolTask : TrackedVCToolTask
+    /// <summary>
+    /// Version-stable base for every RXDK MSBuild task. Derives from
+    /// <see cref="Microsoft.Build.Utilities.Task"/> (whose assembly is stable across Visual
+    /// Studio releases) rather than the per-VS Microsoft.Build.CPPTasks.Common
+    /// TrackedVCToolTask, so ONE net472 Rxdk.MsBuild.dll loads under VS2022 (v170) and
+    /// VS "18"/v180 alike. Tasks build their command lines explicitly and run the tool via
+    /// <see cref="Run"/>; clang/lld/zig diagnostics are surfaced to the VS Error List via
+    /// <see cref="LogDiagnostics"/>. Mirrors RXDK-360's Rxdk.Xbox360.Modern.Build.ModernTool.
+    /// </summary>
+    public abstract class RxdkToolTask : Task
     {
-        protected RxdkToolTask()
-            : base(new ResourceManager("Microsoft.Build.CPPTasks.Strings", Assembly.GetAssembly(typeof(TrackedVCToolTask))))
+        /// <summary>Result of running a child process.</summary>
+        protected sealed class ProcResult
         {
-        }
-        protected override ArrayList SwitchOrderList => switchOrderList;
-        protected ArrayList switchOrderList;
-
-        protected override string TrackerIntermediateDirectory => TrackerLogDirectory ?? "";
-
-        public virtual string TrackerLogDirectory
-        {
-            get => PropertyOrNull<string>();
-            set
-            {
-                UpdateSwitch(
-                    new ToolSwitch(ToolSwitchType.Directory)
-                    {
-                        DisplayName = "Tracker Log Directory",
-                        Description = "Tracker Log Directory.",
-                    },
-                    value
-                );
-            }
+            public int ExitCode;
+            public string StdOut = "";
+            public string StdErr = "";
+            public string Combined => StdOut + StdErr;
         }
 
+        // Backslash-doubler for zig/clang response files. Reproduced verbatim from
+        // Microsoft.Build.CPPTasks.VCToolTask.FindBackSlashInPath (the field the previous
+        // TrackedVCToolTask-based tasks called). clang/zig treat '\' as an escape inside a
+        // response file, so every path separator must be doubled: Replace(text, "\\\\").
+        protected static readonly Regex FindBackSlashInPath = new Regex(
+            "(?<=[^\\\\])\\\\(?=[^\\\\\\\"\\s])|(\\\\(?=[^\\\"]))|((?<=[^\\\\][\\\\])\\\\(?=[\\\"]))",
+            RegexOptions.Compiled);
+
+        /// <summary>
+        /// RXDK install root. RXDK is only an OVERRIDE. The normal case is a bare VSIX install
+        /// whose "Complete Setup" staged the SDK + host tools at the default data root with no
+        /// env var set -- so fall back to it exactly like Rxdk.Engine's RxdkPaths.RxdkDataRoot
+        /// (%ProgramData%\RXDK on Windows), rather than hard-failing on an unset env var.
+        /// </summary>
         public string GetRXDKRoot()
         {
-            // RXDK is only an OVERRIDE. The normal case is a bare VSIX install whose "Complete Setup"
-            // staged the SDK + host tools at the default data root with no env var set -- so fall
-            // back to it exactly like Rxdk.Engine's RxdkPaths.RxdkDataRoot (%ProgramData%\RXDK on
-            // Windows), rather than hard-failing on an unset env var.
             var root = Environment.GetEnvironmentVariable("RXDK");
             if (!string.IsNullOrEmpty(root))
                 return root.Trim();
@@ -56,374 +56,209 @@ namespace Rxdk.MsBuild.Tasks
             if (Directory.Exists(fallback))
                 return fallback;
 
-            FatalError("RXDK is not installed. Open the RXDK tool window and run Complete Setup (or set the RXDK environment variable).");
+            Log.LogError("RXDK is not installed. Open the RXDK tool window and run Complete Setup (or set the RXDK environment variable).");
             return null;
         }
 
-        protected void FatalError(string msg)
+        /// <summary>Resolve a host tool ({rxdk}\tools\{name}), or the name itself if rooted.</summary>
+        protected string GetToolExe(string toolName)
         {
-            PrintMessage(
-                new MessageStruct()
-                {
-                    Text = msg,
-                    Category = "fatal error"
-                },
-                MessageImportance.High
-            );
-            Cancel();
-        }
-
-        protected override string GenerateFullPathToTool()
-        {
-            if (Path.IsPathRooted(ToolName))
-            {
-                return ToolName;
-            }
-
+            if (Path.IsPathRooted(toolName))
+                return toolName;
             var rxdk = GetRXDKRoot();
-            return $"{rxdk}\\tools\\{ToolName}";
-        }
-
-        protected string ReadSwitchMap(string propertyName, IDictionary<string, string> switchMap, string value)
-        {
-#if DEBUG
-            // values dont matter for a dump
-            if (beingDumped && !switchMap.ContainsKey(value))
-            {
-                return "";
-            }
-#endif
-
-            return ReadSwitchMap(propertyName, switchMap.Select(kv => new[] { kv.Key, kv.Value }).ToArray(), value);
-        }
-
-        protected string JoinSwitches(string[] switches)
-        {
-            return string.Join(" ", switches);
-        }
-
-        /// <summary>
-        /// Get a property's value, or null if it's not set
-        /// </summary>
-        private object PropertyOrNull(string name)
-        {
-            // return nothing if the property is unset
-            if (!IsPropertySet(name))
-            {
+            if (rxdk == null)
                 return null;
-            }
+            return $"{rxdk}\\tools\\{toolName}";
+        }
 
-            // get the switch
-            var toolSwitch = ActiveToolSwitches[name];
-            switch (toolSwitch.Type)
-            {
-                case ToolSwitchType.Boolean:
-                    return toolSwitch.BooleanValue;
-                case ToolSwitchType.String:
-                case ToolSwitchType.File:
-                case ToolSwitchType.Directory:
-                    return toolSwitch.Value;
-                case ToolSwitchType.StringArray:
-                case ToolSwitchType.StringPathArray:
-                    return toolSwitch.StringList;
-                case ToolSwitchType.ITaskItem:
-                    return toolSwitch.TaskItem;
-                case ToolSwitchType.ITaskItemArray:
-                    return toolSwitch.TaskItemArray;
-                case ToolSwitchType.Integer:
-                    return toolSwitch.Number;
-            }
-
-            return null;
+        /// <summary>Quote an argument for a Windows command line only where needed.</summary>
+        protected static string Quote(string a)
+        {
+            if (string.IsNullOrEmpty(a)) return a;
+            if (a.IndexOfAny(new[] { ' ', '\t', '"' }) < 0) return a;
+            return "\"" + a.Replace("\"", "\\\"") + "\"";
         }
 
         /// <summary>
-        /// Get a property as a certain type
+        /// Run <paramref name="exe"/>, capturing stdout/stderr. When
+        /// <paramref name="useResponseFile"/> is set, the switch args in
+        /// <paramref name="args"/> are written to a temp ASCII .rsp file (with every backslash
+        /// DOUBLED, per <see cref="FindBackSlashInPath"/>) and the tool is invoked as
+        /// "<paramref name="leadingArgs"/> @rspfile" -- the zig sub-tool token ("cc"/"ar") is
+        /// passed via <paramref name="leadingArgs"/> so it stays on the real command line (a
+        /// response file is only processed once the sub-tool is named). Otherwise
+        /// <paramref name="args"/> are quoted onto the command line directly (host tools).
         /// </summary>
-        protected T PropertyOrNull<T>([CallerMemberName] string name = null)
+        protected ProcResult Run(string exe, IEnumerable<string> args, string workingDir = null,
+                                 bool useResponseFile = false, IEnumerable<string> leadingArgs = null,
+                                 bool doubleBackslashes = true)
         {
-            return (T)PropertyOrNull(name);
-        }
-
-        protected void UpdateSwitch(ToolSwitch toolSwitch, object value = null, [CallerMemberName] string name = null)
-        {
-            // wont even get emitted anyway; skip a bad cast
-            if (toolSwitch.Type == ToolSwitchType.Integer && !toolSwitch.IsValid)
-            {
-                return;
-            }
-
-            // set name and value
-            toolSwitch.Name = name;
-            // set the right field based on type
-            switch (toolSwitch.Type)
-            {
-                case ToolSwitchType.Boolean:
-                    toolSwitch.BooleanValue = (bool)value;
-                    break;
-                case ToolSwitchType.String:
-                case ToolSwitchType.File:
-                default:
-                    toolSwitch.Value = (string)value;
-                    break;
-                case ToolSwitchType.Directory:
-                    toolSwitch.Value = EnsureTrailingSlash((string)value);
-                    break;
-                case ToolSwitchType.StringArray:
-                case ToolSwitchType.StringPathArray:
-                    toolSwitch.StringList = (string[])value;
-                    break;
-                case ToolSwitchType.ITaskItem:
-                    toolSwitch.TaskItem = (ITaskItem)value;
-                    break;
-                case ToolSwitchType.ITaskItemArray:
-                    toolSwitch.TaskItemArray = (ITaskItem[])value;
-                    break;
-                case ToolSwitchType.Integer:
-                    toolSwitch.Number = (int)value;
-                    break;
-                case ToolSwitchType.AlwaysAppend:
-                    break;
-            }
-
-            // replace the switch and add it to the active values
-            ActiveToolSwitches[name] = toolSwitch;
-            AddActiveSwitchToolValue(toolSwitch);
-
-#if DEBUG
-            // dont do a repeat dump
-            if (beingDumped && !toolSwitch.MultipleValues)
-            {
-                DumpLangProperty(toolSwitch, new Dictionary<string, string> { });
-                return;
-            }
-#endif
-        }
-
-        protected void UpdateSwitch(ToolSwitch toolSwitch, Dictionary<string, string> switchMap, string value, [CallerMemberName] string name = null)
-        {
-            // set switch value and indicate that it's a multivalue
-            toolSwitch.SwitchValue = ReadSwitchMap(name, switchMap, value);
-            toolSwitch.MultipleValues = true;
-
-            UpdateSwitch(toolSwitch, value, name);
-
-#if DEBUG
-            // dump specially with the switch map
-            if (beingDumped)
-            {
-                DumpLangProperty(toolSwitch, switchMap);
-            }
-#endif
-        }
-
-        protected override void GenerateCommandsAccordingToType(CommandLineBuilder builder, ToolSwitch toolSwitch, CommandLineFormat format = CommandLineFormat.ForBuildLog, EscapeFormat escapeFormat = EscapeFormat.Default)
-        {
+            string cmdLine;
+            string rspPath = null;
             try
             {
-                // whole override is because the base handles these in a different way than is useful
-                if (toolSwitch.Type == ToolSwitchType.ITaskItem && !string.IsNullOrEmpty(toolSwitch.SwitchValue))
+                if (useResponseFile)
                 {
-                    if (!string.IsNullOrEmpty(toolSwitch.TaskItem.ItemSpec))
-                    {
-                        builder.AppendSwitchIfNotNull(toolSwitch.SwitchValue, Environment.ExpandEnvironmentVariables(toolSwitch.TaskItem.ItemSpec + toolSwitch.Separator));
-                        return;
-                    }
-                }
+                    // The switch args are pre-formatted response-file chunks (already quoted
+                    // where needed); join and (for clang/lld) double every backslash so they do
+                    // not treat path separators as escapes. llvm-ar (zig ar) does not escape
+                    // backslashes, so its caller opts out -- matching the previous tasks, where
+                    // only ZigCompile/ZigLd overrode the response-file writer to double them.
+                    var rsp = string.Join(" ", args);
+                    if (doubleBackslashes)
+                        rsp = FindBackSlashInPath.Replace(rsp, "\\\\");
+                    rspPath = Path.GetTempFileName();
+                    File.WriteAllText(rspPath, rsp, new ASCIIEncoding());
 
-                base.GenerateCommandsAccordingToType(builder, toolSwitch, format, escapeFormat);
-            }
-            catch (Exception ex)
-            {
-                base.Log.LogErrorFromResources("GenerateCommandLineError", toolSwitch.Name, toolSwitch.ValueAsString, ex.Message);
-                //ex.RethrowIfCritical();
-            }
-        }
-
-#if DEBUG
-        /// <summary>
-        /// Custom XML printer to match MSBuild stuff more closely
-        /// </summary>
-        /// <param name="name">Element name</param>
-        /// <param name="attributes">Element attributes</param>
-        /// <param name="printBody">An optional function that prints a body</param>
-        /// <param name="initialPad">How far to indent the element</param>
-        protected static void PrintXmlElement(string name, Dictionary<string, string> attributes, Action<int> printBody = null, int initialPad = 0)
-        {
-
-            var indent = new string(' ', initialPad);
-            var start = $"{indent}<{name} ";
-            Console.Write(start);
-            var pad = new string(' ', start.Length);
-            bool first = true;
-            foreach (var kv in attributes)
-            {
-                var currentPad = first ? "" : $"\n{pad}";
-                Console.Write($"{currentPad}{kv.Key}=\"{kv.Value}\"");
-                first = false;
-            }
-
-            if (printBody != null)
-            {
-                Console.WriteLine(" >");
-                printBody.Invoke(initialPad + 4);
-                Console.WriteLine($"{indent}</{name}>");
-            }
-            else
-            {
-                Console.WriteLine(" />");
-            }
-        }
-
-        /// <summary>
-        /// Dump an XML fragment to expedite writing .targets files
-        /// </summary>
-        public static void DumpTargetsFragment<T>(string parent = null)
-            where T : RxdkToolTask, new()
-        {
-            var temp = new T();
-            temp.beingDumped = true;
-
-            var attribs = new Dictionary<string, string>();
-            if (!string.IsNullOrEmpty(parent)) { attribs["Condition"] = $"'@({parent}) != ''"; }
-            foreach (string prop in temp.switchOrderList)
-            {
-                attribs[prop] = !string.IsNullOrEmpty(parent) ? $"%({parent}.{prop})" : "";
-            }
-            PrintXmlElement(typeof(T).Name, attribs);
-        }
-
-        public struct LangFragmentSettings
-        {
-            public string RuleName { get; set; }
-            public string RuleDisplayName { get; set; }
-            public string SwitchPrefix => "-";
-        }
-
-        LangFragmentSettings dumpSettings;
-        private bool beingDumped = false;
-        private int indent = 0;
-
-        protected string RemoveSwitchPrefix(string switchValue)
-        {
-            if (switchValue.StartsWith(dumpSettings.SwitchPrefix))
-            {
-                return switchValue.Remove(0, dumpSettings.SwitchPrefix.Length);
-            }
-            return switchValue;
-        }
-
-        protected void DumpLangProperty(ToolSwitch toolSwitch, Dictionary<string, string> switchMap)
-        {
-            var attribs = new Dictionary<string, string>
-                {
-                    {"Name", toolSwitch.Name},
-                    {"DisplayName", toolSwitch.DisplayName},
-                    {"Description", toolSwitch.Description},
-                };
-            var type = "String";
-            Action<int> printBody = null;
-            if (toolSwitch.MultipleValues)
-            {
-                type = "Enum";
-                printBody = (int pad) =>
-                {
-                    var valueAttribs = new Dictionary<string, string>();
-                    foreach (var kv in switchMap)
-                    {
-                        valueAttribs["Name"] = kv.Key;
-                        var switchValue = RemoveSwitchPrefix(kv.Value);
-                        if (switchValue.Length > 0)
+                    var lead = new StringBuilder();
+                    if (leadingArgs != null)
+                        foreach (var l in leadingArgs)
                         {
-                            valueAttribs["Switch"] = switchValue;
+                            if (lead.Length > 0) lead.Append(' ');
+                            lead.Append(l);
                         }
-                        PrintXmlElement("EnumValue", valueAttribs, initialPad: pad);
+                    cmdLine = (lead.Length > 0 ? lead + " " : "") + "@" + Quote(rspPath);
+                }
+                else
+                {
+                    var sb = new StringBuilder();
+                    foreach (var a in args)
+                    {
+                        if (string.IsNullOrEmpty(a)) continue;
+                        if (sb.Length > 0) sb.Append(' ');
+                        sb.Append(a);
                     }
-                };
-            }
-            else
-            {
-                var switchValue = RemoveSwitchPrefix(toolSwitch.SwitchValue);
-                if (switchValue.Length > 0)
-                {
-                    attribs["Switch"] = switchValue;
+                    cmdLine = sb.ToString();
                 }
-                switch (toolSwitch.Type)
-                {
-                    case ToolSwitchType.Boolean:
-                        type = "Bool";
-                        break;
-                    case ToolSwitchType.StringArray:
-                        type = "StringList";
-                        break;
-                }
-            }
 
-            PrintXmlElement($"{type}Property", attribs, printBody, indent);
+                var psi = new ProcessStartInfo
+                {
+                    FileName = exe,
+                    Arguments = cmdLine,
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true,
+                    WorkingDirectory = workingDir ?? Environment.CurrentDirectory,
+                    StandardOutputEncoding = Encoding.UTF8,
+                    StandardErrorEncoding = Encoding.UTF8,
+                };
+                Log.LogMessage(MessageImportance.Low, "  " + exe + " " + cmdLine);
+                if (useResponseFile)
+                    Log.LogMessage(MessageImportance.Low, "  (response file) " + string.Join(" ", args));
+
+                var outBuf = new StringBuilder();
+                var errBuf = new StringBuilder();
+                using (var p = new Process { StartInfo = psi })
+                {
+                    p.OutputDataReceived += (s, e) => { if (e.Data != null) outBuf.AppendLine(e.Data); };
+                    p.ErrorDataReceived += (s, e) => { if (e.Data != null) errBuf.AppendLine(e.Data); };
+                    p.Start();
+                    p.BeginOutputReadLine();
+                    p.BeginErrorReadLine();
+                    p.WaitForExit();
+                    return new ProcResult { ExitCode = p.ExitCode, StdOut = outBuf.ToString(), StdErr = errBuf.ToString() };
+                }
+            }
+            finally
+            {
+                if (rspPath != null)
+                    try { File.Delete(rspPath); } catch { /* best effort */ }
+            }
         }
 
         /// <summary>
-        /// Dump an XML scaffold for <LangID>/<task>.xml files
+        /// Echo a tool's output to the MSBuild log, promoting lines that match one of the
+        /// supplied diagnostic regexes (with a non-empty CATEGORY group) to Error/Warning so
+        /// they surface in the Visual Studio Error List. The regexes are the exact ones the
+        /// previous tasks used (ZigCompile.clangMessageRegex / ZigLd.ldMessageRegex).
         /// </summary>
-        public static void DumpLangScaffold<T>(LangFragmentSettings settings)
-            where T : RxdkToolTask, new()
+        protected void LogDiagnostics(string text, IEnumerable<Regex> regexes)
         {
-            var temp = new T();
-            temp.beingDumped = true;
-            temp.dumpSettings = settings;
+            if (string.IsNullOrEmpty(text)) return;
+            var rx = regexes as IList<Regex> ?? new List<Regex>(regexes ?? Array.Empty<Regex>());
+            foreach (var raw in text.Split('\n'))
+            {
+                string line = raw.TrimEnd('\r');
+                if (line.Length == 0) continue;
 
-            Console.WriteLine("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
-            PrintXmlElement("Rule", new Dictionary<string, string>()
+                bool handled = false;
+                foreach (var r in rx)
                 {
-                    {"Name", settings.RuleName},
-                    {"DisplayName", settings.RuleDisplayName},
-                    {"SwitchPrefix", settings.SwitchPrefix},
-                    {"PageTemplate", "tool"},
-                    {"xmlns", "http://schemas.microsoft.com/build/2009/properties"},
-                    {"xmlns:x", "http://schemas.microsoft.com/winfx/2006/xaml"},
-                    {"xmlns:sys","clr-namespace:System;assembly=mscorlib" },
-                },
-                (int pad) =>
-                {
-                    temp.indent = pad;
-                    foreach (string propertyName in temp.switchOrderList)
-                    {
-                        var property = temp.GetType().GetProperty(propertyName);
-                        if (property != null)
-                        {
-                            // trigger a call to UpdateSwitch, which calls DumpLangFragment because beingDumped is true
-                            //
-                            // i admit this a jank way to do it, ideally in the future it will be the other way around
-                            // and the classes can be generated from the lang file. i just wanted to get it working.
-                            // this is also only to accelerate something i could hand-type anyway.
-                            var type = property.PropertyType;
-                            object tempObj = null;
-                            if (type == typeof(string))
-                            {
-                                tempObj = "";
-                            }
-                            else if (type.IsArray)
-                            {
-                                tempObj = new string[1];
-                            }
-                            else
-                            {
-                                tempObj = Activator.CreateInstance(type);
-                            }
+                    Match m = r.Match(line);
+                    if (!m.Success) continue;
 
-                            try
-                            {
-                                property.SetValue(temp, tempObj);
-                            }
-                            catch (Exception ex)
-                            {
-                                Console.WriteLine(ex.ToString());
-                            }
-                        }
-                    }
+                    string cat = m.Groups["CATEGORY"].Success ? m.Groups["CATEGORY"].Value.Trim().ToLowerInvariant() : "";
+                    if (cat.Length == 0)
+                        break; // matched but no diagnostic category: treat as plain output
+
+                    string file = m.Groups["FILENAME"].Success ? m.Groups["FILENAME"].Value.Trim() : "";
+                    if (file.Length == 0) file = null;
+                    int lineNo = m.Groups["LINE"].Success && int.TryParse(m.Groups["LINE"].Value, out var ln) ? ln : 0;
+                    int colNo = m.Groups["COLUMN"].Success && int.TryParse(m.Groups["COLUMN"].Value, out var cn) ? cn : 0;
+                    string msg = m.Groups["TEXT"].Success ? m.Groups["TEXT"].Value.Trim() : line;
+                    if (msg.Length == 0) msg = line;
+
+                    if (cat == "error" || cat == "fatal error")
+                        Log.LogError(null, null, null, file, lineNo, colNo, 0, 0, msg);
+                    else if (cat == "warning")
+                        Log.LogWarning(null, null, null, file, lineNo, colNo, 0, 0, msg);
+                    else
+                        Log.LogMessage(MessageImportance.Normal, line);
+                    handled = true;
+                    break;
                 }
-            );
+
+                if (!handled)
+                    Log.LogMessage(MessageImportance.Normal, line);
+            }
         }
-#endif
+
+        // ---- shared response-file / command-line argument builders -----------------------
+        // These produce pre-formatted, pre-quoted chunks. The zig tasks join them into a
+        // response file (Run doubles the backslashes); order of Add* calls == command-line order.
+
+        protected static void Flag(List<string> a, bool cond, string flag)
+        {
+            if (cond && !string.IsNullOrEmpty(flag)) a.Add(flag);
+        }
+
+        /// <summary>A reverse-switch bool that only emits when it was explicitly set.</summary>
+        protected static void FlagRev(List<string> a, bool set, bool value, string on, string off)
+        {
+            if (!set) return;
+            var s = value ? on : off;
+            if (!string.IsNullOrEmpty(s)) a.Add(s);
+        }
+
+        /// <summary>Emit "&lt;sw&gt;&lt;value&gt;" (value quoted if needed) when value is non-empty.</summary>
+        protected static void Opt(List<string> a, string sw, string value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return;
+            a.Add(sw + Quote(value));
+        }
+
+        /// <summary>Emit one "&lt;sw&gt;&lt;entry&gt;" per non-empty array entry.</summary>
+        protected static void OptList(List<string> a, string sw, IEnumerable<string> values)
+        {
+            if (values == null) return;
+            foreach (var v in values)
+                if (!string.IsNullOrWhiteSpace(v))
+                    a.Add(sw + Quote(v.Trim()));
+        }
+
+        /// <summary>Emit the flag an enum value maps to (nothing if unmapped or empty).</summary>
+        protected static void Mapped(List<string> a, IDictionary<string, string> map, string key)
+        {
+            if (string.IsNullOrEmpty(key)) return;
+            if (map.TryGetValue(key, out var f) && !string.IsNullOrEmpty(f))
+                a.Add(f);
+        }
+
+        /// <summary>Append raw pass-through options (e.g. AdditionalOptions), never quoted.</summary>
+        protected static void Raw(List<string> a, string raw)
+        {
+            if (!string.IsNullOrWhiteSpace(raw)) a.Add(raw.Trim());
+        }
     }
 }

@@ -1,181 +1,67 @@
-﻿using Microsoft.Build.CPPTasks;
 using Microsoft.Build.Framework;
-using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Rxdk.MsBuild.Tasks
 {
+    /// <summary>
+    /// Archives objects into a static library with "zig ar". Builds the command line explicitly,
+    /// preserving the previous task's switch set and ordering (no Target/Machine for the archiver).
+    /// </summary>
     public class ZigAr : ZigToolTask
     {
-        public ZigAr()
-        {
-            // dont need target or machine
-            switchOrderList = new ArrayList {
-                "Command",
-                "AlwaysAppend",
-                "CreateIndex",
-                "CreateThinArchive",
-                "NoWarnOnCreate",
-                "TruncateTimestamp",
-                "SuppressStartupBanner",
-                "Verbose",
-                "AdditionalOptions",
-                "OutputFile",
-                "Sources",
-            };
-        }
-
         public override string SubTool => "ar";
-        protected override string AlwaysAppend => "-r";
 
-        public virtual string Command
-        {
-            get => PropertyOrNull<string>();
-            set
-            {
-                UpdateSwitch(
-                    new ToolSwitch(ToolSwitchType.String)
-                    {
-                        DisplayName = "Command",
-                        Description = "Command for AR.",
-                    },
-                    new Dictionary<string, string>
-                    {
-                        { "Delete", "-d" },
-                        { "Move", "-m" },
-                        { "Print", "-p" },
-                        { "Quick", "-q" },
-                        { "Replacement", "-r" },
-                        { "Table", "-t" },
-                        { "Extract", "-x" },
-                    },
-                    value
-                );
-            }
-        }
+        public virtual string Command { get; set; }
+        public virtual bool CreateIndex { get; set; }
+        public virtual bool CreateThinArchive { get; set; }
+        public virtual bool NoWarnOnCreate { get; set; }
+        public virtual bool TruncateTimestamp { get; set; }
 
-        public virtual bool CreateIndex
-        {
-            get => PropertyOrNull<bool>();
-            set
-            {
-                UpdateSwitch(
-                    new ToolSwitch(ToolSwitchType.Boolean)
-                    {
-                        DisplayName = "Create an archive index",
-                        Description = "Create an archive index (cf. ranlib).  This can speed up linking and reduce dependency within its own library.",
-                        SwitchValue = "-s",
-                    },
-                    value
-                );
-            }
-        }
+        private bool _suppress, _suppressSet;
+        public virtual bool SuppressStartupBanner { get => _suppress; set { _suppress = value; _suppressSet = true; } }
 
-        public virtual bool CreateThinArchive
-        {
-            get => PropertyOrNull<bool>();
-            set
-            {
-                UpdateSwitch(
-                    new ToolSwitch(ToolSwitchType.Boolean)
-                    {
-                        DisplayName = "Create Thin Archive",
-                        Description = "Create a thin archive.  A thin archive contains relativepaths to the objects instead of embedding the objects.  Switching between Thin and Normal requires deleting the existing library.",
-                        SwitchValue = "-T",
-                    },
-                    value
-                );
-            }
-        }
+        public virtual bool Verbose { get; set; }
+        public virtual string AdditionalOptions { get; set; }
+        public virtual string OutputFile { get; set; }
 
-        public virtual bool NoWarnOnCreate
+        private static readonly Dictionary<string, string> CommandMap = new Dictionary<string, string>
         {
-            get => PropertyOrNull<bool>();
-            set
-            {
-                UpdateSwitch(
-                    new ToolSwitch(ToolSwitchType.Boolean)
-                    {
-                        DisplayName = "No Warning on Create",
-                        Description = "Do not warn if when the library is created.",
-                        SwitchValue = "-c",
-                    },
-                    value
-                );
-            }
-        }
+            {"Delete","-d"},{"Move","-m"},{"Print","-p"},{"Quick","-q"},
+            {"Replacement","-r"},{"Table","-t"},{"Extract","-x"},
+        };
 
-        public virtual bool TruncateTimestamp
+        public override bool Execute()
         {
-            get => PropertyOrNull<bool>();
-            set
-            {
-                UpdateSwitch(
-                    new ToolSwitch(ToolSwitchType.Boolean)
-                    {
-                        DisplayName = "Truncate Timestamp",
-                        Description = "Use zero for timestamps and uids/gids.",
-                        SwitchValue = "-D",
-                    },
-                    value
-                );
-            }
-        }
+            if (Sources == null || Sources.Length == 0)
+                return true;
 
-        public virtual bool SuppressStartupBanner
-        {
-            get => PropertyOrNull<bool>();
-            set
-            {
-                UpdateSwitch(
-                    new ToolSwitch(ToolSwitchType.Boolean)
-                    {
-                        DisplayName = "Suppress Startup Banner",
-                        Description = "Don't show version number.",
-                        ReverseSwitchValue = "-V",
-                    },
-                    value
-                );
-            }
-        }
+            var zig = ResolveZig();
+            if (zig == null)
+                return false;
 
-        public virtual bool Verbose
-        {
-            get => PropertyOrNull<bool>();
-            set
-            {
-                UpdateSwitch(
-                    new ToolSwitch(ToolSwitchType.Boolean)
-                    {
-                        DisplayName = "Verbose",
-                        Description = "Verbose",
-                        SwitchValue = "-v",
-                    },
-                    value
-                );
-            }
-        }
+            var a = new List<string>();
 
-        public virtual string OutputFile
-        {
-            get => PropertyOrNull<string>();
-            set
-            {
-                UpdateSwitch(
-                    new ToolSwitch(ToolSwitchType.File)
-                    {
-                        Separator = " ",
-                        DisplayName = "Output File",
-                        Description = "Override the default name and location of the library.",
-                        Required = true,
-                    },
-                    value
-                );
-            }
+            Mapped(a, CommandMap, Command);
+            a.Add("-r"); // AlwaysAppend
+            Flag(a, CreateIndex, "-s");
+            Flag(a, CreateThinArchive, "-T");
+            Flag(a, NoWarnOnCreate, "-c");
+            Flag(a, TruncateTimestamp, "-D");
+            // SuppressStartupBanner is a reverse-only switch: it emits -V (show version) only when
+            // explicitly set to false, and nothing when true or unset -- reproduce verbatim.
+            FlagRev(a, _suppressSet, _suppress, "", "-V");
+            Flag(a, Verbose, "-v");
+            Raw(a, AdditionalOptions);
+            Opt(a, "", OutputFile);
+            foreach (ITaskItem src in Sources)
+                a.Add(Quote(src.GetMetadata("FullPath")));
+
+            var r = Run(zig, a, workingDir: null, useResponseFile: true, leadingArgs: new[] { SubTool },
+                        doubleBackslashes: false);
+            LogDiagnostics(r.Combined, new System.Text.RegularExpressions.Regex[0]);
+            if (r.ExitCode != 0 && !Log.HasLoggedErrors)
+                Log.LogError("zig ar failed with exit code {0}", r.ExitCode);
+            return !Log.HasLoggedErrors && r.ExitCode == 0;
         }
     }
 }
