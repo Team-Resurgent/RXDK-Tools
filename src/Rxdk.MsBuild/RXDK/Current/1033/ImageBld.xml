@@ -1,15 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  "Xbox Image" project property page (mirrors the original XDK's Xbox Image > General page).
-  Surfaces the imagebld settings that produce the .xbe as editable, per-configuration
-  properties persisted to the .vcxproj. Rxdk.Xbox.targets reads these Rxdk* properties and
-  writes them into the generated build manifest; Rxdk.Cli passes them to imagebld.
-
-  Contributed as a generic property page via <PropertyPageSchema Context="Project"> in
-  Rxdk.Xbox.props (same mechanism VS uses for its own general.xml / nmake.xml pages).
+  "Xbox Image" project property page (mirrors the original XDK's Xbox Image page). Surfaces the
+  imagebld settings that produce the .xbe as editable, per-configuration %(ImageBld.*) item
+  metadata persisted to the .vcxproj: the same item the ImageBld target batches over and passes
+  to imagebld. Contributed via a PropertyPageSchema in Rxdk.MsBuild.targets.
 -->
 <Rule Name="XboxImage"
-      DisplayName="Xbox Image Builder"
+      DisplayName="Xbox Image"
       PageTemplate="tool"
       Description="imagebld settings used to build the Xbox .xbe."
       Order="30"
@@ -39,7 +36,7 @@
                   Category="General"
                   Description="Title thread stack size in bytes. (/stack)" />
 
-  <BoolProperty Name="ImageDebug" DisplayName="Include Debug Info"
+  <BoolProperty Name="Debug" DisplayName="Include Debug Info"
                 Category="General"
                 Description="Include the debug directory in the XBE so the debugger can resolve symbols. (/debug)" />
 

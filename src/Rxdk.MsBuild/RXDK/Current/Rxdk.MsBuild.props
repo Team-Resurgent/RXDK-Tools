@@ -157,6 +157,16 @@
         <ImageBld Condition="'$(NeedImageBld)' != ''" Include="$(OutDir)$(TargetName).exe" />
     </ItemGroup>
     
+    <!-- Xbox Deployment property-page defaults (see 1033\Deployment.xml). These are flat, per-
+         config properties the VS Deploy/F5 command reads off the loaded project; the build itself
+         only consumes RxdkDeployPaths (staged into the ISO below) and RxdkCreateIso. -->
+    <PropertyGroup>
+        <!-- Console dir the title deploys to; the deploy command applies the same xe:\<name>
+             default when this is empty, so it stays unset in the project unless customized. -->
+        <RxdkForceCopy Condition="'$(RxdkForceCopy)' == ''">false</RxdkForceCopy>
+        <RxdkCreateIso Condition="'$(RxdkCreateIso)' == ''">true</RxdkCreateIso>
+    </PropertyGroup>
+
     <ItemGroup Condition="'$(ConfigurationType)' == 'Application'">
         <!-- A plain "Media\**" glob here would be a static ItemGroup, evaluated once at project
              load: before RxdkBuildResources runs, so a bundler/xactbld output generated fresh
@@ -164,7 +174,12 @@
              second build. IsoCopyDir is a literal directory name, not a glob, so it can't go stale
              the same way; StageIsoFiles re-globs it at the point it actually needs the file list. -->
         <IsoCopyDir Include="Media" />
-        <Xiso Include="$(OutDir)XISO" />
+        <!-- Deploy Files from the Xbox Deployment page (RxdkDeployPaths, semicolon-separated) also
+             go into the ISO next to default.xbe, so the same media ships on the disc and on the
+             console. Include splits the ';' list into one IsoCopyDir item each. -->
+        <IsoCopyDir Condition="'$(RxdkDeployPaths)' != ''" Include="$(RxdkDeployPaths)" />
+        <!-- RxdkCreateIso=false stops the build at the .xbe (Xbox Deployment page > Packaging). -->
+        <Xiso Condition="'$(RxdkCreateIso)' != 'false'" Include="$(OutDir)XISO" />
     </ItemGroup>
 
     <Import Project="$(MSBuildThisFileDirectory)ImportAfter\*.props" Condition="Exists('$(MSBuildThisFileDirectory)ImportAfter')" />

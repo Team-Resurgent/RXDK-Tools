@@ -67,6 +67,8 @@
     <None Include="RXDK\Current\1033\ZigAr.xml" />
     <None Include="RXDK\Current\1033\ZigCompile.xml" />
     <None Include="RXDK\Current\1033\ZigLd.xml" />
+    <None Include="RXDK\Current\1033\Xiso.xml" />
+    <None Include="RXDK\Current\1033\Deployment.xml" />
     <None Include="RXDK\Current\Platforms\Xbox\Platform.Common.props" />
     <None Include="RXDK\Current\Platforms\Xbox\Platform.Default.props" />
     <None Include="RXDK\Current\Platforms\Xbox\Platform.props" />

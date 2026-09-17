@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  "Xbox ISO" tool property page. Surfaces the xdvdfs (Xiso task) output as editable, per-
+  configuration %(Xiso.*) item metadata persisted to the .vcxproj: the same item the Xiso
+  target batches over. Whether an ISO is produced at all is the "Create ISO Image" toggle on
+  the Xbox Deployment page (RxdkCreateIso); this page is only the ISO tool's own settings.
+  Registered via <PropertyPageSchema> in Rxdk.MsBuild.targets.
+-->
+<Rule Name="Xiso"
+      DisplayName="Xbox ISO"
+      PageTemplate="tool"
+      Description="xdvdfs settings used to pack the Xbox disc image (.iso)."
+      Order="40"
+      xmlns="http://schemas.microsoft.com/build/2009/properties">
+
+  <Rule.Categories>
+    <Category Name="General" DisplayName="General" Description="Disc image output." />
+    <Category Name="Command Line" DisplayName="Command Line" Subtype="CommandLine" />
+  </Rule.Categories>
+
+  <!-- ItemType="Xiso": persists as %(Xiso.*) metadata, the same item the Xiso target consumes
+       (Rxdk.MsBuild.props seeds Xiso.OutputFile = $(OutDir)$(TargetName).iso). -->
+  <Rule.DataSource>
+    <DataSource Persistence="ProjectFile" ItemType="Xiso" HasConfigurationCondition="true" />
+  </Rule.DataSource>
+
+  <StringProperty Name="OutputFile" DisplayName="ISO Output File"
+                  Subtype="file" Category="General"
+                  Description="Path of the .iso xdvdfs writes. Defaults to $(OutDir)$(TargetName).iso." />
+
+  <StringProperty Name="AdditionalOptions" DisplayName="Additional Options"
+                  Category="Command Line"
+                  Description="Additional Options."
+                  F1Keyword="vc.project.AdditionalOptionsPage" />
+
+</Rule>

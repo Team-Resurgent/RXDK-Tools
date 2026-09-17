@@ -474,6 +474,9 @@ ___eh_frame_end:
         <PropertyPageSchema Include="$(MSBuildThisFileDirectory)$(LangID)\ZigAr.xml" />
         <PropertyPageSchema Include="$(MSBuildThisFileDirectory)$(LangID)\ImageBld.xml" />
         <PropertyPageSchema Include="$(MSBuildThisFileDirectory)$(LangID)\Xiso.xml" />
+        <PropertyPageSchema Include="$(MSBuildThisFileDirectory)$(LangID)\Deployment.xml">
+            <Context>Project</Context>
+        </PropertyPageSchema>
     </ItemGroup>
 
     <!-- Property pages -->

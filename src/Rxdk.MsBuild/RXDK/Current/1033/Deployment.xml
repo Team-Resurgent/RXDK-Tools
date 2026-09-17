@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  "Xbox Deployment" project property page (mirrors the original XDK's Xbox Deployment page).
+  These are flat, per-configuration $(Rxdk*) properties on the .vcxproj:
+
+    - Remote Path   (RxdkRemotePath) -> the console directory the title deploys to (xe:\<name>).
+    - Deploy Files  (RxdkDeployPaths) -> project-relative dirs/files staged next to default.xbe,
+                      both into the ISO and copied to the console on deploy (the title's media).
+    - Force Copy    (RxdkForceCopy)   -> re-copy every file on deploy vs. incremental (xbcp -d).
+    - Create ISO    (RxdkCreateIso)   -> pack an .iso with xdvdfs; off stops at the .xbe.
+
+  Unlike the imagebld/ISO settings, deployment is not an MSBuild build step: the VS "Deploy" /
+  F5 command evaluates these properties from the loaded project and passes them to Rxdk.Cli
+  deploy. Rxdk.MsBuild.props expands RxdkDeployPaths into IsoCopyDir items so the same media is
+  staged into the ISO. Registered via <PropertyPageSchema> in Rxdk.MsBuild.targets.
+-->
+<Rule Name="XboxDeployment"
+      DisplayName="Xbox Deployment"
+      PageTemplate="generic"
+      Description="How the title is packaged and copied to the console."
+      Order="35"
+      xmlns="http://schemas.microsoft.com/build/2009/properties">
+
+  <Rule.Categories>
+    <Category Name="Console" DisplayName="Console" Description="How the title is copied to the devkit on deploy." />
+    <Category Name="Media" DisplayName="Media" Description="Files that ship with the title." />
+    <Category Name="Packaging" DisplayName="Packaging" Description="Disc image output." />
+  </Rule.Categories>
+
+  <Rule.DataSource>
+    <DataSource Persistence="ProjectFile" HasConfigurationCondition="true" />
+  </Rule.DataSource>
+
+  <StringProperty Name="RxdkRemotePath" DisplayName="Remote Path"
+                  Category="Console"
+                  Description="Console directory the title deploys to (e.g. xe:\MyGame). Defaults to xe:\&lt;project name&gt;." />
+
+  <BoolProperty Name="RxdkForceCopy" DisplayName="Force Copy"
+                Category="Console" Default="false"
+                Description="No (default): incremental deploy -- copy only files new or newer than the console copy (xbcp -d), so unchanged media is skipped. Yes: always re-copy every file." />
+
+  <StringListProperty Name="RxdkDeployPaths" DisplayName="Deploy Files"
+                      Category="Media" Separator=";"
+                      Description="Project-relative files or directories staged next to default.xbe -- into the ISO and copied to the console on deploy, e.g. Media. The title's runtime media." />
+
+  <BoolProperty Name="RxdkCreateIso" DisplayName="Create ISO Image"
+                Category="Packaging" Default="true"
+                Description="Pack the build output into an .iso with xdvdfs. Set to No to stop at the .xbe (plus staged deploy files)." />
+
+</Rule>
