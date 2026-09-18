@@ -24,6 +24,10 @@ extern "C" BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID)
     else if (reason == DLL_PROCESS_DETACH)
     {
         ShellTraceLine("DllMain PROCESS_DETACH");
+        // Remove the vectored exception handler before we vanish, or the
+        // process-global VEH chain keeps a dangling pointer into this unloaded
+        // module and Explorer crashes on its next first-chance exception.
+        ShellTraceRemoveCrashLogger();
         _Module.Term();
     }
     return TRUE;

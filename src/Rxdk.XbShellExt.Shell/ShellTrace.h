@@ -6,6 +6,7 @@ void ShellTraceInit();
 void ShellTraceClear();
 void ShellTraceSetModule(void* moduleBase);
 void ShellTraceInstallCrashLogger();
+void ShellTraceRemoveCrashLogger();
 void ShellTraceLine(const char* fmt, ...);
 void ShellTraceHr(const char* scope, HRESULT hr);
 void ShellTraceGuid(const char* scope, REFIID riid);

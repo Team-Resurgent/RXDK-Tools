@@ -17,6 +17,7 @@ namespace
 
     void* g_moduleBase = nullptr;
     LONG g_crashLogged = 0;
+    PVOID g_vectoredHandler = nullptr;
 
     bool ShellTraceEnabled()
     {
@@ -192,11 +193,24 @@ void ShellTraceInstallCrashLogger()
     if (!ShellTraceEnabled())
         return;
 
-    static bool installed = false;
-    if (installed)
+    // The vectored exception handler lives in the process-global VEH chain. It
+    // MUST be removed before this DLL is unloaded, otherwise the chain retains a
+    // pointer into freed module memory and the next exception anywhere in the
+    // host process (Explorer dispatches first-chance exceptions constantly) jumps
+    // into the unloaded page -> c0000005 in "...dll_unloaded". Keep the handle so
+    // ShellTraceRemoveCrashLogger() can tear it down on DLL_PROCESS_DETACH.
+    if (g_vectoredHandler)
         return;
-    installed = true;
-    AddVectoredExceptionHandler(0, CrashVectoredHandler);
+    g_vectoredHandler = AddVectoredExceptionHandler(0, CrashVectoredHandler);
+}
+
+void ShellTraceRemoveCrashLogger()
+{
+    if (g_vectoredHandler)
+    {
+        RemoveVectoredExceptionHandler(g_vectoredHandler);
+        g_vectoredHandler = nullptr;
+    }
 }
 
 void ShellTraceLine(const char* fmt, ...)
