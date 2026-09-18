@@ -21,21 +21,25 @@ namespace
 
     bool ShellTraceEnabled()
     {
+        // Tracing is OFF by default. It (and the vectored exception handler it
+        // installs) only turns on when XB_SHLEXT_TRACE is explicitly set to an
+        // on-value, so diagnostics never run inside Explorer on normal machines.
         static int state = -1;
         if (state < 0)
         {
             wchar_t buf[16] = {};
             const DWORD n = GetEnvironmentVariableW(L"XB_SHLEXT_TRACE", buf, _countof(buf));
             if (n > 0 &&
-                (buf[0] == L'0' ||
-                 _wcsicmp(buf, L"false") == 0 ||
-                 _wcsicmp(buf, L"off") == 0))
+                (buf[0] == L'1' ||
+                 _wcsicmp(buf, L"true") == 0 ||
+                 _wcsicmp(buf, L"on") == 0 ||
+                 _wcsicmp(buf, L"yes") == 0))
             {
-                state = 0;
+                state = 1;
             }
             else
             {
-                state = 1;
+                state = 0;
             }
         }
 
