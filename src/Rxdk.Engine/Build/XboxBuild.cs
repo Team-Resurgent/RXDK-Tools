@@ -942,7 +942,13 @@ public static class XboxBuild
             }
 
             var isDxt = manifest.Type == RxdkProjectKind.Dxt;
-            var entry = isDxt ? "DxtEntry" : libNames.Contains("libxapi.lib") ? "XapiTitleStartup" : "start";
+            // A title linking xAPI enters at XapiTitleStartup (which runs XapiInitProcess:
+            // per-title/utility drive setup, etc.) rather than the bare libc `start`. The
+            // library is named by its exact file, so the Debug build lists libxapid.lib --
+            // match either spelling, or a Debug title silently falls back to `start` and
+            // skips the whole xAPI init (e.g. no T:/U:/Z: drives).
+            var linksXapi = libNames.Contains("libxapi.lib") || libNames.Contains("libxapid.lib");
+            var entry = isDxt ? "DxtEntry" : linksXapi ? "XapiTitleStartup" : "start";
 
             var linkLibs = new List<string>();
             if (isDxt) linkLibs.Add("-Wl,--dynamicbase"); // DXT keeps its base-reloc table.
