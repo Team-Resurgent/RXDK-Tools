@@ -946,12 +946,11 @@ public static class XboxBuild
 
             var linkLibs = new List<string>();
             if (isDxt) linkLibs.Add("-Wl,--dynamicbase"); // DXT keeps its base-reloc table.
-            if (userLibs.Count > 0)
-            {
-                linkLibs.Add("-Wl,--start-group");
-                linkLibs.AddRange(userLibs);
-                linkLibs.Add("-Wl,--end-group");
-            }
+
+            // Resolve every SDK library, partitioning the whole-archive override(s) from the
+            // referenced-only libs.
+            var wholeArchiveLibs = new List<string>();
+            var regularLibs = new List<string>();
             foreach (var libName in libNames)
             {
                 // Fully verbatim, like a real "Additional Dependencies" list: the manifest/project
@@ -964,19 +963,30 @@ public static class XboxBuild
                     throw new InvalidOperationException(
                         $"Missing library: {libName} under sdk/lib - run RXDK SDK install");
                 // libcompat[d] must be force-linked whole-archive to win the compiler-rt comdat
-                // tie-break (see XdkLink.IsWholeArchiveLib) even though nothing in the title calls
-                // its functions directly; every other library links the normal, referenced-only way.
-                if (XdkLink.IsWholeArchiveLib(resolved))
-                {
-                    linkLibs.Add("-Wl,--whole-archive");
-                    linkLibs.Add(resolved);
-                    linkLibs.Add("-Wl,--no-whole-archive");
-                }
-                else
-                {
-                    linkLibs.Add(resolved);
-                }
+                // tie-break (see XdkLink.IsWholeArchiveLib); every other library links the normal,
+                // referenced-only way.
+                (XdkLink.IsWholeArchiveLib(resolved) ? wholeArchiveLibs : regularLibs).Add(resolved);
             }
+
+            // Emit the whole-archive override(s) AHEAD of every other archive (per f849319). libcompat
+            // carries picolibc's fabs/sqrt/sin/cos/rem_pio2/memmove/... which must beat zig
+            // compiler-rt's per-symbol COMDAT copies (SSE2 memmove faults on a PIII; the x87 fabs
+            // corrupts the FPU stack). Defining them first means libc's identical copies are never
+            // pulled -- when libcompat trailed libc, a pull of libc's copy (e.g. rem_pio2 via a trig
+            // call) duplicate-symbol'd against the whole-archived version and failed the link.
+            foreach (var wa in wholeArchiveLibs)
+            {
+                linkLibs.Add("-Wl,--whole-archive");
+                linkLibs.Add(wa);
+                linkLibs.Add("-Wl,--no-whole-archive");
+            }
+            if (userLibs.Count > 0)
+            {
+                linkLibs.Add("-Wl,--start-group");
+                linkLibs.AddRange(userLibs);
+                linkLibs.Add("-Wl,--end-group");
+            }
+            linkLibs.AddRange(regularLibs);
 
             // Incremental link/package skip: when no object was recompiled, the final product
             // (ISO, or the XBE when createIso=false, or the DXT) may already be current. It is stale
