@@ -1,7 +1,7 @@
 ﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-    <UsingTask TaskName="Rxdk.MsBuild.Tasks.ZigCompile" AssemblyFile="$(MSBuildThisFileDirectory)Rxdk.MsBuild.dll"/>
-    <UsingTask TaskName="Rxdk.MsBuild.Tasks.ZigLd" AssemblyFile="$(MSBuildThisFileDirectory)Rxdk.MsBuild.dll"/>
-    <UsingTask TaskName="Rxdk.MsBuild.Tasks.ZigAr" AssemblyFile="$(MSBuildThisFileDirectory)Rxdk.MsBuild.dll"/>
+    <UsingTask TaskName="Rxdk.MsBuild.Tasks.RxdkCompile" AssemblyFile="$(MSBuildThisFileDirectory)Rxdk.MsBuild.dll"/>
+    <UsingTask TaskName="Rxdk.MsBuild.Tasks.RxdkLink" AssemblyFile="$(MSBuildThisFileDirectory)Rxdk.MsBuild.dll"/>
+    <UsingTask TaskName="Rxdk.MsBuild.Tasks.RxdkLib" AssemblyFile="$(MSBuildThisFileDirectory)Rxdk.MsBuild.dll"/>
     <UsingTask TaskName="Rxdk.MsBuild.Tasks.ImageBld" AssemblyFile="$(MSBuildThisFileDirectory)Rxdk.MsBuild.dll"/>
     <UsingTask TaskName="Rxdk.MsBuild.Tasks.ImageBldFlatten" AssemblyFile="$(MSBuildThisFileDirectory)Rxdk.MsBuild.dll"/>
     <UsingTask TaskName="Rxdk.MsBuild.Tasks.Xiso" AssemblyFile="$(MSBuildThisFileDirectory)Rxdk.MsBuild.dll"/>
@@ -159,7 +159,7 @@
                 <!-- Replaces (not appends to) %(ClCompile.AdditionalIncludeDirectories): by this point
                      it already holds the backing PlatformToolset's own real MSVC/Windows SDK include
                      dirs (set by the standard Microsoft.Cpp.props toolset defaults, evaluated before
-                     this target runs), which -nostdinc on the zig cc line does not strip (it only
+                     this target runs), which -nostdinc on the clang compile line does not strip (it only
                      drops the compiler's own builtin search paths, not explicit -I flags). Only the
                      SDK's own clean-room headers ($(RxdkSdkIncludePath), set in Rxdk.MsBuild.props)
                      belong on a freestanding clang build, not $(IncludePath), which
@@ -178,7 +178,7 @@
         <Message Condition="'$(_DebugMessages)' == 'true'" Importance="high" Text="ClCompilePCH.ObjectFileName = '%(ClCompilePCH.ObjectFileName)'"/>
 
         <MultiToolTask Condition="'%(ClCompile.ExcludedFromBuild)' != 'true' and '$(UseMultiToolTask)' == 'true'"
-                      TaskName="Rxdk.MsBuild.Tasks.ZigCompile"
+                      TaskName="Rxdk.MsBuild.Tasks.RxdkCompile"
                       TaskAssemblyName="$(VCTargetsPath)Microsoft.Build.CppTasks.Common.dll"
                       Sources="@(ClCompile)"
 
@@ -223,16 +223,16 @@ ___eh_frame_end:
                           Overwrite="true"
                           Lines="$(_EhEndSource)" />
 
-        <ZigCompile Sources="$(_EhStartFile)"
+        <RxdkCompile Sources="$(_EhStartFile)"
                     ObjectFileName="$(IntDir)eh_start.obj"
                     CompileAs="CompileAsAsm"
                     ForcedIncludeFiles="" />
-        <ZigCompile Sources="$(_EhEndFile)"
+        <RxdkCompile Sources="$(_EhEndFile)"
                     ObjectFileName="$(IntDir)eh_end.obj"
                     CompileAs="CompileAsAsm"
                     ForcedIncludeFiles="" />
 
-        <ZigCompile Condition="'%(ClCompile.PrecompiledHeader)' == 'Create' and '$(UseMultiToolTask)' != 'true'"
+        <RxdkCompile Condition="'%(ClCompile.PrecompiledHeader)' == 'Create' and '$(UseMultiToolTask)' != 'true'"
                     Sources="@(ClCompile)"
                     
                     Optimization="%(ClCompile.Optimization)"
@@ -260,7 +260,7 @@ ___eh_frame_end:
                     ForcedIncludeFiles="%(ClCompile.ForcedIncludeFiles)"
                     AdditionalOptions="%(ClCompile.AdditionalOptions)" />
 
-        <ZigCompile Condition="'%(ClCompile.ExcludedFromBuild)' != 'true' and '%(ClCompile.PrecompiledHeader)' != 'Create' and '$(UseMultiToolTask)' != 'true'"
+        <RxdkCompile Condition="'%(ClCompile.ExcludedFromBuild)' != 'true' and '%(ClCompile.PrecompiledHeader)' != 'Create' and '$(UseMultiToolTask)' != 'true'"
                     Sources="@(ClCompile)"
                     
                     Optimization="%(ClCompile.Optimization)"
@@ -308,7 +308,7 @@ ___eh_frame_end:
             </Link>
         </ItemGroup>
         
-        <ZigLd Condition="'@(Link)' != ''"
+        <RxdkLink Condition="'@(Link)' != ''"
                Sources="$(IntDir)eh_start.obj;@(Link);$(IntDir)eh_end.obj"
                OutputFile="%(Link.OutputFile)"
                
@@ -350,7 +350,7 @@ ___eh_frame_end:
             </Lib>
         </ItemGroup>
 
-        <ZigAr Condition="'@(Lib)' != ''"
+        <RxdkLib Condition="'@(Lib)' != ''"
                Sources="@(Lib)"
             
                Command="%(Lib.Command)"
@@ -485,9 +485,9 @@ ___eh_frame_end:
             <Context>File;BrowseObject</Context>
         </PropertyPageSchema>
         <PropertyPageSchema Include="$(MSBuildThisFileDirectory)$(LangID)\RxdkDebugger.xml"/>
-        <PropertyPageSchema Include="$(MSBuildThisFileDirectory)$(LangID)\ZigCompile.xml"/>
-        <PropertyPageSchema Include="$(MSBuildThisFileDirectory)$(LangID)\ZigLd.xml" />
-        <PropertyPageSchema Include="$(MSBuildThisFileDirectory)$(LangID)\ZigAr.xml" />
+        <PropertyPageSchema Include="$(MSBuildThisFileDirectory)$(LangID)\RxdkCompile.xml"/>
+        <PropertyPageSchema Include="$(MSBuildThisFileDirectory)$(LangID)\RxdkLink.xml" />
+        <PropertyPageSchema Include="$(MSBuildThisFileDirectory)$(LangID)\RxdkLib.xml" />
         <PropertyPageSchema Include="$(MSBuildThisFileDirectory)$(LangID)\ImageBld.xml" />
         <PropertyPageSchema Include="$(MSBuildThisFileDirectory)$(LangID)\Xiso.xml" />
         <PropertyPageSchema Include="$(MSBuildThisFileDirectory)$(LangID)\Deployment.xml">

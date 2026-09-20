@@ -15,7 +15,7 @@ namespace Rxdk.MsBuild.Tasks
     /// Studio releases) rather than the per-VS Microsoft.Build.CPPTasks.Common
     /// TrackedVCToolTask, so ONE net472 Rxdk.MsBuild.dll loads under VS2022 (v170) and
     /// VS "18"/v180 alike. Tasks build their command lines explicitly and run the tool via
-    /// <see cref="Run"/>; clang/lld/zig diagnostics are surfaced to the VS Error List via
+    /// <see cref="Run"/>; clang/lld diagnostics are surfaced to the VS Error List via
     /// <see cref="LogDiagnostics"/>. Mirrors RXDK-360's Rxdk.Xbox360.Modern.Build.ModernTool.
     /// </summary>
     public abstract class RxdkToolTask : Task
@@ -133,7 +133,7 @@ namespace Rxdk.MsBuild.Tasks
                     // where needed); join and (for clang/lld) double every backslash so they do
                     // not treat path separators as escapes. llvm-ar (zig ar) does not escape
                     // backslashes, so its caller opts out -- matching the previous tasks, where
-                    // only ZigCompile/ZigLd overrode the response-file writer to double them.
+                    // only RxdkCompile/RxdkLink override the response-file writer to double them.
                     var rsp = string.Join(" ", args);
                     if (doubleBackslashes)
                         rsp = FindBackSlashInPath.Replace(rsp, "\\\\");
@@ -201,7 +201,7 @@ namespace Rxdk.MsBuild.Tasks
         /// Echo a tool's output to the MSBuild log, promoting lines that match one of the
         /// supplied diagnostic regexes (with a non-empty CATEGORY group) to Error/Warning so
         /// they surface in the Visual Studio Error List. The regexes are the exact ones the
-        /// previous tasks used (ZigCompile.clangMessageRegex / ZigLd.ldMessageRegex).
+        /// previous tasks used (RxdkCompile.clangMessageRegex / RxdkLink.ldMessageRegex).
         /// </summary>
         protected void LogDiagnostics(string text, IEnumerable<Regex> regexes)
         {

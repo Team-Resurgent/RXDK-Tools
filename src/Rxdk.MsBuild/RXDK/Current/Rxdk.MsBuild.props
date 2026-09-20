@@ -17,11 +17,11 @@
         <RXDK Condition="'$(RXDK)' == ''">$(ProgramData)\RXDK</RXDK>
         <EnableStdModules>false</EnableStdModules>
         <!-- The MultiToolTask path (Rxdk.MsBuild.targets' ClCompile target, when this is true) is
-             Microsoft's own multi-proc cl.exe orchestrator: even when pointed at ZigCompile via
+             Microsoft's own multi-proc cl.exe orchestrator: even when pointed at RxdkCompile via
              TaskName, it independently adds the real MSVC/Windows SDK include dirs on top of
              whatever %(ClCompile.AdditionalIncludeDirectories) says, which a freestanding clang
              build can't tolerate (redeclared builtins, __crt_va_start/end undeclared, etc). The
-             plain per-source ZigCompile invocations further down the same target honor our
+             plain per-source RxdkCompile invocations further down the same target honor our
              AdditionalIncludeDirectories override exactly, so force that path always. -->
         <UseMultiToolTask>false</UseMultiToolTask>
         <IncludePath>$(RXDK)\sdk\include\c++\v1;$(RXDK)\sdk\include</IncludePath>
@@ -48,7 +48,7 @@
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(DesignTimeBuild)' == 'true'">
-        <!-- IntelliSense-only include path (design-time only, so the real clang/zig build never sees it).
+        <!-- IntelliSense-only include path (design-time only, so the real clang build never sees it).
              Two things differ from the build path:
              1. sdk\intellisense is added: the MSVC IntelliSense front-end lacks the clang/freestanding
                 builtin headers (stddef.h, stdarg.h, float.h, stdbool.h, stdalign.h) and the packing/compat
@@ -70,7 +70,7 @@
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(ConfigurationType)' == 'DebuggerExtension'">
-        <!-- A DXT is linked exactly like an Application (Zig, not archived with Lib/ar); imagebld
+        <!-- A DXT is linked exactly like an Application (clang, not archived with Lib); imagebld
              /dxt afterward is what turns the linked executable into a flat PE, not the archiver.
              LibCompiled here was a bug: it routed DXT builds through the Lib/ar target instead of
              Link, producing a bogus .dxt "archive" and never actually linking against the SDK. -->
@@ -142,7 +142,7 @@
             <OutputFile>$(OutDir)$(TargetName).exe</OutputFile>
             <EntryPointSymbol Condition="'$(ConfigurationType)' == 'Application'">XapiTitleStartup</EntryPointSymbol>
             <EntryPointSymbol Condition="'$(ConfigurationType)' == 'DebuggerExtension'">DxtEntry</EntryPointSymbol>
-            <!-- LibraryDependencies maps to -lNAME. Verified against the real zig cc / ld.lld search
+            <!-- LibraryDependencies maps to -lNAME. Verified against the real clang / ld.lld search
                  strategy on this target (x86-windows-gnu): -lNAME only tries NAME.dll, NAME.lib and
                  libNAME.a — never libNAME.lib, so with our libs actually named libd3d8d.lib etc
                  (the "lib" is part of the real filename, not an implied prefix), the -l value has to
@@ -150,7 +150,7 @@
             <LibraryDependencies>libd3d8$(D);libd3dx8$(D);libxapi$(D);libc$(D);libcpp$(D);libkernel$(D)</LibraryDependencies>
             <AdditionalDependencies />
             <!-- No automatic libcompat[d] handling here: whether a project needs it (it wins a COMDAT
-                 tie-break against zig's bundled compiler-rt for fabs/sqrt/sin/...; see
+                 tie-break against the compiler-rt builtins for fabs/sqrt/sin/...; see
                  RXDK-Libs/build.ps1's Copy-DistCompatLib) is a per-project decision, not a toolset
                  default. A project that needs it names libcompat$(D) in its own LibraryDependencies,
                  same as any other library, AND wraps that one entry in a linker whole-archive/

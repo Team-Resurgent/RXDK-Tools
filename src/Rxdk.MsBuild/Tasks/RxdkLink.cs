@@ -6,16 +6,14 @@ using System.Text.RegularExpressions;
 namespace Rxdk.MsBuild.Tasks
 {
     /// <summary>
-    /// Links objects into an Xbox executable with "zig cc" (clang driving ld.lld). Builds the
+    /// Links objects into an Xbox executable with clang (driving ld.lld). Builds the
     /// command line explicitly, preserving the exact switch set and ordering the previous
     /// TrackedVCToolTask-based task emitted -- in particular the whole-archive begin/end pair
     /// wraps AdditionalOptions + Sources + AdditionalDependencies, with LibraryDependencies
     /// (the -lNAME list) after the wrap.
     /// </summary>
-    public class ZigLd : ZigToolTask
+    public class RxdkLink : RxdkCompilerTask
     {
-        public override string SubTool => "cc";
-
         public virtual string OutputFile { get; set; }
         public virtual bool ShowProgress { get; set; }
         public virtual bool Version { get; set; }
@@ -49,6 +47,9 @@ namespace Rxdk.MsBuild.Tasks
         {
             "-nostdlib", "-nostartfiles",
             "-Wl,--image-base=0x10000",
+            // Pin lld (the fork clang links -nostdlib and takes no system linker); the compiler-rt
+            // builtins the SDK libs need are appended explicitly at the end of the link (below).
+            "-fuse-ld=lld",
         };
 
         private static readonly Dictionary<string, string> DebuggerSymbolInformationMap = new Dictionary<string, string>
@@ -67,8 +68,8 @@ namespace Rxdk.MsBuild.Tasks
             if (Sources == null || Sources.Length == 0)
                 return true;
 
-            var zig = ResolveZig();
-            if (zig == null)
+            var root = ResolveLlvmRoot();
+            if (root == null)
                 return false;
 
             var a = new List<string>();
@@ -107,11 +108,18 @@ namespace Rxdk.MsBuild.Tasks
                         a.Add(dep.Trim());
             Flag(a, WholeArchiveEnd, "-Wl,--no-whole-archive");
             OptList(a, "-l", LibraryDependencies);
+            // compiler-rt builtins: satisfies the SDK libs' 64-bit integer + stack-probe builtins
+            // (__divdi3/__alloca/…). Placed AFTER the libs so lld resolves their undefined refs; a
+            // plain archive, pulled on demand (libcompat's whole-archive overrides still win). zig
+            // auto-linked its bundled compiler-rt here; a bare clang link must add it explicitly.
+            var builtins = BuiltinsArchive(root);
+            if (builtins != null)
+                a.Add(Quote(builtins));
 
-            var r = Run(zig, a, workingDir: null, useResponseFile: true, leadingArgs: new[] { SubTool });
+            var r = Run(ClangExe(root), a, workingDir: null, useResponseFile: true);
             LogDiagnostics(r.Combined, new[] { ldMessageRegex });
             if (r.ExitCode != 0 && !Log.HasLoggedErrors)
-                Log.LogError("zig cc (link) failed with exit code {0}", r.ExitCode);
+                Log.LogError("clang (link) failed with exit code {0}", r.ExitCode);
             return !Log.HasLoggedErrors && r.ExitCode == 0;
         }
     }

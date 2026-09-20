@@ -8,15 +8,13 @@ using System.Text.RegularExpressions;
 namespace Rxdk.MsBuild.Tasks
 {
     /// <summary>
-    /// Compiles C/C++/asm sources with "zig cc". Builds the clang command line explicitly
+    /// Compiles C/C++/asm sources with clang. Builds the clang command line explicitly
     /// (preserving the exact flags/order the previous TrackedVCToolTask-based task emitted),
     /// runs it through a response file (backslashes doubled), and does its own header-aware
     /// incremental up-to-date check from the generated depfile.
     /// </summary>
-    public class ZigCompile : ZigToolTask
+    public class RxdkCompile : RxdkCompilerTask
     {
-        public override string SubTool => "cc";
-
         // ---- properties (names/types identical to the previous task, so the .targets and
         //      property-page .xml that pass them by name need no change) --------------------
 
@@ -79,7 +77,7 @@ namespace Rxdk.MsBuild.Tasks
 
             "-fno-sanitize=undefined",
 
-            // -I (not -isystem) everywhere: the SDK's clean-room windef.h/etc. must win over zig's
+            // -I (not -isystem) everywhere: the SDK's clean-room windef.h/etc. must win over the toolchain's
             // bundled MinGW headers, which -isystem would let shadow them.
             "-Wno-c++11-narrowing",
             "-Wno-address-of-temporary",
@@ -140,8 +138,8 @@ namespace Rxdk.MsBuild.Tasks
             if (Sources == null || Sources.Length == 0)
                 return true;
 
-            var zig = ResolveZig();
-            if (zig == null)
+            var root = ResolveLlvmRoot();
+            if (root == null)
                 return false;
 
             foreach (ITaskItem src in Sources)
@@ -156,16 +154,16 @@ namespace Rxdk.MsBuild.Tasks
                 return true;
             }
 
-            var a = BuildArgs();
+            var a = BuildArgs(root);
 
-            var r = Run(zig, a, workingDir: null, useResponseFile: true, leadingArgs: new[] { SubTool });
+            var r = Run(ClangExe(root), a, workingDir: null, useResponseFile: true);
             LogDiagnostics(r.Combined, new[] { clangMessageRegex });
             if (r.ExitCode != 0 && !Log.HasLoggedErrors)
-                Log.LogError("zig cc failed with exit code {0}", r.ExitCode);
+                Log.LogError("clang (compile) failed with exit code {0}", r.ExitCode);
             return !Log.HasLoggedErrors && r.ExitCode == 0;
         }
 
-        private List<string> BuildArgs()
+        private List<string> BuildArgs(string root)
         {
             var a = new List<string>();
 
@@ -173,6 +171,9 @@ namespace Rxdk.MsBuild.Tasks
             a.Add(Machine);
             Mapped(a, OptimizationMap, Optimization);
             a.AddRange(AlwaysAppendList);
+            // -nostdinc (above) also drops clang's own resource dir, so re-add it (stddef.h/…).
+            var res = ResourceInclude(root);
+            if (res != null) { a.Add("-isystem"); a.Add(res); }
             Mapped(a, DebugInfoMap, DebugInfo);
             OptList(a, "-I ", AdditionalIncludeDirectories);
             if (!string.IsNullOrWhiteSpace(ObjectFileName))

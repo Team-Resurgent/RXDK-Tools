@@ -4,13 +4,11 @@ using System.Collections.Generic;
 namespace Rxdk.MsBuild.Tasks
 {
     /// <summary>
-    /// Archives objects into a static library with "zig ar". Builds the command line explicitly,
+    /// Archives objects into a static library with llvm-ar. Builds the command line explicitly,
     /// preserving the previous task's switch set and ordering (no Target/Machine for the archiver).
     /// </summary>
-    public class ZigAr : ZigToolTask
+    public class RxdkLib : RxdkCompilerTask
     {
-        public override string SubTool => "ar";
-
         public virtual string Command { get; set; }
         public virtual bool CreateIndex { get; set; }
         public virtual bool CreateThinArchive { get; set; }
@@ -35,8 +33,8 @@ namespace Rxdk.MsBuild.Tasks
             if (Sources == null || Sources.Length == 0)
                 return true;
 
-            var zig = ResolveZig();
-            if (zig == null)
+            var root = ResolveLlvmRoot();
+            if (root == null)
                 return false;
 
             var a = new List<string>();
@@ -56,11 +54,10 @@ namespace Rxdk.MsBuild.Tasks
             foreach (ITaskItem src in Sources)
                 a.Add(Quote(src.GetMetadata("FullPath")));
 
-            var r = Run(zig, a, workingDir: null, useResponseFile: true, leadingArgs: new[] { SubTool },
-                        doubleBackslashes: false);
+            var r = Run(ArExe(root), a, workingDir: null, useResponseFile: true, doubleBackslashes: false);
             LogDiagnostics(r.Combined, new System.Text.RegularExpressions.Regex[0]);
             if (r.ExitCode != 0 && !Log.HasLoggedErrors)
-                Log.LogError("zig ar failed with exit code {0}", r.ExitCode);
+                Log.LogError("llvm-ar failed with exit code {0}", r.ExitCode);
             return !Log.HasLoggedErrors && r.ExitCode == 0;
         }
     }
