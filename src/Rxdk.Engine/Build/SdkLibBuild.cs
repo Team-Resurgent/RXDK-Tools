@@ -16,9 +16,9 @@ namespace Rxdk.Engine.Build;
 ///
 /// The reproduction recipe (from build/compile_c.zig + coff_lib.zig), which this matches exactly:
 ///   cwd = repo root
-///   clang[++]  -march=pentium3  --target=&lt;triple&gt;  -c -o zig-out/obj/&lt;sub&gt;/&lt;stem&gt;.o
+///   clang[++]  -march=pentium3  --target=&lt;triple&gt;  -c -o build-out/obj/&lt;sub&gt;/&lt;stem&gt;.o
 ///              &lt;batch-flags…&gt;  &lt;opt&gt;  -isystem &lt;resource&gt;  -I&lt;inc&gt;…  &lt;abs-src&gt;
-///   llvm-lib /NOLOGO /OUT:zig-out/lib/&lt;name&gt;.lib @&lt;rsp&gt;
+///   llvm-lib /NOLOGO /OUT:build-out/lib/&lt;name&gt;.lib @&lt;rsp&gt;
 /// where &lt;stem&gt; is the source path with '/','\\','.',':',' ' → '_' (matching zig's uniqueStem),
 /// obj/include paths are repo-relative and the source path is absolute (matching zig's addFileArg).
 /// </summary>
@@ -50,7 +50,7 @@ public static class SdkLibBuild
     {
         /// <summary>true → clang++ (C++), false → clang (C / .s assembly).</summary>
         [JsonPropertyName("cpp")] public bool Cpp { get; set; }
-        /// <summary>Object output subdir under zig-out/obj (matches zig's out_subdir, so member
+        /// <summary>Object output subdir under build-out/obj (matches zig's out_subdir, so member
         /// names in the archive line up).</summary>
         [JsonPropertyName("outSubdir")] public string OutSubdir { get; set; } = "";
         /// <summary>The exact per-batch compile flags between the target triple and the opt flag
@@ -123,7 +123,7 @@ public static class SdkLibBuild
     }
 
     /// <summary>
-    /// Build one SDK library into <c>&lt;repoRoot&gt;/zig-out/lib/&lt;name&gt;.lib</c>, matching the
+    /// Build one SDK library into <c>&lt;repoRoot&gt;/build-out/lib/&lt;name&gt;.lib</c>, matching the
     /// zig build byte-for-byte. Returns the (repo-relative) lib path. Throws on any compile/pack
     /// failure.
     /// </summary>
@@ -139,13 +139,13 @@ public static class SdkLibBuild
         var triple = TargetTriple(manifest.Triple);
 
         repoRoot = Path.GetFullPath(repoRoot);
-        Directory.CreateDirectory(Path.Combine(repoRoot, "zig-out/lib"));
+        Directory.CreateDirectory(Path.Combine(repoRoot, "build-out/lib"));
 
         // Import library: generate from a decorated .def (libkernel/libxbdm), no compilation.
         // Mirrors libs/lib{kernel,xbdm}/build.zig: llvm-lib /NOLOGO /machine:x86 /def: /out:.
         if (manifest.Import is { } imp)
         {
-            var importLibRel = $"zig-out/lib/{manifest.Name}.lib";
+            var importLibRel = $"build-out/lib/{manifest.Name}.lib";
             var impArgs = new[]
             {
                 "/NOLOGO", $"/machine:{imp.Machine}", $"/def:{imp.Def}", $"/OUT:{importLibRel}",
@@ -167,7 +167,7 @@ public static class SdkLibBuild
     }
 
     /// <summary>
-    /// Archive objects into zig-out/lib/&lt;name&gt;.lib with the MSVC librarian, mirroring
+    /// Archive objects into build-out/lib/&lt;name&gt;.lib with the MSVC librarian, mirroring
     /// build/coff_lib.zig: an @rsp of quoted, CRLF-separated object paths (in the given order), then
     /// llvm-lib /NOLOGO /OUT: @rsp. llvm-lib records each object's path (as given) as the archive
     /// member name, so the rsp lists ABSOLUTE native paths — the same ones zig writes
@@ -177,9 +177,9 @@ public static class SdkLibBuild
         string repoRoot, string root, string name, IReadOnlyList<string> objRelPaths,
         Action<string>? log, CancellationToken ct)
     {
-        var libRel = $"zig-out/lib/{name}.lib";
-        var rspRel = $"zig-out/lib/{name}.rsp";
-        Directory.CreateDirectory(Path.Combine(repoRoot, "zig-out/lib"));
+        var libRel = $"build-out/lib/{name}.lib";
+        var rspRel = $"build-out/lib/{name}.rsp";
+        Directory.CreateDirectory(Path.Combine(repoRoot, "build-out/lib"));
         var rsp = new StringBuilder();
         foreach (var obj in objRelPaths)
             rsp.Append('"').Append(Path.GetFullPath(Path.Combine(repoRoot, obj))).Append("\"\r\n");
@@ -193,7 +193,7 @@ public static class SdkLibBuild
         return libRel;
     }
 
-    /// <summary>Compile every source in <paramref name="batches"/> to zig-out/obj, returning the
+    /// <summary>Compile every source in <paramref name="batches"/> to build-out/obj, returning the
     /// repo-relative object paths in build order (used by both a lib build and the loose msvc_lldiv
     /// object). Matches build/compile_c.zig exactly; the caller resolves the toolchain once.</summary>
     public static async Task<List<string>> CompileBatchesAsync(
@@ -218,7 +218,7 @@ public static class SdkLibBuild
                 var isS = ext.Equals(".s", StringComparison.OrdinalIgnoreCase);
                 var useCpp = !isS && batch.Cpp;
 
-                var objRel = $"zig-out/obj/{batch.OutSubdir}/{UniqueStem(srcRel)}.o";
+                var objRel = $"build-out/obj/{batch.OutSubdir}/{UniqueStem(srcRel)}.o";
                 objRelPaths.Add(objRel);
                 Directory.CreateDirectory(Path.GetDirectoryName(Path.Combine(repoRoot, objRel))!);
 

@@ -8,7 +8,7 @@ namespace Rxdk.Engine.Build;
 /// stages the public headers, replacing the zig build orchestration (build.zig). Reads
 /// build/sdk/sdk.json (lib order, the loose msvc_lldiv object for libcompat, and the header-staging
 /// copy operations) plus each lib's build/sdk/&lt;lib&gt;.json. build.ps1 packages the resulting
-/// zig-out/{lib,obj,include} into the dist (lib suffixing + libcompat archive + header copy), which
+/// build-out/{lib,obj,include} into the dist (lib suffixing + libcompat archive + header copy), which
 /// is all toolchain-independent file work.
 /// </summary>
 public static class SdkBuild
@@ -40,13 +40,13 @@ public static class SdkBuild
         [JsonPropertyName("dir")] public string? Dir { get; set; }
         /// <summary>Source file, or null when this op is a directory.</summary>
         [JsonPropertyName("file")] public string? File { get; set; }
-        /// <summary>Destination path relative to zig-out (e.g. "include/xbox").</summary>
+        /// <summary>Destination path relative to build-out (e.g. "include/xbox").</summary>
         [JsonPropertyName("to")] public string To { get; set; } = "";
     }
 
     /// <summary>
-    /// Build every SDK lib for <paramref name="optimize"/> into zig-out/lib (+ the loose objects into
-    /// zig-out/obj), and stage the public headers into zig-out/include. Header staging is
+    /// Build every SDK lib for <paramref name="optimize"/> into build-out/lib (+ the loose objects into
+    /// build-out/obj), and stage the public headers into build-out/include. Header staging is
     /// variant-independent; pass <paramref name="stageHeaders"/> = false to skip it on the second
     /// variant of a two-config dist build.
     /// </summary>
@@ -96,7 +96,7 @@ public static class SdkBuild
             var excl = new HashSet<string>(sdk.HeaderExcludeExt, StringComparer.OrdinalIgnoreCase);
             foreach (var h in sdk.Headers)
             {
-                var dest = Path.Combine(repoRoot, "zig-out", h.To.Replace('/', Path.DirectorySeparatorChar));
+                var dest = Path.Combine(repoRoot, "build-out", h.To.Replace('/', Path.DirectorySeparatorChar));
                 if (h.File is not null)
                 {
                     var src = Path.Combine(repoRoot, h.File.Replace('/', Path.DirectorySeparatorChar));
