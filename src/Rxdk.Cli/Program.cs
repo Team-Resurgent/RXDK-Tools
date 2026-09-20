@@ -70,6 +70,8 @@ switch (command)
         return CmdLlvmStatus();
     case "build-sdk-lib":
         return await CmdBuildSdkLib(opts);
+    case "build-sdk":
+        return await CmdBuildSdk(opts);
     case "install-docs":
     case "update-docs":
         return await CmdInstallDocs(opts);
@@ -377,6 +379,29 @@ static async Task<int> CmdBuildSdkLib(Dictionary<string, string> opts)
     catch (Exception ex)
     {
         Console.Error.WriteLine($"build-sdk-lib failed: {ex.Message}");
+        return 1;
+    }
+}
+
+static async Task<int> CmdBuildSdk(Dictionary<string, string> opts)
+{
+    if (!opts.TryGetValue("repo-root", out var repo) || string.IsNullOrEmpty(repo))
+    { Console.Error.WriteLine("missing required --repo-root"); return 2; }
+    opts.TryGetValue("manifest", out var manifest);
+    if (string.IsNullOrEmpty(manifest)) manifest = System.IO.Path.Combine(repo, "build", "sdk", "sdk.json");
+    opts.TryGetValue("config", out var cfg);
+    var optimize = string.Equals(cfg, "Release", StringComparison.OrdinalIgnoreCase)
+                   || string.Equals(cfg, "ReleaseSmall", StringComparison.OrdinalIgnoreCase)
+        ? RxdkOptimizeMode.ReleaseSmall : RxdkOptimizeMode.Debug;
+    var stageHeaders = !opts.ContainsKey("no-headers");
+    try
+    {
+        await SdkBuild.BuildAsync(repo, manifest, optimize, stageHeaders, log: msg => Console.WriteLine(msg));
+        return 0;
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"build-sdk failed: {ex.Message}");
         return 1;
     }
 }

@@ -158,45 +158,8 @@ public static class SdkLibBuild
             return importLibRel;
         }
 
-        var objRelPaths = new List<string>();
-
-        foreach (var batch in manifest.Batches)
-        {
-            // Per-batch opt overrides: RELEASE (e.g. -O2 for an -Os-miscompiling TU) or DEBUG
-            // (e.g. -O2 for an __asm-block TU that won't compile at -O0). Else the config default.
-            var opt = optimize == RxdkOptimizeMode.ReleaseSmall && !string.IsNullOrEmpty(batch.OptRelease) ? batch.OptRelease!
-                : optimize == RxdkOptimizeMode.Debug && !string.IsNullOrEmpty(batch.OptDebug) ? batch.OptDebug!
-                : defaultOpt;
-            foreach (var srcRel in batch.Sources)
-            {
-                var ext = Path.GetExtension(srcRel);
-                // .asm is skipped entirely (as in compile_c.zig); .s goes through the C driver
-                // (clang, never clang++) and skips the C/C++ flags but keeps opt + includes.
-                if (ext.Equals(".asm", StringComparison.OrdinalIgnoreCase)) continue;
-                var isS = ext.Equals(".s", StringComparison.OrdinalIgnoreCase);
-                var useCpp = !isS && batch.Cpp;
-
-                var objRel = $"zig-out/obj/{batch.OutSubdir}/{UniqueStem(srcRel)}.o";
-                objRelPaths.Add(objRel);
-                Directory.CreateDirectory(Path.GetDirectoryName(Path.Combine(repoRoot, objRel))!);
-
-                var compiler = useCpp ? LlvmRuntime.ClangxxExe(root) : LlvmRuntime.ClangExe(root);
-                var args = new List<string> { "-march=pentium3", $"--target={triple}", "-c", "-o", objRel };
-                if (!isS) args.AddRange(batch.Flags);
-                args.Add(opt);
-                if (resource is not null) { args.Add("-isystem"); args.Add(resource); }
-                foreach (var inc in batch.IncludeDirs) args.Add($"-I{inc}");
-                // Source as an absolute path, matching zig's addFileArg(b.path(src)).
-                args.Add(Path.GetFullPath(Path.Combine(repoRoot, srcRel)));
-
-                var r = await ProcessRunner.RunStreamedAsync(compiler, args, log, workingDirectory: repoRoot, ct: ct, extraEnv: ReproEnv);
-                if (!r.Success)
-                    throw new InvalidOperationException($"Compile failed: {srcRel} (exit {r.ExitCode})");
-                if (!File.Exists(Path.Combine(repoRoot, objRel)))
-                    throw new InvalidOperationException($"Compiler wrote no object for {srcRel}");
-                ZeroCoffTimestamp(Path.Combine(repoRoot, objRel));
-            }
-        }
+        var objRelPaths = await CompileBatchesAsync(
+            repoRoot, root, resource, triple, manifest.Batches, optimize, defaultOpt, log, ct);
 
         // Pack with the MSVC librarian, mirroring build/coff_lib.zig: an @rsp of quoted, CRLF-
         // separated object paths (in build order), then llvm-lib /NOLOGO /OUT: @rsp.
@@ -222,6 +185,63 @@ public static class SdkLibBuild
 
         log?.Invoke($"Built {libRel} ({objRelPaths.Count} objects)");
         return libRel;
+    }
+
+    /// <summary>Compile every source in <paramref name="batches"/> to zig-out/obj, returning the
+    /// repo-relative object paths in build order (used by both a lib build and the loose msvc_lldiv
+    /// object). Matches build/compile_c.zig exactly; the caller resolves the toolchain once.</summary>
+    public static async Task<List<string>> CompileBatchesAsync(
+        string repoRoot, string root, string? resource, string triple,
+        IReadOnlyList<Batch> batches, RxdkOptimizeMode optimize, string defaultOpt,
+        Action<string>? log, CancellationToken ct)
+    {
+        var objRelPaths = new List<string>();
+        foreach (var batch in batches)
+        {
+            // Per-batch opt overrides: RELEASE (e.g. -O2 for an -Os-miscompiling TU) or DEBUG
+            // (e.g. -O2 for an __asm-block TU that won't compile at -O0). Else the config default.
+            var opt = optimize == RxdkOptimizeMode.ReleaseSmall && !string.IsNullOrEmpty(batch.OptRelease) ? batch.OptRelease!
+                : optimize == RxdkOptimizeMode.Debug && !string.IsNullOrEmpty(batch.OptDebug) ? batch.OptDebug!
+                : defaultOpt;
+            foreach (var srcRel in batch.Sources)
+            {
+                var ext = Path.GetExtension(srcRel);
+                // .asm is skipped entirely (as in compile_c.zig); .s goes through the C driver
+                // (clang, never clang++) and skips the C/C++ flags but keeps opt + includes.
+                if (ext.Equals(".asm", StringComparison.OrdinalIgnoreCase)) continue;
+                var isS = ext.Equals(".s", StringComparison.OrdinalIgnoreCase);
+                var useCpp = !isS && batch.Cpp;
+
+                var objRel = $"zig-out/obj/{batch.OutSubdir}/{UniqueStem(srcRel)}.o";
+                objRelPaths.Add(objRel);
+                Directory.CreateDirectory(Path.GetDirectoryName(Path.Combine(repoRoot, objRel))!);
+
+                var compiler = useCpp ? LlvmRuntime.ClangxxExe(root) : LlvmRuntime.ClangExe(root);
+                var args = new List<string> { "-march=pentium3", $"--target={triple}", "-c", "-o", objRel };
+                if (!isS) args.AddRange(batch.Flags);
+                args.Add(opt);
+                if (resource is not null) { args.Add("-isystem"); args.Add(resource); }
+                foreach (var inc in batch.IncludeDirs) args.Add($"-I{inc}");
+                args.Add(Path.GetFullPath(Path.Combine(repoRoot, srcRel)));  // absolute src (zig addFileArg)
+
+                var r = await ProcessRunner.RunStreamedAsync(compiler, args, log, workingDirectory: repoRoot, ct: ct, extraEnv: ReproEnv);
+                if (!r.Success)
+                    throw new InvalidOperationException($"Compile failed: {srcRel} (exit {r.ExitCode})");
+                if (!File.Exists(Path.Combine(repoRoot, objRel)))
+                    throw new InvalidOperationException($"Compiler wrote no object for {srcRel}");
+                ZeroCoffTimestamp(Path.Combine(repoRoot, objRel));
+            }
+        }
+        return objRelPaths;
+    }
+
+    /// <summary>Resolve the toolchain root + resource include (shared setup for a build).</summary>
+    public static (string root, string? resource) ResolveToolchain(string? llvmOverride = null)
+    {
+        var root = LlvmRuntime.ResolveRoot(llvmOverride)
+            ?? throw new InvalidOperationException(
+                "No RXDK LLVM toolchain found (install-llvm, or set RXDK_LLVM). SDK libs build with clang.");
+        return (root, LlvmRuntime.ResourceInclude(root));
     }
 
     /// <summary>Load a lib manifest from JSON.</summary>
