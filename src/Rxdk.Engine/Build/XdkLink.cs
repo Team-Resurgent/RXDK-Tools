@@ -27,7 +27,7 @@ public static class XdkLink
     }
 
     public static async Task<ProcessResult> LinkAsync(
-        string zig,
+        Toolchain tc,
         IReadOnlyList<string> objs,
         IReadOnlyList<string> libs,
         string outExe,
@@ -36,7 +36,7 @@ public static class XdkLink
         Action<string>? log = null,
         CancellationToken ct = default)
     {
-        var args = new List<string> { "cc" };
+        var args = new List<string>(tc.LinkSubcommand());
 
         // C++ exception unwinding: libcpp.lib bundles libunwind, whose baremetal frame lookup
         // reads &__eh_frame_start / &__eh_frame_end to find the merged .eh_frame. Those bounds
@@ -46,7 +46,7 @@ public static class XdkLink
         var linksLibcpp = libs.Any(l => Path.GetFileName(l).Contains("libcpp", StringComparison.OrdinalIgnoreCase));
         string? ehBegin = null, ehEnd = null;
         if (linksLibcpp)
-            (ehBegin, ehEnd) = await CompileEhBracketsAsync(zig, Path.GetDirectoryName(Path.GetFullPath(outExe))!, log, ct);
+            (ehBegin, ehEnd) = await CompileEhBracketsAsync(tc, Path.GetDirectoryName(Path.GetFullPath(outExe))!, log, ct);
         if (ehBegin is not null) args.Add(ehBegin);
 
         // Objects go through a response file: a full title has hundreds of them, and passing every
@@ -57,24 +57,32 @@ public static class XdkLink
         args.Add("@" + rsp);
 
         args.AddRange(libs);
+        // compiler-rt builtins (LLVM only): satisfies the SDK libs' 64-bit integer helpers
+        // (__divdi3/__udivdi3/…). Placed AFTER the libs so lld resolves their undefined refs
+        // against it; as a plain archive it is pulled on demand, leaving libcompat's
+        // whole-archive fabs/memmove overrides intact. zig has no archive here (its driver
+        // auto-links compiler-rt), so this is a no-op for the zig path.
+        if (tc.BuiltinsArchive is not null) args.Add(tc.BuiltinsArchive);
         if (ehEnd is not null) args.Add(ehEnd); // ___eh_frame_end must follow every .eh_frame contributor
         args.AddRange(new[]
         {
-            "-target", "x86-windows-gnu",
-            // Must match XboxBuild.cs's compile recipe. -rtlib=compiler-rt below makes zig
-            // build/select compiler-rt for the *link* target, and without a CPU pinned that
-            // resolves to zig's x86 baseline (pentium4), whose codegen uses SSE2 for double
-            // and 64-bit integer math. The Xbox is a Coppermine Pentium III -- CPUID reports
-            // SSE but not SSE2 -- so those encodings are invalid opcodes on the console.
+            "-target", tc.TargetTriple,
+            // Must match XboxBuild.cs's compile recipe. The Xbox is a Coppermine Pentium III --
+            // CPUID reports SSE but not SSE2 -- so pin the CPU or codegen (and, under zig, the
+            // compiler-rt selection below) picks an x86 baseline that uses SSE2 for double and
+            // 64-bit integer math, whose encodings are invalid opcodes on the console.
             "-march=pentium3",
             "-nostdlib", "-nostartfiles",
             "-Wl,--image-base=0x10000",
             "-O0",
         });
         if (debugInfo) args.Add("-g");
-        args.AddRange(new[] { "-rtlib=compiler-rt", "-e", string.IsNullOrEmpty(entry) ? "start" : entry, "-o", outExe });
+        // Runtime lib: zig pulls its bundled compiler-rt; the LLVM fork ships none, so it links
+        // -fuse-ld=lld and takes any builtins from the explicit SDK libs (see Toolchain).
+        args.AddRange(tc.LinkRuntimeArgs());
+        args.AddRange(new[] { "-e", string.IsNullOrEmpty(entry) ? "start" : entry, "-o", outExe });
 
-        return await ProcessRunner.RunStreamedAsync(zig, args, log, ct: ct);
+        return await ProcessRunner.RunStreamedAsync(tc.CompilerExe, args, log, ct: ct);
     }
 
     // The two .eh_frame bracket markers (i386 COFF mangles C __eh_frame_start -> ___eh_frame_start).
@@ -90,7 +98,7 @@ public static class XdkLink
     /// (the link then surfaces the missing-symbol error, which is the actionable diagnostic).
     /// </summary>
     private static async Task<(string?, string?)> CompileEhBracketsAsync(
-        string zig, string outDir, Action<string>? log, CancellationToken ct)
+        Toolchain tc, string outDir, Action<string>? log, CancellationToken ct)
     {
         try
         {
@@ -100,8 +108,9 @@ public static class XdkLink
                 var src = Path.Combine(outDir, stem + ".S");
                 var obj = Path.Combine(outDir, stem + ".o");
                 await File.WriteAllTextAsync(src, asm, ct);
-                var r = await ProcessRunner.RunStreamedAsync(
-                    zig, new[] { "cc", "-target", "x86-windows-gnu", "-march=pentium3", "-c", src, "-o", obj }, log, ct: ct);
+                var asmArgs = new List<string>(tc.CompileSubcommand(false));
+                asmArgs.AddRange(new[] { "-target", tc.TargetTriple, "-march=pentium3", "-c", src, "-o", obj });
+                var r = await ProcessRunner.RunStreamedAsync(tc.CompilerExe, asmArgs, log, ct: ct);
                 return r.Success ? obj : null;
             }
             var begin = await CompileAsync("rxdk_eh_begin", EhBeginAsm);

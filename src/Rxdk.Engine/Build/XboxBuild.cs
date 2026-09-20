@@ -99,12 +99,15 @@ public static class XboxBuild
     // ---- per-file compile ----
 
     private static async Task ZigCompileAsync(
-        string zig, string source, string obj, IReadOnlyList<string> includeArgs,
+        Toolchain tc, string source, string obj, IReadOnlyList<string> includeArgs,
         IReadOnlyList<string> defineArgs, IReadOnlyList<string> userFlags, bool isCpp, string cppStandard, bool exceptions,
         RxdkOptimizeMode optimize,
         Action<string>? log, CancellationToken ct)
     {
-        var common = new List<string> { "-target", "x86-windows-gnu" };
+        var common = new List<string> { "-target", tc.TargetTriple };
+        // LLVM builds with -nostdinc (below) and, unlike zig cc, do NOT keep clang's resource dir
+        // on the search path, so re-add it here or stddef.h/stdarg.h/... are unfound (empty for zig).
+        common.AddRange(tc.ResourceIncludeArgs);
         common.AddRange(OptimizeMode.CompileFlags(optimize));
         common.AddRange(new[]
         {
@@ -167,7 +170,8 @@ public static class XboxBuild
             // The standard is per-project (manifest "cppStandard"), defaulting to c++23. XDK-era
             // code that uses the C++98 allocator members has to name an older one -- libc++ gates
             // those on the standard with no opt-in macro, unlike auto_ptr just below.
-            toolArgs.AddRange(new[] { "c++", $"-std={cppStandard}", "-nostdinc++",
+            toolArgs.AddRange(tc.CompileSubcommand(true));
+            toolArgs.AddRange(new[] { $"-std={cppStandard}", "-nostdinc++",
                                       exceptions ? "-fexceptions" : "-fno-exceptions", "-frtti" });
             // Ported XDK-era C++ predates C++17 and still uses std::auto_ptr (removed in C++17,
             // which -std=c++23 selects). libc++ keeps the implementation behind this macro, so
@@ -197,11 +201,12 @@ public static class XboxBuild
         }
         else
         {
-            toolArgs.AddRange(new[] { "cc", "-std=c23" });
+            toolArgs.AddRange(tc.CompileSubcommand(false));
+            toolArgs.Add("-std=c23");
         }
         toolArgs.AddRange(common);
 
-        var result = await ProcessRunner.RunStreamedAsync(zig, toolArgs, log, ct: ct);
+        var result = await ProcessRunner.RunStreamedAsync(tc.CompilerExe, toolArgs, log, ct: ct);
 
         // If a full-debug TU turns out to use emulated TLS, its object carries emutls symbols
         // and a full-`-g` link would fail on the undefined native TLS symbol. Recompile that
@@ -213,7 +218,7 @@ public static class XboxBuild
                 $"{Path.GetFileName(source)}: uses thread_local; rebuilding with line-tables-only " +
                 "debug info (locals unavailable in this file) to keep the emulated-TLS link clean.");
             var retryArgs = new List<string>(toolArgs) { "-gline-tables-only" };
-            result = await ProcessRunner.RunStreamedAsync(zig, retryArgs, log, ct: ct);
+            result = await ProcessRunner.RunStreamedAsync(tc.CompilerExe, retryArgs, log, ct: ct);
         }
 
         // Surface (but don't fail on) warnings in the title's own source. Clean RXDK template
@@ -226,7 +231,7 @@ public static class XboxBuild
         if (warnCount > 0 && isCpp)
             log?.Invoke($"Note: {warnCount} warning(s) in {Path.GetFileName(source)} (not fatal)");
         if (!result.Success)
-            throw new InvalidOperationException($"Zig compile failed on {source} (exit {result.ExitCode})");
+            throw new InvalidOperationException($"Compile failed on {source} (exit {result.ExitCode})");
     }
 
     // True if a compiled object references emulated-TLS runtime symbols (___emutls_v.*,
@@ -609,7 +614,7 @@ public static class XboxBuild
     }
 
     private static async Task<(List<string> objs, bool usesCpp, bool anyRecompiled)> CompileProjectSourcesAsync(
-        string projectRoot, RxdkProjectManifest m, string zig, string outDir,
+        string projectRoot, RxdkProjectManifest m, Toolchain tc, string outDir,
         IReadOnlyList<string> includeArgs, IReadOnlyList<string> defineArgs,
         RxdkOptimizeMode optimize, Action<string>? log, CancellationToken ct)
     {
@@ -642,7 +647,7 @@ public static class XboxBuild
                 continue;
             }
 
-            await ZigCompileAsync(zig, src, obj, includeArgs, defineArgs, userFlagArgs, isCpp,
+            await ZigCompileAsync(tc, src, obj, includeArgs, defineArgs, userFlagArgs, isCpp,
                                   m.EffectiveCppStandard, m.Exceptions ?? true, optimize, log, ct);
             // A compiler can exit 0 and still write nothing (see the -x note above). Catch that
             // here, where we still know which source it was, rather than at link time.
@@ -748,7 +753,7 @@ public static class XboxBuild
 
     /// <summary>Build one library project to a static .lib and return its path.</summary>
     private static async Task<string> BuildLibraryAsync(
-        string libRoot, string zig, string sdkInclude, RxdkOptimizeMode optimize,
+        string libRoot, Toolchain tc, string sdkInclude, RxdkOptimizeMode optimize,
         Action<string>? log, CancellationToken ct, RxdkProjectManifest? knownManifest = null)
     {
         // knownManifest is the resolved manifest for a top-level library (native .vcxproj flow,
@@ -768,7 +773,7 @@ public static class XboxBuild
 
         log?.Invoke($"== Building library {manifest.Name} ==");
         var (objs, _, anyRecompiled) = await CompileProjectSourcesAsync(
-            libRoot, manifest, zig, outDir, includeArgs, defineArgs, optimize, log, ct);
+            libRoot, manifest, tc, outDir, includeArgs, defineArgs, optimize, log, ct);
         if (objs.Count == 0)
             throw new InvalidOperationException($"Library {manifest.Name} has no sources to archive");
 
@@ -787,8 +792,8 @@ public static class XboxBuild
         // one token per line, exactly like the clang driver in XdkLink. Mirror it.
         var arRsp = Path.Combine(outDir, "archive_objs.rsp");
         await File.WriteAllLinesAsync(arRsp, objs.Select(o => "\"" + o.Replace('\\', '/') + "\""), ct);
-        var arArgs = new List<string> { "ar", "rcs", lib, "@" + arRsp };
-        var ar = await ProcessRunner.RunStreamedAsync(zig, arArgs, log, ct: ct);
+        var arArgs = new List<string>(tc.ArchiveSubcommand()) { "rcs", lib, "@" + arRsp };
+        var ar = await ProcessRunner.RunStreamedAsync(tc.ArchiverExe, arArgs, log, ct: ct);
         if (!ar.Success) throw new InvalidOperationException($"Archiving {lib} failed (exit {ar.ExitCode})");
         log?.Invoke($"Archived {lib}");
         return lib;
@@ -820,8 +825,11 @@ public static class XboxBuild
                 var missing = new List<string>();
                 if (!File.Exists(Path.Combine(SdkLayout.GetSdkIncludeDir(), "d3d8.h")))
                     missing.Add("SDK headers/libraries");
-                if (await ZigRuntime.ResolveZigExecutableAsync(opts.ZigExecutable, ct) is null)
-                    missing.Add("Zig toolchain");
+                // Either backend satisfies the toolchain prerequisite: the opt-in LLVM fork
+                // (RXDK_LLVM env / managed install) or the vendored Zig.
+                if (!LlvmRuntime.IsAvailable()
+                    && await ZigRuntime.ResolveZigExecutableAsync(opts.ZigExecutable, ct) is null)
+                    missing.Add("compiler toolchain (Zig or RXDK LLVM)");
                 var needsHostTools = !opts.CompileOnly && !manifest.IsLibrary;
                 if (needsHostTools && !File.Exists(RxdkPaths.ResolveHostTool("imagebld")))
                     missing.Add("host tools (imagebld, xdvdfs, …)");
@@ -849,9 +857,11 @@ public static class XboxBuild
             if (!Directory.Exists(sdkInclude))
                 throw new DirectoryNotFoundException("Missing sdk/include - run RXDK prerequisites (SDK install)");
 
-            var zig = await ZigRuntime.ResolveZigExecutableAsync(opts.ZigExecutable, ct)
-                ?? throw new InvalidOperationException(
-                    "Zig not found. Install Zig (install-zig), or add zig to PATH.");
+            // Opt-in LLVM: Toolchain.ResolveAsync picks the RXDK clang/lld fork when it resolves
+            // (RXDK_LLVM env / managed install), otherwise the vendored Zig. The rest of the build
+            // is backend-agnostic and goes through `tc`.
+            var tc = await Toolchain.ResolveAsync(opts.ZigExecutable, null, ct);
+            log?.Invoke($"Toolchain: {tc.Name}");
 
             var sdkLibDir = sdkLib;
             log?.Invoke($"Linking SDK libraries (configuration: {manifest.EffectiveConfiguration.ToString().ToLowerInvariant()})");
@@ -890,7 +900,7 @@ public static class XboxBuild
                 }
                 else
                 {
-                    userLibs.Add(await BuildLibraryAsync(dep, zig, sdkInclude, optimize, log, ct, depManifest));
+                    userLibs.Add(await BuildLibraryAsync(dep, tc, sdkInclude, optimize, log, ct, depManifest));
                 }
             }
 
@@ -906,7 +916,7 @@ public static class XboxBuild
             // A library root builds to a .lib and stops (no link / imagebld / deploy).
             if (manifest.Type == RxdkProjectKind.Library)
             {
-                var lib = await BuildLibraryAsync(projectRoot, zig, sdkInclude, optimize, log, ct, manifest);
+                var lib = await BuildLibraryAsync(projectRoot, tc, sdkInclude, optimize, log, ct, manifest);
                 log?.Invoke($"OK: library {projectName} build complete -> {lib}");
                 return new BuildResult(true, outDir);
             }
@@ -920,7 +930,7 @@ public static class XboxBuild
 
             log?.Invoke($"== Building executable {projectName} ==");
             var (objs, _, anyRecompiled) = await CompileProjectSourcesAsync(
-                projectRoot, manifest, zig, outDir, projectIncludeArgs, projectDefines, optimize, log, ct);
+                projectRoot, manifest, tc, outDir, projectIncludeArgs, projectDefines, optimize, log, ct);
 
             if (opts.CompileOnly)
             {
@@ -1027,7 +1037,7 @@ public static class XboxBuild
 
             var exe = Path.GetFullPath(Path.Combine(outDir, $"{projectName}.exe"));
             var linkResult = await XdkLink.LinkAsync(
-                zig, objs, linkLibs, exe, entry,
+                tc, objs, linkLibs, exe, entry,
                 OptimizeMode.KeepsDebugInfo(optimize), log, ct);
             if (!linkResult.Success)
                 throw new InvalidOperationException($"Link failed (exit {linkResult.ExitCode})");

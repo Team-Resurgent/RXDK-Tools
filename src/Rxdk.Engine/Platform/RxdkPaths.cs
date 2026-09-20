@@ -157,6 +157,13 @@ public static class RxdkPaths
             ? Path.Combine(LocalAppData(), "RXDK", "zig")
             : Path.Combine(RxdkDataRoot(), "zig");
 
+    /// <summary>Managed install root for the RXDK LLVM toolchain (the xboxog clang/lld fork),
+    /// parallel to GetZigInstallRoot. An unpacked xboxog-&lt;os&gt;-&lt;arch&gt; lives under here.</summary>
+    public static string GetLlvmInstallRoot() =>
+        OperatingSystem.IsWindows()
+            ? Path.Combine(LocalAppData(), "RXDK", "llvm")
+            : Path.Combine(RxdkDataRoot(), "llvm");
+
     private static string? EnvOverride(string name)
     {
         var value = Environment.GetEnvironmentVariable(name);
