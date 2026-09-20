@@ -69,6 +69,18 @@ public static class LlvmRuntime
 
     public static string ClangExe(string root) => Path.Combine(root, "bin", Exe("clang"));
 
+    /// <summary>The C++ driver (clang++). Falls back to clang if the ++ alias is absent (clang in
+    /// C++ mode compiles .cpp identically given an explicit target/-x).</summary>
+    public static string ClangxxExe(string root)
+    {
+        var cxx = Path.Combine(root, "bin", Exe("clang++"));
+        return File.Exists(cxx) ? cxx : ClangExe(root);
+    }
+
+    /// <summary>The MSVC-style COFF librarian (llvm-lib), used to pack the SDK libs with the same
+    /// <c>/NOLOGO /OUT: @rsp</c> switches the current zig build uses (see build/coff_lib.zig).</summary>
+    public static string LibExe(string root) => Path.Combine(root, "bin", Exe("llvm-lib"));
+
     /// <summary>The archiver. llvm-ar takes the same "rcs archive @rsp" syntax as `zig ar`, so the
     /// engine's archive step swaps only the executable. Falls back to llvm-lib if llvm-ar is absent.</summary>
     public static string ArExe(string root)

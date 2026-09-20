@@ -68,6 +68,8 @@ switch (command)
         return await CmdInstallLlvm(opts);
     case "llvm-status":
         return CmdLlvmStatus();
+    case "build-sdk-lib":
+        return await CmdBuildSdkLib(opts);
     case "install-docs":
     case "update-docs":
         return await CmdInstallDocs(opts);
@@ -351,6 +353,30 @@ static async Task<int> CmdInstallLlvm(Dictionary<string, string> opts)
     catch (Exception ex)
     {
         Console.Error.WriteLine($"install-llvm failed: {ex.Message}");
+        return 1;
+    }
+}
+
+static async Task<int> CmdBuildSdkLib(Dictionary<string, string> opts)
+{
+    if (!opts.TryGetValue("repo-root", out var repo) || string.IsNullOrEmpty(repo))
+    { Console.Error.WriteLine("missing required --repo-root"); return 2; }
+    if (!opts.TryGetValue("manifest", out var manifest) || string.IsNullOrEmpty(manifest))
+    { Console.Error.WriteLine("missing required --manifest"); return 2; }
+    opts.TryGetValue("config", out var cfg);
+    var optimize = string.Equals(cfg, "Release", StringComparison.OrdinalIgnoreCase)
+                   || string.Equals(cfg, "ReleaseSmall", StringComparison.OrdinalIgnoreCase)
+        ? RxdkOptimizeMode.ReleaseSmall : RxdkOptimizeMode.Debug;
+    try
+    {
+        var m = await SdkLibBuild.LoadManifestAsync(manifest);
+        var lib = await SdkLibBuild.BuildLibAsync(repo, m, optimize, log: msg => Console.WriteLine(msg));
+        Console.WriteLine($"OK: {m.Name} -> {lib}");
+        return 0;
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"build-sdk-lib failed: {ex.Message}");
         return 1;
     }
 }

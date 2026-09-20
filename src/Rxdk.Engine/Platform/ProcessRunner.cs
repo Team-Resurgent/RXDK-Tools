@@ -80,17 +80,32 @@ public static class ProcessRunner
         Action<string>? log = null,
         string? workingDirectory = null,
         CancellationToken ct = default,
-        bool echoCommand = true)
+        bool echoCommand = true,
+        IReadOnlyDictionary<string, string>? extraEnv = null)
     {
         if (log is not null && echoCommand)
         {
             var shown = string.Join(' ', args.Select(a => a.Contains(' ') ? $"\"{a}\"" : a));
             log($"$ {command} {shown}");
         }
+        var env = DotnetEnv.WithManagedDotnet();
+        if (extraEnv is { Count: > 0 })
+        {
+            // Merge over the managed-dotnet env (or a fresh copy of the parent env when that is
+            // null), so the child inherits everything plus these overrides.
+            var merged = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            if (env is not null)
+                foreach (var kv in env) merged[kv.Key] = kv.Value;
+            else
+                foreach (System.Collections.DictionaryEntry kv in Environment.GetEnvironmentVariables())
+                    if (kv.Key is string k && kv.Value is string v) merged[k] = v;
+            foreach (var kv in extraEnv) merged[kv.Key] = kv.Value;
+            env = merged;
+        }
         return RunAsync(
             command, args,
             workingDirectory: workingDirectory,
-            env: DotnetEnv.WithManagedDotnet(),
+            env: env,
             onOutputLine: log,
             ct: ct);
     }
