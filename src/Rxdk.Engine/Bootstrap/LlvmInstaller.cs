@@ -6,8 +6,8 @@ namespace Rxdk.Engine.Bootstrap;
 /// <summary>
 /// Downloads + installs the RXDK LLVM toolchain (the Team-Resurgent clang/lld/llvm-ar fork built
 /// for the xboxog target) into the managed install root, so the LLVM title-build path needs no
-/// manual <c>RXDK_LLVM</c> env var. Mirrors <see cref="ZigRuntime.InstallAsync"/> and
-/// <see cref="HostToolsInstaller"/>: pull the per-platform <c>xboxog-&lt;os&gt;-&lt;arch&gt;.zip</c>
+/// manual <c>RXDK_LLVM</c> env var. Mirrors <see cref="HostToolsInstaller"/>: pull the
+/// per-platform <c>xboxog-&lt;os&gt;-&lt;arch&gt;.zip</c>
 /// asset from the shared rolling release, unpack it, and leave <see cref="LlvmRuntime"/> to resolve
 /// it. Does not mutate PATH — the build resolves clang by absolute path.
 /// </summary>

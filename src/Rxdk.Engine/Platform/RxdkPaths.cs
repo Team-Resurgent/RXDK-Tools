@@ -147,18 +147,12 @@ public static class RxdkPaths
     public static string GetStagedSamplesRoot() =>
         EnvOverride("RXDK_STAGED_SAMPLES") ?? GetDefaultStagedSamplesRoot();
 
-    // ---- Managed Zig install ----
-    // Windows: %LocalAppData%\RXDK\zig (user-local; not ProgramData).
+    // ---- Managed LLVM toolchain install ----
+    // Windows: %LocalAppData%\RXDK\llvm (user-local; not ProgramData).
     // Linux/macOS: sibling of tools/sdk under the same RXDK data root.
 
-    /// <summary>Persistent Zig install root.</summary>
-    public static string GetZigInstallRoot() =>
-        OperatingSystem.IsWindows()
-            ? Path.Combine(LocalAppData(), "RXDK", "zig")
-            : Path.Combine(RxdkDataRoot(), "zig");
-
-    /// <summary>Managed install root for the RXDK LLVM toolchain (the xboxog clang/lld fork),
-    /// parallel to GetZigInstallRoot. An unpacked xboxog-&lt;os&gt;-&lt;arch&gt; lives under here.</summary>
+    /// <summary>Managed install root for the RXDK LLVM toolchain (the xboxog clang/lld fork).
+    /// An unpacked xboxog-&lt;os&gt;-&lt;arch&gt; lives under here.</summary>
     public static string GetLlvmInstallRoot() =>
         OperatingSystem.IsWindows()
             ? Path.Combine(LocalAppData(), "RXDK", "llvm")

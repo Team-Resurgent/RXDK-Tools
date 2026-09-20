@@ -10,7 +10,6 @@ public sealed record BuildResult(bool Ok, string OutDir, string? Error = null);
 public sealed class BuildOptions
 {
     public required string ProjectRoot { get; init; }
-    public string? ZigExecutable { get; init; }
     public bool CompileOnly { get; init; }
     /// <summary>
     /// Configuration name to select from a multi-config manifest (e.g. "Debug"/"Release"). Ignored
@@ -98,7 +97,7 @@ public static class XboxBuild
 
     // ---- per-file compile ----
 
-    private static async Task ZigCompileAsync(
+    private static async Task CompileAsync(
         Toolchain tc, string source, string obj, IReadOnlyList<string> includeArgs,
         IReadOnlyList<string> defineArgs, IReadOnlyList<string> userFlags, bool isCpp, string cppStandard, bool exceptions,
         RxdkOptimizeMode optimize,
@@ -647,7 +646,7 @@ public static class XboxBuild
                 continue;
             }
 
-            await ZigCompileAsync(tc, src, obj, includeArgs, defineArgs, userFlagArgs, isCpp,
+            await CompileAsync(tc, src, obj, includeArgs, defineArgs, userFlagArgs, isCpp,
                                   m.EffectiveCppStandard, m.Exceptions ?? true, optimize, log, ct);
             // A compiler can exit 0 and still write nothing (see the -x note above). Catch that
             // here, where we still know which source it was, rather than at link time.
@@ -825,11 +824,9 @@ public static class XboxBuild
                 var missing = new List<string>();
                 if (!File.Exists(Path.Combine(SdkLayout.GetSdkIncludeDir(), "d3d8.h")))
                     missing.Add("SDK headers/libraries");
-                // Either backend satisfies the toolchain prerequisite: the opt-in LLVM fork
-                // (RXDK_LLVM env / managed install) or the vendored Zig.
-                if (!LlvmRuntime.IsAvailable()
-                    && await ZigRuntime.ResolveZigExecutableAsync(opts.ZigExecutable, ct) is null)
-                    missing.Add("compiler toolchain (Zig or RXDK LLVM)");
+                // The RXDK LLVM toolchain (RXDK_LLVM env / managed install) is required to compile.
+                if (!LlvmRuntime.IsAvailable())
+                    missing.Add("RXDK LLVM toolchain (run install-llvm)");
                 var needsHostTools = !opts.CompileOnly && !manifest.IsLibrary;
                 if (needsHostTools && !File.Exists(RxdkPaths.ResolveHostTool("imagebld")))
                     missing.Add("host tools (imagebld, xdvdfs, …)");
@@ -857,10 +854,9 @@ public static class XboxBuild
             if (!Directory.Exists(sdkInclude))
                 throw new DirectoryNotFoundException("Missing sdk/include - run RXDK prerequisites (SDK install)");
 
-            // Opt-in LLVM: Toolchain.ResolveAsync picks the RXDK clang/lld fork when it resolves
-            // (RXDK_LLVM env / managed install), otherwise the vendored Zig. The rest of the build
-            // is backend-agnostic and goes through `tc`.
-            var tc = await Toolchain.ResolveAsync(opts.ZigExecutable, null, ct);
+            // Resolve the RXDK LLVM toolchain (RXDK_LLVM env / managed install). The rest of the
+            // build goes through `tc`.
+            var tc = await Toolchain.ResolveAsync(null, ct);
             log?.Invoke($"Toolchain: {tc.Name}");
 
             var sdkLibDir = sdkLib;

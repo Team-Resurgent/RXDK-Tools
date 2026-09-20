@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Rxdk.Engine.Build.Flags
 {
-    // TODO: move common stuff between XboxBuild.ZigCompileAsync and MSBuild ZigCompile here
+    // TODO: move common stuff between XboxBuild.CompileAsync and MSBuild ZigCompile here
     public class CompileFlags
     {
     }

@@ -20,8 +20,6 @@ if (args.Length == 0)
     Console.Error.WriteLine("  tools-status                Report whether host tools are installed");
     Console.Error.WriteLine("  install-sdk                 Clone/update RXDK-SDK (headers + libs)");
     Console.Error.WriteLine("  sdk-status                  Report staged SDK presence");
-    Console.Error.WriteLine("  install-zig                 Download the pinned Zig toolchain");
-    Console.Error.WriteLine("  zig-status                  Report the resolved Zig toolchain");
     Console.Error.WriteLine("  install-docs                Clone/update RXDK-Docs (SDK + extension help)");
     Console.Error.WriteLine("  docs-status                 Report staged docs presence");
     Console.Error.WriteLine("  install-samples             Clone/update RXDK-Samples (ported XDK sample suite)");
@@ -59,10 +57,6 @@ switch (command)
         return await CmdInstallSdk(opts);
     case "sdk-status":
         return CmdSdkStatus();
-    case "install-zig":
-        return await CmdInstallZig();
-    case "zig-status":
-        return await CmdZigStatus();
     case "install-llvm":
     case "update-llvm":
         return await CmdInstallLlvm(opts);
@@ -326,20 +320,6 @@ static async Task<int> CmdVersions(Dictionary<string, string> opts)
     return 0;
 }
 
-static async Task<int> CmdInstallZig()
-{
-    try
-    {
-        var zig = await ZigRuntime.InstallAsync(log: msg => Console.WriteLine(msg));
-        Console.WriteLine($"Zig ready: {zig}");
-        return 0;
-    }
-    catch (Exception ex)
-    {
-        Console.Error.WriteLine($"install-zig failed: {ex.Message}");
-        return 1;
-    }
-}
 
 static async Task<int> CmdInstallLlvm(Dictionary<string, string> opts)
 {
@@ -641,19 +621,6 @@ static async Task<int> CmdXboxIp()
     return addr is null ? 1 : 0;
 }
 
-static async Task<int> CmdZigStatus()
-{
-    var zig = await ZigRuntime.ResolveZigExecutableAsync();
-    if (zig is null)
-    {
-        Console.WriteLine("zig: not found (run install-zig)");
-        return 1;
-    }
-    var version = await ZigRuntime.GetVersionLineAsync();
-    Console.WriteLine($"zig: {zig}");
-    Console.WriteLine($"version: {version} (pinned {ZigRuntime.ZigVersion})");
-    return 0;
-}
 
 static int CmdInfo(Dictionary<string, string> opts)
 {
