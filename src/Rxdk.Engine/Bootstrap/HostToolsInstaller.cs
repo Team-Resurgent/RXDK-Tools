@@ -56,13 +56,15 @@ public static partial class HostToolsInstaller
     // or arm64 Linux build; those hosts fall back to the x64 asset.)
     private static string XdvdfsAssetPrefix()
     {
-        if (OperatingSystem.IsWindows()) return "xdvdfs-windows-";
-        if (OperatingSystem.IsMacOS())
-            return System.Runtime.InteropServices.RuntimeInformation.OSArchitecture
-                       == System.Runtime.InteropServices.Architecture.Arm64
-                ? "xdvdfs-macos-arm64-"
-                : "xdvdfs-macos-x64-";
-        return "xdvdfs-linux-";
+        var arm64 = System.Runtime.InteropServices.RuntimeInformation.OSArchitecture
+                        == System.Runtime.InteropServices.Architecture.Arm64;
+        // arm64 hosts need the explicit -arm64- asset (only present once xdvdfs ships it).
+        // x64 keeps the legacy bare "xdvdfs-{os}-" prefix, which also StartsWith-matches the
+        // newer "xdvdfs-{os}-x64-" name and sorts above "-arm64-", so it works with both the
+        // current release (bare) and a future normalized one without a flag day.
+        if (OperatingSystem.IsWindows()) return arm64 ? "xdvdfs-windows-arm64-" : "xdvdfs-windows-";
+        if (OperatingSystem.IsMacOS()) return arm64 ? "xdvdfs-macos-arm64-" : "xdvdfs-macos-x64-";
+        return arm64 ? "xdvdfs-linux-arm64-" : "xdvdfs-linux-";
     }
 
     /// <summary>
