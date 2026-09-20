@@ -2,7 +2,7 @@
 # Downloads .NET 8 runtime installers into runtime/ for offline bundling with RXDK tool packages.
 set -euo pipefail
 
-runtime="${1:?Usage: $0 <win-x64|linux-x64|linux-arm64|osx-x64|osx-arm64> [output-dir]}"
+runtime="${1:?Usage: $0 <win-x64|win-arm64|linux-x64|linux-arm64|osx-x64|osx-arm64> [output-dir]}"
 output_dir="${2:-}"
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -42,6 +42,10 @@ case "$runtime" in
   win-x64)
     url="$(find_file_url windowsdesktop win-x64 'windowsdesktop-runtime-win-x64\.exe$')"
     dest="$out_dir/windowsdesktop-runtime-win-x64.exe"
+    ;;
+  win-arm64)
+    url="$(find_file_url windowsdesktop win-arm64 'windowsdesktop-runtime-win-arm64\.exe$')"
+    dest="$out_dir/windowsdesktop-runtime-win-arm64.exe"
     ;;
   linux-x64)
     url="$(find_file_url runtime linux-x64 'dotnet-runtime-linux-x64\.tar\.gz$')"

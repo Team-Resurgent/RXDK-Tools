@@ -65,6 +65,10 @@ jobs:
         shell: pwsh
         run: ./scripts/stage-managed-tools-package.ps1 -Runtime win-x64 -OutputDir out/publish/managed/win-x64
 
+      - name: Publish managed tools package (Windows arm64)
+        shell: pwsh
+        run: ./scripts/stage-managed-tools-package.ps1 -Runtime win-arm64 -OutputDir out/publish/managed/win-arm64
+
       - name: Upload Xbox Neighborhood installer
         uses: actions/upload-artifact@v4
         with:
@@ -78,6 +82,14 @@ jobs:
         with:
           name: rxdk-managed-win-x64
           path: out/publish/managed/win-x64/**
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Upload managed tools (Windows arm64)
+        uses: actions/upload-artifact@v4
+        with:
+          name: rxdk-managed-win-arm64
+          path: out/publish/managed/win-arm64/**
           if-no-files-found: error
           retention-days: 90
 
@@ -160,6 +172,12 @@ jobs:
           # upload-artifact / re-zip often drop Unix execute bits; pin them before upload.
           chmod a+x out/publish/managed/linux-x64/tools/*
 
+      - name: Publish managed tools package (Linux arm64)
+        run: |
+          set -euo pipefail
+          bash scripts/stage-managed-tools-package.sh linux-arm64 out/publish/managed/linux-arm64
+          chmod a+x out/publish/managed/linux-arm64/tools/*
+
       - name: Upload NuGet packages
         uses: actions/upload-artifact@v4
         with:
@@ -173,6 +191,14 @@ jobs:
         with:
           name: rxdk-managed-linux-x64
           path: out/publish/managed/linux-x64/**
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Upload managed tools (Linux arm64)
+        uses: actions/upload-artifact@v4
+        with:
+          name: rxdk-managed-linux-arm64
+          path: out/publish/managed/linux-arm64/**
           if-no-files-found: error
           retention-days: 90
 

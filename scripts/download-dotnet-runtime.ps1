@@ -1,7 +1,7 @@
 # Downloads .NET 8 runtime installers into runtime/ for offline bundling with RXDK tool packages.
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet('win-x64', 'linux-x64', 'linux-arm64', 'osx-x64', 'osx-arm64')]
+    [ValidateSet('win-x64', 'win-arm64', 'linux-x64', 'linux-arm64', 'osx-x64', 'osx-arm64')]
     [string]$Runtime,
     [string]$OutputDir = '',
     [string]$ChannelVersion = '8.0'
@@ -52,6 +52,11 @@ switch ($Runtime) {
         $file = Get-ReleaseFile -Release $release -SectionName 'windowsdesktop' -Rid 'win-x64' -NamePattern 'windowsdesktop-runtime-win-x64.exe'
         if (-not $file) { throw 'Could not resolve Windows Desktop Runtime download URL.' }
         $dest = Join-Path $outDir 'windowsdesktop-runtime-win-x64.exe'
+    }
+    'win-arm64' {
+        $file = Get-ReleaseFile -Release $release -SectionName 'windowsdesktop' -Rid 'win-arm64' -NamePattern 'windowsdesktop-runtime-win-arm64.exe'
+        if (-not $file) { throw 'Could not resolve Windows Desktop Runtime (arm64) download URL.' }
+        $dest = Join-Path $outDir 'windowsdesktop-runtime-win-arm64.exe'
     }
     'linux-x64' {
         $file = Get-ReleaseFile -Release $release -SectionName 'runtime' -Rid 'linux-x64' -NamePattern 'dotnet-runtime-linux-x64.tar.gz'
