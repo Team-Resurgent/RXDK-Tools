@@ -84,51 +84,78 @@ public sealed class Toolchain
     }
 
     /// <summary>
-    /// Resolve the toolchain for a build. During the migration the LLVM fork is strictly
-    /// <b>opt-in</b>: SELECTION (should we use LLVM) is gated separately from LOCATION (where the
-    /// toolchain is). LLVM is chosen only when the caller opts in —
-    /// <list type="bullet">
-    /// <item>an explicit <paramref name="llvmOverride"/> path, or</item>
-    /// <item><c>RXDK_LLVM</c> set to a toolchain root, or</item>
-    /// <item><c>RXDK_USE_LLVM</c> set truthy (1/true/yes/on), which selects the managed install.</item>
+    /// Resolve the toolchain for a build. LLVM is now the <b>default</b> when it resolves: the RXDK
+    /// clang/lld fork is used whenever it is installed (explicit <paramref name="llvmOverride"/> /
+    /// <c>RXDK_LLVM</c> path / managed install), with zig as the fallback and the opt-out. Precedence:
+    /// <list type="number">
+    /// <item>Explicit <paramref name="llvmOverride"/> path → LLVM (a caller/flag forcing it).</item>
+    /// <item>Zig opt-out — <c>RXDK_USE_ZIG</c> truthy, or <c>RXDK_USE_LLVM</c> falsey (0/false/no/off)
+    ///   — → zig (throws if zig isn't available).</item>
+    /// <item>Otherwise prefer LLVM when it resolves; if <c>RXDK_USE_LLVM</c> is truthy it is
+    ///   <i>required</i> (throws when absent rather than silently using zig).</item>
+    /// <item>Else zig (explicit <paramref name="zigOverride"/> / RXDK_ZIG / managed install / PATH).</item>
     /// </list>
-    /// A managed LLVM install merely being present (e.g. after <c>install-llvm</c>) does NOT flip a
-    /// build off zig — otherwise installing the toolchain to try it would silently change everyone's
-    /// default. When we later make LLVM the default, this gate is what changes. Absent any opt-in,
-    /// the default is zig (explicit <paramref name="zigOverride"/> / RXDK_ZIG / managed install /
-    /// PATH). Throws with an actionable message when the selected backend isn't available.
+    /// SELECTION is still separate from LOCATION — <see cref="LlvmRuntime.ResolveRoot"/> only says
+    /// where LLVM is; this method decides whether to use it. Flipping the default here (rather than in
+    /// the callers) is the single switch that ended the opt-in phase.
     /// </summary>
     public static async Task<Toolchain> ResolveAsync(
         string? zigOverride = null, string? llvmOverride = null, CancellationToken ct = default)
     {
-        if (LlvmOptedIn(llvmOverride))
+        // 1. Programmatic override always wins.
+        if (!string.IsNullOrWhiteSpace(llvmOverride))
         {
-            var llvmRoot = LlvmRuntime.ResolveRoot(llvmOverride)
-                ?? throw new InvalidOperationException(
-                    "LLVM was requested (RXDK_LLVM / RXDK_USE_LLVM / override) but no toolchain was " +
-                    "found. Run install-llvm, or point RXDK_LLVM at an unpacked xboxog-<os>-<arch> root.");
-            return Llvm(llvmRoot);
+            var root = LlvmRuntime.ResolveRoot(llvmOverride)
+                ?? throw new InvalidOperationException($"LLVM toolchain not found at override: {llvmOverride}");
+            return Llvm(root);
         }
 
+        var useLlvm = Environment.GetEnvironmentVariable("RXDK_USE_LLVM")?.Trim();
+        var forceZig = IsTruthy(Environment.GetEnvironmentVariable("RXDK_USE_ZIG")) || IsFalsey(useLlvm);
+        var requireLlvm = IsTruthy(useLlvm);
+
+        // 2. Explicit zig opt-out.
+        if (forceZig && !requireLlvm)
+        {
+            var zigOut = await ZigRuntime.ResolveZigExecutableAsync(zigOverride, ct)
+                ?? throw new InvalidOperationException(
+                    "Zig was requested (RXDK_USE_ZIG / RXDK_USE_LLVM=0) but not found. Install Zig " +
+                    "(install-zig) or add zig to PATH, or unset the override to use LLVM.");
+            return Zig(zigOut);
+        }
+
+        // 3. Default: prefer LLVM when it resolves (RXDK_LLVM path / managed install).
+        var llvmRoot = LlvmRuntime.ResolveRoot();
+        if (llvmRoot is not null)
+            return Llvm(llvmRoot);
+        if (requireLlvm)
+            throw new InvalidOperationException(
+                "LLVM was required (RXDK_USE_LLVM=1) but no toolchain was found. Run install-llvm, " +
+                "or point RXDK_LLVM at an unpacked xboxog-<os>-<arch> root.");
+
+        // 4. Zig fallback.
         var zig = await ZigRuntime.ResolveZigExecutableAsync(zigOverride, ct)
                   ?? throw new InvalidOperationException(
-                      "No toolchain found. Install Zig (install-zig) / add zig to PATH, or opt into " +
-                      "LLVM (install-llvm + set RXDK_USE_LLVM=1, or set RXDK_LLVM to a toolchain root).");
+                      "No toolchain found. Run install-llvm (recommended) or install-zig, or add " +
+                      "zig to PATH.");
         return Zig(zig);
     }
 
-    /// <summary>True when the caller has opted into the LLVM backend for this build: an explicit
-    /// override, <c>RXDK_LLVM</c> pointing at a root, or <c>RXDK_USE_LLVM</c> set truthy. Mere
-    /// presence of a managed install is deliberately NOT opt-in during the migration.</summary>
-    private static bool LlvmOptedIn(string? llvmOverride)
+    private static bool IsTruthy(string? v)
     {
-        if (!string.IsNullOrWhiteSpace(llvmOverride)) return true;
-        if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("RXDK_LLVM"))) return true;
-        var use = Environment.GetEnvironmentVariable("RXDK_USE_LLVM")?.Trim();
-        return use is not null
-            && (use is "1"
-                || use.Equals("true", StringComparison.OrdinalIgnoreCase)
-                || use.Equals("yes", StringComparison.OrdinalIgnoreCase)
-                || use.Equals("on", StringComparison.OrdinalIgnoreCase));
+        v = v?.Trim();
+        return v is not null && (v is "1"
+            || v.Equals("true", StringComparison.OrdinalIgnoreCase)
+            || v.Equals("yes", StringComparison.OrdinalIgnoreCase)
+            || v.Equals("on", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static bool IsFalsey(string? v)
+    {
+        v = v?.Trim();
+        return v is not null && (v is "0"
+            || v.Equals("false", StringComparison.OrdinalIgnoreCase)
+            || v.Equals("no", StringComparison.OrdinalIgnoreCase)
+            || v.Equals("off", StringComparison.OrdinalIgnoreCase));
     }
 }
