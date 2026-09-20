@@ -58,9 +58,13 @@ namespace Rxdk.MsBuild.Tasks
 
         private static IEnumerable<string> ManagedLlvmCandidates()
         {
-            var root = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "RXDK", "llvm");
+            // The shared RXDK data root: %ProgramData%\RXDK by default, or the RXDK env override
+            // (the standalone installer's custom path); a sibling of sdk/tools/docs/samples.
+            var over = Environment.GetEnvironmentVariable("RXDK");
+            var dataRoot = !string.IsNullOrWhiteSpace(over)
+                ? over.Trim()
+                : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "RXDK");
+            var root = Path.Combine(dataRoot, "llvm");
             yield return Path.Combine(root, ArchiveDirName);
             yield return root; // in case the archive was unpacked flat
         }

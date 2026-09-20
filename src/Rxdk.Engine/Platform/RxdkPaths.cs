@@ -148,15 +148,13 @@ public static class RxdkPaths
         EnvOverride("RXDK_STAGED_SAMPLES") ?? GetDefaultStagedSamplesRoot();
 
     // ---- Managed LLVM toolchain install ----
-    // Windows: %LocalAppData%\RXDK\llvm (user-local; not ProgramData).
-    // Linux/macOS: sibling of tools/sdk under the same RXDK data root.
+    // Under the shared RXDK data root, a sibling of tools/sdk/docs/samples
+    // (Windows: %ProgramData%\RXDK\llvm, honoring the RXDK / registry install-path override).
 
     /// <summary>Managed install root for the RXDK LLVM toolchain (the xboxog clang/lld fork).
     /// An unpacked xboxog-&lt;os&gt;-&lt;arch&gt; lives under here.</summary>
     public static string GetLlvmInstallRoot() =>
-        OperatingSystem.IsWindows()
-            ? Path.Combine(LocalAppData(), "RXDK", "llvm")
-            : Path.Combine(RxdkDataRoot(), "llvm");
+        Path.Combine(RxdkDataRoot(), "llvm");
 
     private static string? EnvOverride(string name)
     {
