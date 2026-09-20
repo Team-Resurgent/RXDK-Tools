@@ -33,6 +33,17 @@ public static class SdkLibBuild
         /// (i686-pc-windows-msvc, libxnet/libxonline).</summary>
         [JsonPropertyName("triple")] public string Triple { get; set; } = "gnu";
         [JsonPropertyName("batches")] public List<Batch> Batches { get; set; } = new();
+        /// <summary>For an import library (libkernel/libxbdm): generate the lib from a decorated
+        /// .def instead of compiling sources. Mutually exclusive with batches.</summary>
+        [JsonPropertyName("import")] public ImportSpec? Import { get; set; }
+    }
+
+    public sealed class ImportSpec
+    {
+        /// <summary>Repo-relative module-definition file.</summary>
+        [JsonPropertyName("def")] public string Def { get; set; } = "";
+        /// <summary>Librarian /machine (default x86).</summary>
+        [JsonPropertyName("machine")] public string Machine { get; set; } = "x86";
     }
 
     public sealed class Batch
@@ -46,6 +57,15 @@ public static class SdkLibBuild
         /// (everything the zig build passed as `flags`). NOT including -march/--target/-c/-o/-O*/
         /// -isystem/-I — those are added around this list.</summary>
         [JsonPropertyName("flags")] public List<string> Flags { get; set; } = new();
+        /// <summary>Optional per-batch opt-flag override for RELEASE (ReleaseSmall) builds, when the
+        /// zig build forced something other than -Os (e.g. libd3d8's se/mpintr.cpp is built -O2 to
+        /// dodge an -Os miscompile — see rxdk-msvc-port-hazards / the release-miscompile notes).
+        /// Null → the standard -Os.</summary>
+        [JsonPropertyName("optRelease")] public string? OptRelease { get; set; }
+        /// <summary>Optional per-batch opt-flag override for DEBUG builds, when zig forced something
+        /// other than -O0 (e.g. __asm-block files like libxgraphics swizzler that don't compile at
+        /// -O0 and are built ≥ -O2 in both configs). Null → the standard -O0.</summary>
+        [JsonPropertyName("optDebug")] public string? OptDebug { get; set; }
         [JsonPropertyName("includeDirs")] public List<string> IncludeDirs { get; set; } = new();
         [JsonPropertyName("sources")] public List<string> Sources { get; set; } = new();
     }
@@ -115,14 +135,38 @@ public static class SdkLibBuild
             ?? throw new InvalidOperationException(
                 "No RXDK LLVM toolchain found (install-llvm, or set RXDK_LLVM). SDK libs build with clang.");
         var resource = LlvmRuntime.ResourceInclude(root);
-        var opt = OptFlag(optimize);
+        var defaultOpt = OptFlag(optimize);
         var triple = TargetTriple(manifest.Triple);
 
         repoRoot = Path.GetFullPath(repoRoot);
+        Directory.CreateDirectory(Path.Combine(repoRoot, "zig-out/lib"));
+
+        // Import library: generate from a decorated .def (libkernel/libxbdm), no compilation.
+        // Mirrors libs/lib{kernel,xbdm}/build.zig: llvm-lib /NOLOGO /machine:x86 /def: /out:.
+        if (manifest.Import is { } imp)
+        {
+            var importLibRel = $"zig-out/lib/{manifest.Name}.lib";
+            var impArgs = new[]
+            {
+                "/NOLOGO", $"/machine:{imp.Machine}", $"/def:{imp.Def}", $"/OUT:{importLibRel}",
+            };
+            var ir = await ProcessRunner.RunStreamedAsync(
+                LlvmRuntime.LibExe(root), impArgs, log, workingDirectory: repoRoot, ct: ct, extraEnv: ReproEnv);
+            if (!ir.Success)
+                throw new InvalidOperationException($"Import lib {manifest.Name} failed (exit {ir.ExitCode})");
+            log?.Invoke($"Built {importLibRel} (import lib from {imp.Def})");
+            return importLibRel;
+        }
+
         var objRelPaths = new List<string>();
 
         foreach (var batch in manifest.Batches)
         {
+            // Per-batch opt overrides: RELEASE (e.g. -O2 for an -Os-miscompiling TU) or DEBUG
+            // (e.g. -O2 for an __asm-block TU that won't compile at -O0). Else the config default.
+            var opt = optimize == RxdkOptimizeMode.ReleaseSmall && !string.IsNullOrEmpty(batch.OptRelease) ? batch.OptRelease!
+                : optimize == RxdkOptimizeMode.Debug && !string.IsNullOrEmpty(batch.OptDebug) ? batch.OptDebug!
+                : defaultOpt;
             foreach (var srcRel in batch.Sources)
             {
                 var ext = Path.GetExtension(srcRel);
@@ -159,8 +203,15 @@ public static class SdkLibBuild
         var libRel = $"zig-out/lib/{manifest.Name}.lib";
         var rspRel = $"zig-out/lib/{manifest.Name}.rsp";
         Directory.CreateDirectory(Path.Combine(repoRoot, "zig-out/lib"));
+        // llvm-lib records each object's path (as given) as the archive member name, so to match
+        // the zig build byte-for-byte the rsp must list the SAME absolute, native-separator paths
+        // zig writes (obj.getPath(b) → e.g. D:\Repo\zig-out\obj\…\x.o), not repo-relative ones.
         var rsp = new StringBuilder();
-        foreach (var obj in objRelPaths) rsp.Append('"').Append(obj).Append("\"\r\n");
+        foreach (var obj in objRelPaths)
+        {
+            var native = Path.GetFullPath(Path.Combine(repoRoot, obj));
+            rsp.Append('"').Append(native).Append("\"\r\n");
+        }
         await File.WriteAllTextAsync(Path.Combine(repoRoot, rspRel), rsp.ToString(), ct);
 
         var lib = LlvmRuntime.LibExe(root);
