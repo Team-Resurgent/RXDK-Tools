@@ -1,0 +1,96 @@
+name: Clean workflow runs
+
+# Housekeeping: delete old Actions runs so the run history stays tidy. By default it
+# keeps only runs created *today* (UTC) and deletes everything older. Run it manually
+# from the Actions tab (workflow_dispatch), or let the weekly schedule sweep.
+#
+#   keep_days = 0  -> keep only today's runs (delete anything created before 00:00 UTC today)
+#   keep_days = N  -> keep the last N days, delete older
+#
+# In-progress runs and today's runs (including this cleanup's own run) are always kept.
+
+on:
+  workflow_dispatch:
+    inputs:
+      keep_days:
+        description: 'Keep runs from the last N days (0 = keep only today, UTC)'
+        required: false
+        default: '0'
+      dry_run:
+        description: 'List what would be deleted without deleting'
+        type: boolean
+        required: false
+        default: false
+  schedule:
+    - cron: '0 3 * * 1'   # Mondays 03:00 UTC
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: clean-runs
+  cancel-in-progress: false
+
+jobs:
+  clean:
+    name: Delete old runs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete runs older than the cutoff
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          KEEP_DAYS: ${{ github.event.inputs.keep_days || '0' }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+        run: |
+          set -euo pipefail
+
+          # Cutoff = midnight UTC today, minus keep_days. Runs created before it are deleted.
+          if [ "${KEEP_DAYS}" -gt 0 ] 2>/dev/null; then
+            cutoff=$(date -u -d "${KEEP_DAYS} days ago 00:00:00" +%s)
+          else
+            cutoff=$(date -u -d "today 00:00:00" +%s)
+          fi
+          echo "Repo:    $REPO"
+          echo "Cutoff:  $(date -u -d "@$cutoff" '+%Y-%m-%d %H:%M:%S UTC') (keep_days=$KEEP_DAYS)"
+          echo "Dry run: $DRY_RUN"
+          echo
+
+          # id, created_at, status for every run across all workflows (paginated).
+          gh api --paginate "repos/$REPO/actions/runs" \
+            -q '.workflow_runs[] | "\(.id)\t\(.created_at)\t\(.status)"' > runs.tsv || true
+
+          deleted=0; kept=0; skipped=0
+          while IFS=$'\t' read -r id created status; do
+            [ -z "${id:-}" ] && continue
+            ts=$(date -u -d "$created" +%s)
+            if [ "$ts" -ge "$cutoff" ]; then
+              kept=$((kept+1)); continue
+            fi
+            if [ "$status" != "completed" ]; then
+              echo "skip (in-progress) $id  $created  $status"
+              skipped=$((skipped+1)); continue
+            fi
+            if [ "$DRY_RUN" = "true" ]; then
+              echo "would delete $id  $created"
+              deleted=$((deleted+1)); continue
+            fi
+            if gh api -X DELETE "repos/$REPO/actions/runs/$id" >/dev/null 2>&1; then
+              echo "deleted $id  $created"
+              deleted=$((deleted+1))
+            else
+              echo "skip (could not delete) $id  $created"
+              skipped=$((skipped+1))
+            fi
+          done < runs.tsv
+
+          echo
+          echo "Summary: ${DRY_RUN:+(dry run) }deleted=$deleted kept=$kept skipped=$skipped"
+          {
+            echo "### Clean workflow runs"
+            echo ""
+            echo "- Cutoff: \`$(date -u -d "@$cutoff" '+%Y-%m-%d %H:%M UTC')\` (keep_days=$KEEP_DAYS)"
+            echo "- Dry run: \`$DRY_RUN\`"
+            echo "- Deleted: **$deleted**, kept: **$kept**, skipped: **$skipped**"
+          } >> "$GITHUB_STEP_SUMMARY"
