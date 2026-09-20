@@ -50,8 +50,20 @@ public static partial class HostToolsInstaller
     [GeneratedRegex(@"(^|/)tools/[^/]+$")]
     private static partial Regex ToolsEntryRegex();
 
-    // Visual Studio is Windows-only, so the platform asset is always the Windows variant.
-    private const string XdvdfsAssetPrefix = "xdvdfs-windows-";
+    // xdvdfs ships a per-OS build (windows x64, linux x64, macos x64/arm64). The engine now
+    // runs under VS Code on Linux/macOS as well as VS20XX on Windows, so pick the asset for the
+    // current platform rather than always the Windows variant. (Upstream ships no arm64 Windows
+    // or arm64 Linux build; those hosts fall back to the x64 asset.)
+    private static string XdvdfsAssetPrefix()
+    {
+        if (OperatingSystem.IsWindows()) return "xdvdfs-windows-";
+        if (OperatingSystem.IsMacOS())
+            return System.Runtime.InteropServices.RuntimeInformation.OSArchitecture
+                       == System.Runtime.InteropServices.Architecture.Arm64
+                ? "xdvdfs-macos-arm64-"
+                : "xdvdfs-macos-x64-";
+        return "xdvdfs-linux-";
+    }
 
     /// <summary>
     /// Download + extract host tools into the staged root. <paramref name="hostToolsTag"/> /
@@ -85,7 +97,7 @@ public static partial class HostToolsInstaller
         // 2. xdvdfs (separate repo).
         log?.Invoke("Resolving xdvdfs release…");
         var xdvdfsRelease = await GitHubReleases.FetchReleaseAsync(XdvdfsRepo, xdvdfsTag, ct);
-        var prefix = XdvdfsAssetPrefix;
+        var prefix = XdvdfsAssetPrefix();
         var xdvdfsAsset = xdvdfsRelease.Assets
             .Where(a => a.Name.StartsWith(prefix, StringComparison.Ordinal)
                         && a.Name.EndsWith(".zip", StringComparison.Ordinal)

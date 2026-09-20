@@ -1,7 +1,7 @@
 # Publishes managed CLI tools and stages a release folder with tools/, runtime/, and install scripts.
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet('win-x64', 'linux-x64', 'linux-arm64', 'osx-x64', 'osx-arm64')]
+    [ValidateSet('win-x64', 'win-arm64', 'linux-x64', 'linux-arm64', 'osx-x64', 'osx-arm64')]
     [string]$Runtime,
     [string]$OutputDir = '',
     [switch]$SkipPublish,
