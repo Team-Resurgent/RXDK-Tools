@@ -161,29 +161,35 @@ public static class SdkLibBuild
         var objRelPaths = await CompileBatchesAsync(
             repoRoot, root, resource, triple, manifest.Batches, optimize, defaultOpt, log, ct);
 
-        // Pack with the MSVC librarian, mirroring build/coff_lib.zig: an @rsp of quoted, CRLF-
-        // separated object paths (in build order), then llvm-lib /NOLOGO /OUT: @rsp.
-        var libRel = $"zig-out/lib/{manifest.Name}.lib";
-        var rspRel = $"zig-out/lib/{manifest.Name}.rsp";
+        var libRel = await ArchiveAsync(repoRoot, root, manifest.Name, objRelPaths, log, ct);
+        log?.Invoke($"Built {libRel} ({objRelPaths.Count} objects)");
+        return libRel;
+    }
+
+    /// <summary>
+    /// Archive objects into zig-out/lib/&lt;name&gt;.lib with the MSVC librarian, mirroring
+    /// build/coff_lib.zig: an @rsp of quoted, CRLF-separated object paths (in the given order), then
+    /// llvm-lib /NOLOGO /OUT: @rsp. llvm-lib records each object's path (as given) as the archive
+    /// member name, so the rsp lists ABSOLUTE native paths — the same ones zig writes
+    /// (obj.getPath(b)) — for a byte-identical archive. Returns the repo-relative lib path.
+    /// </summary>
+    public static async Task<string> ArchiveAsync(
+        string repoRoot, string root, string name, IReadOnlyList<string> objRelPaths,
+        Action<string>? log, CancellationToken ct)
+    {
+        var libRel = $"zig-out/lib/{name}.lib";
+        var rspRel = $"zig-out/lib/{name}.rsp";
         Directory.CreateDirectory(Path.Combine(repoRoot, "zig-out/lib"));
-        // llvm-lib records each object's path (as given) as the archive member name, so to match
-        // the zig build byte-for-byte the rsp must list the SAME absolute, native-separator paths
-        // zig writes (obj.getPath(b) → e.g. D:\Repo\zig-out\obj\…\x.o), not repo-relative ones.
         var rsp = new StringBuilder();
         foreach (var obj in objRelPaths)
-        {
-            var native = Path.GetFullPath(Path.Combine(repoRoot, obj));
-            rsp.Append('"').Append(native).Append("\"\r\n");
-        }
+            rsp.Append('"').Append(Path.GetFullPath(Path.Combine(repoRoot, obj))).Append("\"\r\n");
         await File.WriteAllTextAsync(Path.Combine(repoRoot, rspRel), rsp.ToString(), ct);
 
-        var lib = LlvmRuntime.LibExe(root);
         var packArgs = new[] { "/NOLOGO", $"/OUT:{libRel}", $"@{rspRel}" };
-        var pr = await ProcessRunner.RunStreamedAsync(lib, packArgs, log, workingDirectory: repoRoot, ct: ct, extraEnv: ReproEnv);
+        var pr = await ProcessRunner.RunStreamedAsync(
+            LlvmRuntime.LibExe(root), packArgs, log, workingDirectory: repoRoot, ct: ct, extraEnv: ReproEnv);
         if (!pr.Success)
-            throw new InvalidOperationException($"Archiving {manifest.Name}.lib failed (exit {pr.ExitCode})");
-
-        log?.Invoke($"Built {libRel} ({objRelPaths.Count} objects)");
+            throw new InvalidOperationException($"Archiving {name}.lib failed (exit {pr.ExitCode})");
         return libRel;
     }
 

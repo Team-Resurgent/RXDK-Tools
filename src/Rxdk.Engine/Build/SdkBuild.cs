@@ -19,8 +19,19 @@ public static class SdkBuild
         /// <summary>Loose objects compiled but not archived into any lib (e.g. msvc_lldiv, which
         /// build.ps1 packs into libcompat). Same batch shape as a lib batch.</summary>
         [JsonPropertyName("extraObjects")] public List<SdkLibBuild.Batch> ExtraObjects { get; set; } = new();
+        /// <summary>The comdat-fix lib (libcompat): specific already-built objects (picolibc math +
+        /// msvc_lldiv) archived so an external title link can't lose a COMDAT tie-break — see
+        /// build.ps1's Copy-DistCompatLib.</summary>
+        [JsonPropertyName("libcompat")] public LibCompatSpec? LibCompat { get; set; }
         [JsonPropertyName("headerExcludeExt")] public List<string> HeaderExcludeExt { get; set; } = new();
         [JsonPropertyName("headers")] public List<HeaderOp> Headers { get; set; } = new();
+    }
+
+    public sealed class LibCompatSpec
+    {
+        [JsonPropertyName("name")] public string Name { get; set; } = "libcompat";
+        /// <summary>Repo-relative object paths (already built by the libc/extraObjects steps).</summary>
+        [JsonPropertyName("objs")] public List<string> Objs { get; set; } = new();
     }
 
     public sealed class HeaderOp
@@ -67,7 +78,18 @@ public static class SdkBuild
                 sdk.ExtraObjects, optimize, SdkLibBuild.OptFlag(optimize), log, ct);
         }
 
-        // 3. Public headers (pure file copies; variant-independent).
+        // 3. libcompat: archive the pre-built picolibc math + msvc_lldiv objects.
+        if (sdk.LibCompat is { } lc && lc.Objs.Count > 0)
+        {
+            var missing = lc.Objs.Where(o => !File.Exists(Path.Combine(repoRoot, o))).ToList();
+            if (missing.Count > 0)
+                throw new InvalidOperationException(
+                    $"libcompat inputs missing (build libc/extraObjects first): {string.Join(", ", missing.Take(3))}");
+            var libRel = await SdkLibBuild.ArchiveAsync(repoRoot, root, lc.Name, lc.Objs, log, ct);
+            log?.Invoke($"Built {libRel} ({lc.Objs.Count} objects)");
+        }
+
+        // 4. Public headers (pure file copies; variant-independent).
         if (stageHeaders)
         {
             log?.Invoke("== staging headers ==");
