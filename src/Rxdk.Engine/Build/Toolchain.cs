@@ -84,22 +84,51 @@ public sealed class Toolchain
     }
 
     /// <summary>
-    /// Resolve the toolchain for a build. The LLVM fork is opt-in: chosen when it resolves
-    /// (explicit <paramref name="llvmOverride"/> / RXDK_LLVM / managed install), otherwise zig
-    /// (explicit <paramref name="zigOverride"/> / RXDK_ZIG / managed install / PATH). Throws with
-    /// an actionable message when neither is available.
+    /// Resolve the toolchain for a build. During the migration the LLVM fork is strictly
+    /// <b>opt-in</b>: SELECTION (should we use LLVM) is gated separately from LOCATION (where the
+    /// toolchain is). LLVM is chosen only when the caller opts in —
+    /// <list type="bullet">
+    /// <item>an explicit <paramref name="llvmOverride"/> path, or</item>
+    /// <item><c>RXDK_LLVM</c> set to a toolchain root, or</item>
+    /// <item><c>RXDK_USE_LLVM</c> set truthy (1/true/yes/on), which selects the managed install.</item>
+    /// </list>
+    /// A managed LLVM install merely being present (e.g. after <c>install-llvm</c>) does NOT flip a
+    /// build off zig — otherwise installing the toolchain to try it would silently change everyone's
+    /// default. When we later make LLVM the default, this gate is what changes. Absent any opt-in,
+    /// the default is zig (explicit <paramref name="zigOverride"/> / RXDK_ZIG / managed install /
+    /// PATH). Throws with an actionable message when the selected backend isn't available.
     /// </summary>
     public static async Task<Toolchain> ResolveAsync(
         string? zigOverride = null, string? llvmOverride = null, CancellationToken ct = default)
     {
-        var llvmRoot = LlvmRuntime.ResolveRoot(llvmOverride);
-        if (llvmRoot is not null)
+        if (LlvmOptedIn(llvmOverride))
+        {
+            var llvmRoot = LlvmRuntime.ResolveRoot(llvmOverride)
+                ?? throw new InvalidOperationException(
+                    "LLVM was requested (RXDK_LLVM / RXDK_USE_LLVM / override) but no toolchain was " +
+                    "found. Run install-llvm, or point RXDK_LLVM at an unpacked xboxog-<os>-<arch> root.");
             return Llvm(llvmRoot);
+        }
 
         var zig = await ZigRuntime.ResolveZigExecutableAsync(zigOverride, ct)
                   ?? throw new InvalidOperationException(
-                      "No toolchain found. Install Zig (install-zig) / add zig to PATH, or set " +
-                      "RXDK_LLVM to an unpacked xboxog-<os>-<arch> clang root.");
+                      "No toolchain found. Install Zig (install-zig) / add zig to PATH, or opt into " +
+                      "LLVM (install-llvm + set RXDK_USE_LLVM=1, or set RXDK_LLVM to a toolchain root).");
         return Zig(zig);
+    }
+
+    /// <summary>True when the caller has opted into the LLVM backend for this build: an explicit
+    /// override, <c>RXDK_LLVM</c> pointing at a root, or <c>RXDK_USE_LLVM</c> set truthy. Mere
+    /// presence of a managed install is deliberately NOT opt-in during the migration.</summary>
+    private static bool LlvmOptedIn(string? llvmOverride)
+    {
+        if (!string.IsNullOrWhiteSpace(llvmOverride)) return true;
+        if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("RXDK_LLVM"))) return true;
+        var use = Environment.GetEnvironmentVariable("RXDK_USE_LLVM")?.Trim();
+        return use is not null
+            && (use is "1"
+                || use.Equals("true", StringComparison.OrdinalIgnoreCase)
+                || use.Equals("yes", StringComparison.OrdinalIgnoreCase)
+                || use.Equals("on", StringComparison.OrdinalIgnoreCase));
     }
 }

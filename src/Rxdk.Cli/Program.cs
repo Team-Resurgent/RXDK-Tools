@@ -63,6 +63,11 @@ switch (command)
         return await CmdInstallZig();
     case "zig-status":
         return await CmdZigStatus();
+    case "install-llvm":
+    case "update-llvm":
+        return await CmdInstallLlvm(opts);
+    case "llvm-status":
+        return CmdLlvmStatus();
     case "install-docs":
     case "update-docs":
         return await CmdInstallDocs(opts);
@@ -330,6 +335,46 @@ static async Task<int> CmdInstallZig()
         Console.Error.WriteLine($"install-zig failed: {ex.Message}");
         return 1;
     }
+}
+
+static async Task<int> CmdInstallLlvm(Dictionary<string, string> opts)
+{
+    // --tag pins a release; default is the "latest" rolling toolchain release.
+    opts.TryGetValue("tag", out var tag);
+    try
+    {
+        var root = await LlvmInstaller.InstallAsync(
+            tag: string.IsNullOrEmpty(tag) ? null : tag, log: msg => Console.WriteLine(msg));
+        Console.WriteLine($"LLVM toolchain ready: {root}");
+        return 0;
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"install-llvm failed: {ex.Message}");
+        return 1;
+    }
+}
+
+static int CmdLlvmStatus()
+{
+    string? root;
+    try { root = LlvmRuntime.ResolveRoot(); }
+    catch (Exception ex) { Console.Error.WriteLine($"llvm: {ex.Message}"); return 1; }
+    if (root is null)
+    {
+        Console.WriteLine("llvm: not found (run install-llvm, or set RXDK_LLVM)");
+        return 1;
+    }
+    Console.WriteLine($"llvm: {root}");
+    Console.WriteLine($"clang: {LlvmRuntime.ClangExe(root)}");
+    Console.WriteLine($"ar: {LlvmRuntime.ArExe(root)}");
+    var installed = LlvmInstaller.GetInstalledVersion();
+    if (!string.IsNullOrEmpty(installed)) Console.WriteLine($"release: {installed}");
+    var builtins = LlvmRuntime.BuiltinsArchive(root);
+    Console.WriteLine(builtins is not null
+        ? $"builtins: {builtins}"
+        : "builtins: MISSING (title link needs libclang_rt.builtins-i386; see build-rt-builtins.ps1)");
+    return 0;
 }
 
 static async Task<int> CmdBuild(Dictionary<string, string> opts)
