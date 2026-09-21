@@ -139,7 +139,45 @@ public sealed class DwarfReader
                 File = FileName(files, (int)die.U(DW_AT.call_file)),
             });
         }
+
+        // File-scope globals: DW_TAG_variable with a static address (DW_OP_addr). These are the
+        // program's globals the Globals pane shows. Descend through namespaces (so anonymous-namespace
+        // globals like a `static` file-scope pointer are found) but not into functions -- function
+        // statics are not module globals. Skip extern declarations and register/stack forms.
+        CollectGlobals(root, unit, files);
         return unit;
+    }
+
+    private void CollectGlobals(Die scope, CompileUnit unit, List<string> files)
+    {
+        foreach (var child in scope.Children)
+        {
+            if (child.Tag == DW_TAG.@namespace)
+            {
+                CollectGlobals(child, unit, files);   // globals nested in a (possibly anonymous) namespace
+                continue;
+            }
+            if (child.Tag != DW_TAG.variable) continue;
+            byte[] loc = child.Has(DW_AT.location) ? child.Blk(DW_AT.location) : System.Array.Empty<byte>();
+            if (loc.Length < 5 || loc[0] != 0x03) continue;   // DW_OP_addr <u32>
+            Die named = child;
+            if (child.Has(DW_AT.specification) && _byOffset.TryGetValue(child.U(DW_AT.specification), out var spec))
+                named = spec;
+            string name = child.Has(DW_AT.name) ? child.Str(DW_AT.name)
+                : named.Has(DW_AT.name) ? named.Str(DW_AT.name) : "";
+            if (string.IsNullOrEmpty(name)) continue;
+            ulong typeOff = child.Has(DW_AT.type) ? child.U(DW_AT.type)
+                : named.Has(DW_AT.type) ? named.U(DW_AT.type) : 0;
+            unit.Globals.Add(new DwarfVariable
+            {
+                Name = name,
+                Location = loc,
+                TypeOffset = typeOff,
+                TypeName = typeOff != 0 ? TypeName(typeOff, 0) : "",
+                DeclLine = (int)(child.Has(DW_AT.decl_line) ? child.U(DW_AT.decl_line)
+                    : named.Has(DW_AT.decl_line) ? named.U(DW_AT.decl_line) : 0),
+            });
+        }
     }
 
     private void CollectVariables(Die scope, DwarfFunction fn, List<string> files)

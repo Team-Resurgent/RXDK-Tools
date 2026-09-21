@@ -103,6 +103,7 @@ public sealed class CompileUnit
     public readonly List<DwarfFunction> Functions = new();
     public readonly List<LineRow> Lines = new();
     public readonly List<InlineSite> InlineSites = new();
+    public readonly List<DwarfVariable> Globals = new();
 }
 
 /// <summary>The parsed DWARF for a title: units, functions and the line table,
@@ -237,6 +238,26 @@ public sealed class DwarfInfo
     public IEnumerable<InlineSite> InlineSites
     {
         get { foreach (var u in Units) foreach (var s in u.InlineSites) yield return s; }
+    }
+
+    /// <summary>File-scope (statically-addressed) globals across all units.</summary>
+    public IEnumerable<DwarfVariable> Globals
+    {
+        get { foreach (var u in Units) foreach (var g in u.Globals) yield return g; }
+    }
+
+    /// <summary>True if a variable of this type is const (a read-only lookup table rather than
+    /// mutable program state). Walks typedef/volatile/restrict and into array elements.</summary>
+    public bool IsConstType(ulong typeOffset) => ConstWalk(typeOffset, 0);
+
+    private bool ConstWalk(ulong offset, int depth)
+    {
+        if (offset == 0 || depth > 16 || !Types.TryGetValue(offset, out var t)) return false;
+        if (t.Tag == DW_TAG.const_type) return true;
+        if (t.Tag == DW_TAG.typedef || t.Tag == DW_TAG.volatile_type || t.Tag == DW_TAG.restrict_type)
+            return ConstWalk(t.ReferentOffset, depth + 1);
+        if (t.IsArray) return ConstWalk(t.ReferentOffset, depth + 1);
+        return false;
     }
 
     /// <summary>The lowest address mapped to a given file:line (for setting a breakpoint), or null.

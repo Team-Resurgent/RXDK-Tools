@@ -366,17 +366,33 @@ internal sealed class SymbolService : IDisposable
         }
     }
 
-    internal void EmitGlobals(VariableJson variables, KitMemoryAccess memory, int maxVars, int maxTier)
+    internal void EmitGlobals(VariableJson variables, KitMemoryAccess memory, int maxVars)
     {
-        // Prefer the managed PDB reader: it enumerates the global-symbol stream with real type info
-        // (size/shape) so aggregates format and expand like locals. Fall back to the linker .map only
-        // when the PDB yields nothing (no symbols, or moduleBase not yet known).
+        if (!_loaded)
+            return;
+
+        // Prefer DWARF: it carries only the title's own compile units, so the globals are the
+        // program's own (a small set) rather than the flood of library globals a .pdb enumerates --
+        // which is why the old visibility toggle is gone. Types come with the DIEs, so aggregates
+        // format and expand like locals.
+        var dwarf = TryGetDwarf();
+        if (dwarf is not null)
+        {
+            try { if (dwarf.EmitGlobals(variables, memory, maxVars)) return; }
+            catch (Exception ex) { BridgeWriter.Log($"DWARF EmitGlobals failed: {ex.Message}"); }
+            return;
+        }
+
+        // Legacy .pdb path: enumerate the global-symbol stream with real type info, then fall back to
+        // the linker .map only when the PDB yields nothing (no symbols, or moduleBase not yet known).
         var managed = TryGetManaged();
         if (managed is not null)
         {
             try
             {
-                if (managed.EmitGlobals(variables, memory, maxVars, maxTier))
+                // Show every tier (2): the DWARF path is the norm now; this legacy branch only runs
+                // for an old .pdb build, where showing all globals is the least-surprising default.
+                if (managed.EmitGlobals(variables, memory, maxVars, maxTier: 2))
                     return;
             }
             catch (Exception ex)

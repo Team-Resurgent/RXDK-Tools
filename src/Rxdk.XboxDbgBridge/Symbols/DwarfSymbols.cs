@@ -188,6 +188,36 @@ internal sealed class DwarfSymbols
         return any;
     }
 
+    internal bool EmitGlobals(VariableJson variables, KitMemoryAccess memory, int maxVars)
+    {
+        if (_moduleBase == 0) return false;   // need the runtime base to relocate + read
+        bool any = false;
+        foreach (var g in _info.Globals)
+        {
+            if (variables.IsFull || variables.Count >= maxVars) break;
+            if (g.Location.Length < 5 || g.Location[0] != 0x03) continue;   // DW_OP_addr
+            if (IsHiddenGlobal(g.Name) || variables.WasEmitted(g.Name)) continue;
+            uint va = (uint)(g.Location[1] | (g.Location[2] << 8) | (g.Location[3] << 16) | (g.Location[4] << 24));
+            uint kit = (uint)ToKit(va);
+            var type = g.TypeOffset != 0 ? _info.TypeOf(g.TypeOffset) : null;
+            bool expandable = _info.IsExpandable(type);
+            string key = expandable ? AddrRef(kit, g.TypeOffset) : "";
+            variables.Append(g.Name, Describe(g.TypeOffset, kit, memory, g.TypeName), expandable, key);
+            any = true;
+        }
+        return any;
+    }
+
+    private static bool IsHiddenGlobal(string name)
+    {
+        if (string.IsNullOrEmpty(name)) return true;
+        if (name.StartsWith("__", StringComparison.Ordinal)) return true;      // compiler internals
+        if (name.StartsWith("_ZTV", StringComparison.Ordinal) ||               // vtables / typeinfo
+            name.StartsWith("_ZTI", StringComparison.Ordinal) ||
+            name.StartsWith("_ZTS", StringComparison.Ordinal)) return true;
+        return false;
+    }
+
     internal bool TryEvaluate(string expression, ref XbdmContext context, KitMemoryAccess memory,
                               out string value, out string? error, out bool expandable)
     {

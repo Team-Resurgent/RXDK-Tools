@@ -97,10 +97,9 @@ internal sealed partial class DebugBridgeSession
         }
         else if (scope.Equals("globals", StringComparison.OrdinalIgnoreCase))
         {
-            // globalsFilter: 0 = title mutable globals (default), 1 = + title const tables,
-            // 2 = + linked-library globals. Driven by the extension's visibility toggle.
-            var maxTier = BridgeJson.TryGetUInt32(root, "globalsFilter", out var filter) ? (int)filter : 0;
-            _symbols.EmitGlobals(variables, CreateKitMemory(), maxVars: 256, maxTier);
+            // DWARF carries only the title's own globals (a small set), so there's nothing to filter
+            // -- the old visibility tiers/toggle are gone.
+            _symbols.EmitGlobals(variables, CreateKitMemory(), maxVars: 256);
         }
         else if (scope.Equals("locals", StringComparison.OrdinalIgnoreCase))
         {

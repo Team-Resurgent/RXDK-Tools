@@ -23,7 +23,6 @@ public sealed partial class XboxDebugAdapter : DebugAdapterBase
     private string _extensionPath = "";
     private string _bridgePathOverride = "";
     private string _titleOutputFile = "";
-    private int _globalsFilter;
     private volatile bool _configurationDone;
     private bool _launchFinished;
     private bool _startupFinished;
@@ -102,7 +101,6 @@ public sealed partial class XboxDebugAdapter : DebugAdapterBase
             _workspaceRoot = FirstNonEmpty(GetStr(args, "__workspaceFolder"), _srcRoot, ImageDir(args), Directory.GetCurrentDirectory());
             _extensionPath = GetStr(args, "__extensionPath") ?? "";
             _titleOutputFile = GetStr(args, "__titleOutputFile") ?? "";
-            _globalsFilter = (int)GetNum(args, "__globalsFilter");
             if (GetStr(args, "bridgePath") is { Length: > 0 } bp)
                 _bridgePathOverride = ExpandVars(bp);
             _pendingLaunchArgs = args;
@@ -128,7 +126,6 @@ public sealed partial class XboxDebugAdapter : DebugAdapterBase
         {
             _titleOutputFile = GetStr(args, "__titleOutputFile") ?? "";
             _extensionPath = GetStr(args, "__extensionPath") ?? "";
-            _globalsFilter = (int)GetNum(args, "__globalsFilter");
             if (GetStr(args, "bridgePath") is { Length: > 0 } bp)
                 _bridgePathOverride = ExpandVars(bp);
             if (GetStr(args, "__workspaceFolder") is { Length: > 0 } wf) _workspaceRoot = wf;
@@ -372,7 +369,6 @@ public sealed partial class XboxDebugAdapter : DebugAdapterBase
             else if (scope is not null)
             {
                 var reqArgs = new List<(string, object?)> { ("scope", scope), ("threadId", _stoppedThreadId) };
-                if (scope == "globals") reqArgs.Add(("globalsFilter", _globalsFilter));
                 var result = await _bridge.RequestAsync("getVariables", Args(reqArgs.ToArray()), scope == "globals" ? 30000 : 15000);
                 var raw = ToObjects(result, "variables");
                 for (var i = 0; i < raw.Count; i++)
@@ -435,19 +431,5 @@ public sealed partial class XboxDebugAdapter : DebugAdapterBase
                 : $"error: {msg}";
             responder.SetResponse(new EvaluateResponse(resultText, 0));
         }
-    }
-
-    // ---- custom request: setGlobalsFilter (live Globals visibility toggle) ----
-    protected override ResponseBody HandleProtocolRequest(string requestType, object requestArgs)
-    {
-        if (requestType == "setGlobalsFilter")
-        {
-            var level = 0;
-            if (requestArgs is JObject jo && jo.TryGetValue("level", out var lv)) level = lv.Value<int>();
-            _globalsFilter = Math.Max(0, Math.Min(2, level));
-            Protocol.SendEvent(new InvalidatedEvent { Areas = new List<InvalidatedAreas> { InvalidatedAreas.Variables } });
-            return null!;
-        }
-        return base.HandleProtocolRequest(requestType, requestArgs);
     }
 }

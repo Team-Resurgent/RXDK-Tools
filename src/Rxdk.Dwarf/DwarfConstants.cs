@@ -28,6 +28,7 @@ internal static class DW_TAG
     public const int subrange_type = 0x21;
     public const int inheritance = 0x1c;
     public const int inlined_subroutine = 0x1d;
+    public const int @namespace = 0x39;
 }
 
 internal static class DW_AT
