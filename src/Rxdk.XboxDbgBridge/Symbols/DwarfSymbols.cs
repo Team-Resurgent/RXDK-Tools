@@ -107,10 +107,48 @@ internal sealed class DwarfSymbols
     internal bool TryResolveLine(string file, uint line, out uint kitAddress)
     {
         kitAddress = 0;
-        var va = _info.AddressFor(file, (int)line);
-        if (va == null) return false;
-        kitAddress = _moduleBase == 0 ? (uint)va.Value : (uint)(_moduleBase + (nuint)(va.Value - _imageBase));
+        string want = Norm(file);
+        string wantBase = BaseName(want);
+
+        // Exact line first (lowest address among matching rows), then the nearest statement at or
+        // after it -- VS often plants a breakpoint on a brace/blank line with no row of its own.
+        ulong? exact = null;
+        int fbLine = int.MaxValue; ulong fbAddr = 0; bool fb = false;
+        foreach (var u in _info.Units)
+            foreach (var r in u.Lines)
+            {
+                if (r.EndSequence || !FileMatch(want, wantBase, r.File)) continue;
+                if (r.Line == (int)line)
+                {
+                    if (exact is null || r.Address < exact) exact = r.Address;
+                }
+                else if (r.Line > (int)line && r.Line < fbLine)
+                {
+                    fbLine = r.Line; fbAddr = r.Address; fb = true;
+                }
+            }
+
+        ulong? va = exact ?? (fb ? fbAddr : (ulong?)null);
+        if (va is null) return false;
+        kitAddress = (uint)ToKit(va.Value);
         return true;
+    }
+
+    private nuint ToKit(ulong va) => _moduleBase == 0 ? (nuint)va : (nuint)(_moduleBase + (nuint)(va - _imageBase));
+
+    private static string Norm(string p) => (p ?? "").Replace('/', '\\');
+    private static string BaseName(string p)
+    {
+        int i = p.LastIndexOf('\\');
+        return i >= 0 ? p[(i + 1)..] : p;
+    }
+    private static bool FileMatch(string want, string wantBase, string have)
+    {
+        have = Norm(have);
+        return want.Equals(have, StringComparison.OrdinalIgnoreCase)
+            || have.EndsWith(want, StringComparison.OrdinalIgnoreCase)
+            || want.EndsWith(have, StringComparison.OrdinalIgnoreCase)
+            || BaseName(have).Equals(wantBase, StringComparison.OrdinalIgnoreCase);
     }
 
     internal bool EmitLocals(ref XbdmContext context, VariableJson variables, KitMemoryAccess memory)
