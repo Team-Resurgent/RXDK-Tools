@@ -56,13 +56,17 @@ internal sealed class SymbolService : IDisposable
         // The managed reader works in image RVAs relocated to the kit module base. Use the PDB's link
         // base (0x400000 for original-Xbox titles) as the reference the rest of the service speaks.
         _loaded = true;
-        _pdbBase = 0x400000;
         _pdbPath = pdbPath;
         _pdbImage = null;
         _managedUnavailable = false;
         _imagePath = imagePath;
         _dwarf = null;
         _dwarfTried = false;
+
+        // The link base the symbol addresses are relative to, which the whole service (breakpoint
+        // relocation, kit<->image address math) keys off. RXDK's clang links at 0x10000, so a DWARF
+        // title uses that; a legacy MSVC .pdb title uses 0x400000. Decide up front by probing DWARF.
+        _pdbBase = TryGetDwarfInfo() is not null ? DwarfImageBase : 0x400000;
 
         var map = string.IsNullOrWhiteSpace(mapPath)
             ? Path.ChangeExtension(imagePath, ".map")
