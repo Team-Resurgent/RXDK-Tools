@@ -128,6 +128,12 @@ internal sealed class DwarfSymbols
                 }
             }
 
+        // Inlined calls: the caller's line has no line-table row (the inlined body carries the
+        // callee's file), so match it against the recorded call sites -> the inlined body's address.
+        foreach (var s in _info.InlineSites)
+            if (s.Line == (int)line && FileMatch(want, wantBase, s.File) && (exact is null || s.Address < exact))
+                exact = s.Address;
+
         ulong? va = exact ?? (fb ? fbAddr : (ulong?)null);
         if (va is null) return false;
         kitAddress = (uint)ToKit(va.Value);

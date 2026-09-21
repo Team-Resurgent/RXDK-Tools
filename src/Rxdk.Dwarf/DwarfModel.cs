@@ -81,6 +81,17 @@ public sealed class DwarfFunction
         $"0x{LowPc:X8}-0x{HighPc:X8}  {Name}  ({File}:{DeclLine})";
 }
 
+/// <summary>The call site of an inlined function: the source position of the call (from
+/// DW_AT_call_file/line) mapped to the address where the inlined body begins. When a call like
+/// <c>Present(...)</c> is inlined, its code carries the callee's own file:line in the line table,
+/// so the caller's source line has no row of its own -- this restores that mapping.</summary>
+public sealed class InlineSite
+{
+    public string File = "";
+    public int Line;
+    public ulong Address;
+}
+
 /// <summary>One compilation unit.</summary>
 public sealed class CompileUnit
 {
@@ -88,6 +99,7 @@ public sealed class CompileUnit
     public string CompDir = "";
     public readonly List<DwarfFunction> Functions = new();
     public readonly List<LineRow> Lines = new();
+    public readonly List<InlineSite> InlineSites = new();
 }
 
 /// <summary>The parsed DWARF for a title: units, functions and the line table,
@@ -219,21 +231,35 @@ public sealed class DwarfInfo
         return type.Members.Count > 0;
     }
 
-    /// <summary>The lowest address mapped to a given file:line (for setting a
-    /// breakpoint), or null.</summary>
+    public IEnumerable<InlineSite> InlineSites
+    {
+        get { foreach (var u in Units) foreach (var s in u.InlineSites) yield return s; }
+    }
+
+    /// <summary>The lowest address mapped to a given file:line (for setting a breakpoint), or null.
+    /// Considers both the line table and inline call sites -- so a line whose call was inlined (its
+    /// code tagged to the callee's header) still binds, to where the inlined body begins.</summary>
     public ulong? AddressFor(string file, int line)
     {
         ulong? best = null;
+        void Take(string rowFile, int rowLine, ulong addr, bool end)
+        {
+            if (end || rowLine != line) return;
+            if (!FileMatch(file, rowFile)) return;
+            if (best == null || addr < best) best = addr;
+        }
         foreach (var u in Units)
-            foreach (var r in u.Lines)
-            {
-                if (r.EndSequence || r.Line != line) continue;
-                if (!file.Equals(r.File, System.StringComparison.OrdinalIgnoreCase) &&
-                    !r.File.EndsWith(file, System.StringComparison.OrdinalIgnoreCase)) continue;
-                if (best == null || r.Address < best) best = r.Address;
-            }
+        {
+            foreach (var r in u.Lines) Take(r.File, r.Line, r.Address, r.EndSequence);
+            foreach (var s in u.InlineSites) Take(s.File, s.Line, s.Address, false);
+        }
         return best;
     }
+
+    private static bool FileMatch(string want, string have) =>
+        want.Equals(have, System.StringComparison.OrdinalIgnoreCase) ||
+        have.EndsWith(want, System.StringComparison.OrdinalIgnoreCase) ||
+        want.EndsWith(have, System.StringComparison.OrdinalIgnoreCase);
 }
 
 internal static class LocationSummary

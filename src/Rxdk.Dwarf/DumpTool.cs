@@ -26,10 +26,17 @@ internal static class DumpTool
         foreach (var f in funcs.OrderBy(f => f.LowPc).Take(12))
             Console.WriteLine($"  {f}  vars={f.Variables.Count}");
 
-        var firstLines = info.Units.SelectMany(u => u.Lines).Where(l => !l.EndSequence)
-            .OrderBy(l => l.Address).Take(8).ToList();
+        var allLines = info.Units.SelectMany(u => u.Lines).OrderBy(l => l.Address).ToList();
+        if (args.Length >= 2 && args[1] == "rows")
+        {
+            uint lo = args.Length >= 3 ? Convert.ToUInt32(args[2], 16) : 0;
+            uint hi = args.Length >= 4 ? Convert.ToUInt32(args[3], 16) : uint.MaxValue;
+            Console.WriteLine($"\n-- line rows in [0x{lo:x},0x{hi:x}] --");
+            foreach (var l in allLines) if (l.Address >= lo && l.Address <= hi) Console.WriteLine($"  {l}");
+            return 0;
+        }
         Console.WriteLine("\n-- first 8 line rows --");
-        foreach (var l in firstLines) Console.WriteLine($"  {l}");
+        foreach (var l in allLines.Where(l => !l.EndSequence).Take(8)) Console.WriteLine($"  {l}");
 
         var withVars = funcs.FirstOrDefault(f => f.Variables.Count > 0);
         if (withVars != null)
