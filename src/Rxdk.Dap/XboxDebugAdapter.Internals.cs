@@ -411,11 +411,14 @@ public sealed partial class XboxDebugAdapter
             throw new FileNotFoundException($"{(kind == "exe" ? "Program" : "XBE")} not found: {imagePath}");
 
         static string StripExt(string p) => System.Text.RegularExpressions.Regex.Replace(p, @"\.(exe|xbe)$", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        var pdbPath = !string.IsNullOrEmpty(pdb) ? Path.GetFullPath(pdb) : $"{StripExt(imagePath)}.pdb";
-        if (!File.Exists(pdbPath))
-            throw new FileNotFoundException($"PDB not found: {pdbPath}. Rebuild with debug info (Debug or ReleaseSafe).");
 
-        var reqArgs = new List<(string, object?)> { ("pdb", pdbPath) };
+        // The RXDK clang build emits DWARF into the .exe, so a separate .pdb is no longer required to
+        // debug -- the bridge reads symbols from the image. Pass a .pdb only if one happens to exist
+        // (older/.pdb titles); never block the launch on its absence.
+        var reqArgs = new List<(string, object?)>();
+        var pdbPath = !string.IsNullOrEmpty(pdb) ? Path.GetFullPath(pdb) : $"{StripExt(imagePath)}.pdb";
+        if (File.Exists(pdbPath))
+            reqArgs.Add(("pdb", pdbPath));
         reqArgs.Add(kind == "exe" ? ("exe", imagePath) : ("xbe", imagePath));
         var mapPath = !string.IsNullOrEmpty(map) ? Path.GetFullPath(map) : $"{StripExt(imagePath)}.map";
         if (File.Exists(mapPath)) reqArgs.Add(("map", mapPath));

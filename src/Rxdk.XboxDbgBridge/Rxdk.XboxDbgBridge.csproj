@@ -35,5 +35,6 @@
     <ProjectReference Include="..\Rxdk.Xbdm.Managed\Rxdk.Xbdm.Managed.csproj" />
     <ProjectReference Include="..\Rxdk.KitConfig\Rxdk.KitConfig.csproj" />
     <ProjectReference Include="..\Rxdk.Pdb\Rxdk.Pdb.csproj" />
+    <ProjectReference Include="..\Rxdk.Dwarf\Rxdk.Dwarf.csproj" />
   </ItemGroup>
 </Project>

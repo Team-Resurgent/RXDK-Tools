@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    DWARF reader for the original Xbox (PE / i686, little-endian). Ported from
+    RXDK-360's Rxdk.Xbox360.Dwarf: the DIE/abbrev/line-program parsing is
+    target-agnostic; the two OG-specific changes are an endian-aware ByteCursor
+    (x86 DWARF is little-endian, vs PPC big-endian on 360) and a PE section
+    source (PeImage) in place of the ELF one. This replaces the MSVC-.pdb path:
+    the OG clang build emits DWARF into the .exe, so the debugger reads it there.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>Rxdk.Dwarf</AssemblyName>
+    <RootNamespace>Rxdk.Dwarf</RootNamespace>
+  </PropertyGroup>
+
+</Project>

@@ -1,5 +1,6 @@
 using System.Text;
 using Rxdk.Pdb;
+using Rxdk.Dwarf;
 
 namespace Rxdk.XboxDbgBridge.Symbols;
 
@@ -22,6 +23,14 @@ internal sealed class SymbolService : IDisposable
     private string _pdbPath = string.Empty;
     private PdbImage? _pdbImage;
     private bool _managedUnavailable;
+
+    // DWARF read straight from the title's .exe (the RXDK clang build emits DWARF, not a .pdb). This is
+    // the primary symbol source now; the PDB path above stays as a fallback for older/.pdb titles. The
+    // RXDK linker bases the image at 0x10000, so DWARF addresses are relative to that.
+    private string _imagePath = string.Empty;
+    private DwarfInfo? _dwarf;
+    private bool _dwarfTried;
+    private const ulong DwarfImageBase = 0x10000;
 
     // Symbols are available on every platform: the managed reader has no OS dependency.
     internal bool IsAvailable => true;
@@ -51,6 +60,9 @@ internal sealed class SymbolService : IDisposable
         _pdbPath = pdbPath;
         _pdbImage = null;
         _managedUnavailable = false;
+        _imagePath = imagePath;
+        _dwarf = null;
+        _dwarfTried = false;
 
         var map = string.IsNullOrWhiteSpace(mapPath)
             ? Path.ChangeExtension(imagePath, ".map")
@@ -77,6 +89,38 @@ internal sealed class SymbolService : IDisposable
         _pdbPath = string.Empty;
         _pdbImage = null;
         _managedUnavailable = false;
+        _imagePath = string.Empty;
+        _dwarf = null;
+        _dwarfTried = false;
+    }
+
+    /// <summary>The DWARF read from the loaded .exe, opened once; null if the image has no DWARF.</summary>
+    private DwarfInfo? TryGetDwarfInfo()
+    {
+        if (_dwarfTried) return _dwarf;
+        _dwarfTried = true;
+        if (string.IsNullOrEmpty(_imagePath) || !File.Exists(_imagePath)) return null;
+        try
+        {
+            var info = DwarfReader.Read(_imagePath);
+            bool hasContent = false;
+            foreach (var _ in info.Functions) { hasContent = true; break; }
+            if (!hasContent) foreach (var u in info.Units) if (u.Lines.Count > 0) { hasContent = true; break; }
+            _dwarf = hasContent ? info : null;
+        }
+        catch (Exception ex)
+        {
+            BridgeWriter.Log($"DWARF read failed ({_imagePath}): {ex.Message}");
+            _dwarf = null;
+        }
+        return _dwarf;
+    }
+
+    /// <summary>A DWARF symbol reader over the loaded image once the kit module base is known.</summary>
+    private DwarfSymbols? TryGetDwarf()
+    {
+        var info = TryGetDwarfInfo();
+        return info is null ? null : new DwarfSymbols(info, _moduleBase, DwarfImageBase);
     }
 
     /// <summary>Opens (once) the managed PDB reader over the loaded PDB path, or null if unavailable.</summary>
@@ -145,7 +189,17 @@ internal sealed class SymbolService : IDisposable
     internal bool TryResolveLine(string file, uint line, out nuint address)
     {
         address = 0;
-        if (!_loaded || _pdbBase == 0)
+        if (!_loaded)
+            return false;
+
+        var dwarf = TryGetDwarf();
+        if (dwarf is not null && dwarf.TryResolveLine(file, line, out var kitAddr))
+        {
+            address = (nuint)kitAddr;
+            return true;
+        }
+
+        if (_pdbBase == 0)
             return false;
 
         var pdb = TryGetPdbImage();
@@ -164,6 +218,10 @@ internal sealed class SymbolService : IDisposable
         function = string.Empty;
         if (!_loaded)
             return false;
+
+        var dwarf = TryGetDwarf();
+        if (dwarf is not null && dwarf.TryAddressToLine((uint)kitAddress, out file, out line, out function))
+            return true;
 
         var pdb = TryGetPdbImage();
         if (pdb is null)
@@ -198,7 +256,28 @@ internal sealed class SymbolService : IDisposable
         value = string.Empty;
         error = null;
         expandable = false;
-        if (!_loaded || _pdbBase == 0)
+        if (!_loaded)
+        {
+            error = "symbolsNotLoaded";
+            return false;
+        }
+
+        var dwarf = TryGetDwarf();
+        if (dwarf is not null)
+        {
+            try
+            {
+                return dwarf.TryEvaluate(expression, ref context, memory, out value, out error, out expandable);
+            }
+            catch (Exception ex)
+            {
+                BridgeWriter.Log($"DWARF TryEvaluate failed: {ex.Message}");
+                error = "evaluate";
+                return false;
+            }
+        }
+
+        if (_pdbBase == 0)
         {
             error = "symbolsNotLoaded";
             return false;
@@ -225,7 +304,18 @@ internal sealed class SymbolService : IDisposable
 
     internal void EmitLocals(ref Xbdm.XbdmContext context, VariableJson variables, KitMemoryAccess memory)
     {
-        if (!_loaded || _pdbBase == 0)
+        if (!_loaded)
+            return;
+
+        var dwarf = TryGetDwarf();
+        if (dwarf is not null)
+        {
+            try { dwarf.EmitLocals(ref context, variables, memory); }
+            catch (Exception ex) { BridgeWriter.Log($"DWARF EmitLocals failed: {ex.Message}"); }
+            return;
+        }
+
+        if (_pdbBase == 0)
             return;
 
         var managed = TryGetManaged();
@@ -244,7 +334,17 @@ internal sealed class SymbolService : IDisposable
 
     internal bool TryEmitMembers(string symbolBase, ref Xbdm.XbdmContext context, KitMemoryAccess memory, VariableJson variables)
     {
-        if (!_loaded || _pdbBase == 0)
+        if (!_loaded)
+            return false;
+
+        var dwarf = TryGetDwarf();
+        if (dwarf is not null)
+        {
+            try { return dwarf.TryEmitMembers(symbolBase, ref context, variables, memory); }
+            catch (Exception ex) { BridgeWriter.Log($"DWARF TryEmitMembers failed: {ex.Message}"); return false; }
+        }
+
+        if (_pdbBase == 0)
             return false;
 
         var managed = TryGetManaged();

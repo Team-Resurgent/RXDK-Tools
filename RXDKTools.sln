@@ -97,6 +97,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rxdk.MsBuild", "src\Rxdk.Ms
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rxdk.Engine.Tests", "src\Rxdk.Engine.Tests\Rxdk.Engine.Tests.csproj", "{414258E5-82FC-44E7-8A25-969510EE0F1B}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rxdk.Dwarf", "src\Rxdk.Dwarf\Rxdk.Dwarf.csproj", "{45661F41-33B5-4384-92B7-ED0BF197764B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -599,6 +601,18 @@ Global
 		{414258E5-82FC-44E7-8A25-969510EE0F1B}.Release|x64.Build.0 = Release|Any CPU
 		{414258E5-82FC-44E7-8A25-969510EE0F1B}.Release|x86.ActiveCfg = Release|Any CPU
 		{414258E5-82FC-44E7-8A25-969510EE0F1B}.Release|x86.Build.0 = Release|Any CPU
+		{45661F41-33B5-4384-92B7-ED0BF197764B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{45661F41-33B5-4384-92B7-ED0BF197764B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{45661F41-33B5-4384-92B7-ED0BF197764B}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{45661F41-33B5-4384-92B7-ED0BF197764B}.Debug|x64.Build.0 = Debug|Any CPU
+		{45661F41-33B5-4384-92B7-ED0BF197764B}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{45661F41-33B5-4384-92B7-ED0BF197764B}.Debug|x86.Build.0 = Debug|Any CPU
+		{45661F41-33B5-4384-92B7-ED0BF197764B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{45661F41-33B5-4384-92B7-ED0BF197764B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{45661F41-33B5-4384-92B7-ED0BF197764B}.Release|x64.ActiveCfg = Release|Any CPU
+		{45661F41-33B5-4384-92B7-ED0BF197764B}.Release|x64.Build.0 = Release|Any CPU
+		{45661F41-33B5-4384-92B7-ED0BF197764B}.Release|x86.ActiveCfg = Release|Any CPU
+		{45661F41-33B5-4384-92B7-ED0BF197764B}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -645,6 +659,7 @@ Global
 		{C110E73E-DB58-4279-9929-0EC4711E15E2} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{72C2CD82-4280-44FE-B5C9-8362611DC6F9} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{414258E5-82FC-44E7-8A25-969510EE0F1B} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+		{45661F41-33B5-4384-92B7-ED0BF197764B} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {9BAC8E47-428E-4F44-9A01-7EFE5823358F}
