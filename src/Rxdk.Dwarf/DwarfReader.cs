@@ -126,9 +126,15 @@ public sealed class DwarfReader
         {
             if (die.Tag != DW_TAG.inlined_subroutine || !die.Has(DW_AT.low_pc) || !die.Has(DW_AT.call_line))
                 continue;
+            ulong ilow = die.U(DW_AT.low_pc);
+            ulong ihigh = die.U(DW_AT.high_pc);
+            // high_pc is an address if its form is DW_FORM_addr, else an offset from low_pc.
+            if (die.Has(DW_AT.high_pc) && die.Forms.TryGetValue(DW_AT.high_pc, out int ihf) && ihf != DW_FORM.addr)
+                ihigh = ilow + ihigh;
             unit.InlineSites.Add(new InlineSite
             {
-                Address = die.U(DW_AT.low_pc),
+                Address = ilow,
+                EndAddress = die.Has(DW_AT.high_pc) ? ihigh : 0,
                 Line = (int)die.U(DW_AT.call_line),
                 File = FileName(files, (int)die.U(DW_AT.call_file)),
             });

@@ -89,7 +89,10 @@ public sealed class InlineSite
 {
     public string File = "";
     public int Line;
-    public ulong Address;
+    public ulong Address;    // low_pc of the inlined body
+    public ulong EndAddress; // high_pc (exclusive); 0 if unknown
+    public bool Contains(ulong pc) => EndAddress > Address && pc >= Address && pc < EndAddress;
+    public ulong Span => EndAddress > Address ? EndAddress - Address : 0;
 }
 
 /// <summary>One compilation unit.</summary>

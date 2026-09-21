@@ -98,6 +98,20 @@ internal sealed class DwarfSymbols
         ulong va = ToVa(kitAddress);
         var fn = _info.FunctionAt(va);
         if (fn != null) function = fn.Name;
+
+        // If this address is inside an inlined body, the line table tags it to the callee's own
+        // header (e.g. d3d8.h). A breakpoint the user set on the call in their source should stop
+        // there, not dive into the header -- report the enclosing inline call site instead. The
+        // outermost (largest-span) site is the user-level call; nested inlines resolve up to it.
+        Rxdk.Dwarf.InlineSite? site = null;
+        foreach (var s in _info.InlineSites)
+            if (s.Contains(va) && (site == null || s.Span > site.Span)) site = s;
+        if (site != null)
+        {
+            file = site.File; line = (uint)site.Line;
+            return true;
+        }
+
         var ln = _info.LineAt(va);
         if (ln == null) return false;
         file = ln.File; line = (uint)ln.Line;
