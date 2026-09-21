@@ -25,20 +25,16 @@ internal sealed partial class DebugBridgeSession
             return;
         }
 
-        if (!BridgeJson.TryGetString(root, "pdb", out var pdb))
-            pdb = hasExe ? exe : xbe;
-        BridgeJson.TryGetString(root, "map", out var map);
-
         try
         {
-            var mapArg = string.IsNullOrEmpty(map) ? null : map;
+            // Symbols come from the DWARF embedded in the image; any pdb/map fields are ignored.
             if (hasExe)
-                _symbols.Load(exe, pdb, mapArg);
+                _symbols.Load(exe);
             else
-                _symbols.LoadFromXbe(xbe, pdb, mapArg);
+                _symbols.LoadFromXbe(xbe);
             // SymbolService.Load() calls Unload(), which clears ModuleBase. Restore the kit
             // relocation base so subsequent file/line resolution maps into the running title
-            // instead of returning raw PDB (link-base) addresses.
+            // instead of returning raw image (link-base) addresses.
             OnModuleBaseSet();
             BridgeWriter.EmitResult(id, true);
         }

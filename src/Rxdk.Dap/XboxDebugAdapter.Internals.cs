@@ -46,10 +46,8 @@ public sealed partial class XboxDebugAdapter
         await StartBridgeAsync(GetStr(args, "consoleName"));
         var exe = GetStr(args, "program");
         var xbe = GetStr(args, "xbe");
-        var map = GetStr(args, "map");
-        var pdb = GetStr(args, "pdb");
         if (!string.IsNullOrEmpty(exe) || !string.IsNullOrEmpty(xbe))
-            await LoadSymbolsAsync(exe, xbe, pdb, map);
+            await LoadSymbolsAsync(exe, xbe);
     }
 
     private async Task ExecuteHardwareLaunchAsync(JObject args)
@@ -402,7 +400,7 @@ public sealed partial class XboxDebugAdapter
         Protocol.SendEvent(new StoppedEvent(reasonValue) { ThreadId = tid, AllThreadsStopped = false });
     }
 
-    private async Task LoadSymbolsAsync(string? exe, string? xbe, string? pdb, string? map)
+    private async Task LoadSymbolsAsync(string? exe, string? xbe)
     {
         var (kind, imagePath) = !string.IsNullOrEmpty(exe) ? ("exe", Path.GetFullPath(exe))
             : !string.IsNullOrEmpty(xbe) ? ("xbe", Path.GetFullPath(xbe))
@@ -410,19 +408,10 @@ public sealed partial class XboxDebugAdapter
         if (!File.Exists(imagePath))
             throw new FileNotFoundException($"{(kind == "exe" ? "Program" : "XBE")} not found: {imagePath}");
 
-        static string StripExt(string p) => System.Text.RegularExpressions.Regex.Replace(p, @"\.(exe|xbe)$", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-
-        // The RXDK clang build emits DWARF into the .exe, so a separate .pdb is no longer required to
-        // debug -- the bridge reads symbols from the image. Pass a .pdb only if one happens to exist
-        // (older/.pdb titles); never block the launch on its absence.
-        var reqArgs = new List<(string, object?)>();
-        var pdbPath = !string.IsNullOrEmpty(pdb) ? Path.GetFullPath(pdb) : $"{StripExt(imagePath)}.pdb";
-        if (File.Exists(pdbPath))
-            reqArgs.Add(("pdb", pdbPath));
-        reqArgs.Add(kind == "exe" ? ("exe", imagePath) : ("xbe", imagePath));
-        var mapPath = !string.IsNullOrEmpty(map) ? Path.GetFullPath(map) : $"{StripExt(imagePath)}.map";
-        if (File.Exists(mapPath)) reqArgs.Add(("map", mapPath));
-        await _bridge.RequestAsync("loadSymbols", Args(reqArgs.ToArray()));
+        // The RXDK clang build emits DWARF into the image, so the bridge reads symbols straight from
+        // it -- no separate .pdb or linker .map is involved.
+        await _bridge.RequestAsync("loadSymbols",
+            Args(kind == "exe" ? ("exe", imagePath) : ("xbe", imagePath)));
     }
 
     private string NormalizeSourcePath(string sourcePath)
