@@ -64,22 +64,34 @@ public static class LlvmInstaller
     /// (the dir containing bin/clang). Idempotent: skips the download when already installed.
     /// </summary>
     public static async Task<string> InstallAsync(
-        string? tag = null, Action<string>? log = null, CancellationToken ct = default)
+        string? tag = null, bool force = false, Action<string>? log = null, CancellationToken ct = default)
     {
-        var existing = ResolveRootQuiet();
-        if (existing is not null)
-        {
-            log?.Invoke($"RXDK: LLVM toolchain already installed at {existing}");
-            return existing;
-        }
-
         var installRoot = RxdkPaths.GetLlvmInstallRoot();
-        Directory.CreateDirectory(installRoot);
 
         log?.Invoke("Resolving RXDK LLVM release…");
         // The rolling release is tagged "latest"; GitHub's /releases/latest also resolves it since
         // it is not a prerelease. A pinned tag is honored for reproducibility.
         var release = await GitHubReleases.FetchReleaseAsync(LlvmRepo, tag ?? "latest", ct);
+        var available = await ResolveBuildStampAsync(release, ct);
+
+        // Idempotent unless forced: skip only when an install is present AND its recorded build stamp
+        // matches what's available. A mismatch (a newer build, or an old/unknown marker) falls through
+        // to re-download, so `install-llvm` actually UPDATES. `force` (a reinstall / update-llvm) always
+        // re-downloads with no version check.
+        var existing = ResolveRootQuiet();
+        if (existing is not null && !force)
+        {
+            var installedStamp = GetInstalledVersion();
+            if (installedStamp is not null && available is not null &&
+                string.Equals(installedStamp, available, StringComparison.OrdinalIgnoreCase))
+            {
+                log?.Invoke($"RXDK: LLVM toolchain up to date ({installedStamp}) at {existing}");
+                return existing;
+            }
+            log?.Invoke($"RXDK: updating LLVM toolchain ({installedStamp ?? "unknown"} -> {available ?? "latest"})");
+        }
+
+        Directory.CreateDirectory(installRoot);
         var asset = GitHubReleases.RequireAsset(release, AssetFileName, LlvmRepo);
         log?.Invoke($"RXDK: LLVM toolchain {release.TagName} ({asset.Name}) → {installRoot}");
 
@@ -140,9 +152,8 @@ public static class LlvmInstaller
         // as the toolchain "version": a newer stamp on the release than the marker means an update.
         try
         {
-            var stamp = await ResolveBuildStampAsync(release, ct);
-            if (!string.IsNullOrWhiteSpace(stamp))
-                File.WriteAllText(Path.Combine(installRoot, VersionMarkerFile), stamp);
+            if (!string.IsNullOrWhiteSpace(available))
+                File.WriteAllText(Path.Combine(installRoot, VersionMarkerFile), available);
         }
         catch { /* best-effort */ }
 

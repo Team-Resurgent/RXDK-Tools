@@ -58,8 +58,10 @@ switch (command)
     case "sdk-status":
         return CmdSdkStatus();
     case "install-llvm":
+        return await CmdInstallLlvm(opts, force: false);
     case "update-llvm":
-        return await CmdInstallLlvm(opts);
+        // update-llvm = reinstall: force a re-download with no version check.
+        return await CmdInstallLlvm(opts, force: true);
     case "llvm-status":
         return CmdLlvmStatus();
     case "build-sdk-lib":
@@ -321,14 +323,16 @@ static async Task<int> CmdVersions(Dictionary<string, string> opts)
 }
 
 
-static async Task<int> CmdInstallLlvm(Dictionary<string, string> opts)
+static async Task<int> CmdInstallLlvm(Dictionary<string, string> opts, bool force)
 {
     // --tag pins a release; default is the "latest" rolling toolchain release.
     opts.TryGetValue("tag", out var tag);
+    // --force also forces a re-download from install-llvm (update-llvm implies it).
+    if (opts.ContainsKey("force")) force = true;
     try
     {
         var root = await LlvmInstaller.InstallAsync(
-            tag: string.IsNullOrEmpty(tag) ? null : tag, log: msg => Console.WriteLine(msg));
+            tag: string.IsNullOrEmpty(tag) ? null : tag, force: force, log: msg => Console.WriteLine(msg));
         Console.WriteLine($"LLVM toolchain ready: {root}");
         return 0;
     }
