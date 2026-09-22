@@ -430,8 +430,18 @@ public sealed partial class XboxDebugAdapter
         var norm = NormalizeSourcePath(file);
         if (File.Exists(norm)) return norm;
         var baseName = Path.GetFileName(norm);
+        // The DWARF file path is often RELATIVE (e.g. "Documents/proj/src/main.cpp"), especially on a
+        // Linux build. Split it so we can try each trailing sub-path under the roots below.
+        var relParts = norm.Replace('\\', '/').Split('/');
         foreach (var root in new[] { _workspaceRoot, _srcRoot }.Where(r => !string.IsNullOrEmpty(r)))
         {
+            // Try each trailing sub-path of the relative file, longest first, so a file in a
+            // subdirectory (src/) resolves -- not just the bare basename directly under the root.
+            for (var start = 0; start < relParts.Length; start++)
+            {
+                var candidate = Path.Combine(new[] { root }.Concat(relParts.Skip(start)).ToArray());
+                if (File.Exists(candidate)) return candidate;
+            }
             var underRoot = Path.Combine(root, baseName);
             if (File.Exists(underRoot)) return underRoot;
             var samplesRoot = Path.Combine(root, "samples");
