@@ -129,11 +129,14 @@ public static class LlvmInstaller
         EnsureUnixExecutable(Path.Combine(root, "bin", "ld.lld"));
         EnsureUnixExecutable(Path.Combine(root, "bin", "llvm-ar"));
 
-        // Record the release for the tool window's current-vs-available comparison.
+        // Record the build stamp for the tool window's current-vs-available comparison. The rolling
+        // release has no semver, so use the asset's GitHub updated_at (restamped on every re-upload)
+        // as the toolchain "version": a newer stamp on the release than the marker means an update.
         try
         {
-            if (!string.IsNullOrWhiteSpace(release.TagName))
-                File.WriteAllText(Path.Combine(installRoot, VersionMarkerFile), release.TagName.Trim());
+            var stamp = FormatBuildStamp(asset.UpdatedAt);
+            if (!string.IsNullOrWhiteSpace(stamp))
+                File.WriteAllText(Path.Combine(installRoot, VersionMarkerFile), stamp);
         }
         catch { /* best-effort */ }
 
@@ -151,6 +154,32 @@ public static class LlvmInstaller
 
         log?.Invoke($"RXDK: LLVM toolchain ready ({root})");
         return root;
+    }
+
+    /// <summary>The build stamp of the toolchain available on the release (the asset's GitHub
+    /// updated_at, formatted), for a current-vs-available comparison. Null if it can't be fetched.
+    /// A network call, so callers should treat failures as "unknown".</summary>
+    public static async Task<string?> GetAvailableVersionAsync(string? tag = null, CancellationToken ct = default)
+    {
+        try
+        {
+            var release = await GitHubReleases.FetchReleaseAsync(LlvmRepo, tag ?? "latest", ct);
+            var asset = release.Assets.FirstOrDefault(a => a.Name == AssetFileName);
+            return asset is null ? null : FormatBuildStamp(asset.UpdatedAt);
+        }
+        catch { return null; }
+    }
+
+    /// <summary>Turn a GitHub ISO-8601 <c>updated_at</c> into a compact, sortable UTC build stamp
+    /// (e.g. <c>2026-09-22 00:15</c>). Falls back to the trimmed raw value if it can't be parsed.</summary>
+    private static string FormatBuildStamp(string updatedAt)
+    {
+        if (string.IsNullOrWhiteSpace(updatedAt)) return "";
+        if (DateTimeOffset.TryParse(updatedAt, System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.AssumeUniversal | System.Globalization.DateTimeStyles.AdjustToUniversal,
+                out var dt))
+            return dt.ToString("yyyy-MM-dd HH:mm", System.Globalization.CultureInfo.InvariantCulture);
+        return updatedAt.Trim();
     }
 
     private static string? ResolveRootQuiet()

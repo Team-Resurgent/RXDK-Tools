@@ -9,6 +9,9 @@ public sealed class GitHubAsset
 {
     [JsonPropertyName("name")] public string Name { get; set; } = "";
     [JsonPropertyName("browser_download_url")] public string BrowserDownloadUrl { get; set; } = "";
+    // GitHub restamps this each time the asset is re-uploaded, so for a rolling "latest" release
+    // (which has no semver) it serves as the toolchain's build "version".
+    [JsonPropertyName("updated_at")] public string UpdatedAt { get; set; } = "";
 }
 
 public sealed class GitHubRelease

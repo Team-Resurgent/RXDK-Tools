@@ -51,11 +51,16 @@ public static class ComponentVersions
             "Samples", RxdkPaths.GetStagedSamplesRoot(),
             SamplesStaging.GetSamplesGitUrl(), SamplesStaging.GetSamplesGitRef(), ct);
         var tools = ToolsAsync(ct);
+        var llvm = LlvmAsync(ct);
 
-        var all = await Task.WhenAll(sdk, docs, samples, tools);
+        // Ordered SDK, Docs, LLVM, Tools, Samples to match the extensions' component list.
+        var all = await Task.WhenAll(sdk, docs, llvm, tools, samples);
         if (string.IsNullOrWhiteSpace(maxVersion)) return all;
         return all
-            .Select(c => RxdkSemver.IsNewer(c.Available, maxVersion) ? c with { Blocked = true } : c)
+            // LLVM's "version" is a build timestamp, not semver, and it's a rolling toolchain rather
+            // than a gated RXDK component, so the extension-version gate never applies to it.
+            .Select(c => c.Name != "LLVM" && RxdkSemver.IsNewer(c.Available, maxVersion)
+                ? c with { Blocked = true } : c)
             .ToArray();
     }
 
@@ -75,6 +80,16 @@ public static class ComponentVersions
                       ?? (HostToolsInstaller.IsInstalled() ? "installed" : null);
         var available = await GitHubReleases.TryGetLatestVersionAsync(ToolsRepo, ct);
         return new ComponentVersion("Tools", current, available);
+    }
+
+    private static async Task<ComponentVersion> LlvmAsync(CancellationToken ct)
+    {
+        // The rolling LLVM toolchain has no semver, so "version" is the release asset's build stamp
+        // (GitHub updated_at): current = the stamp recorded at install, available = the live stamp.
+        var current = LlvmInstaller.GetInstalledVersion()
+                      ?? (LlvmInstaller.IsInstalled() ? "installed" : null);
+        var available = await LlvmInstaller.GetAvailableVersionAsync(ct: ct);
+        return new ComponentVersion("LLVM", current, available);
     }
 
     private static string? ReadLocalVersion(string stagedRoot)
