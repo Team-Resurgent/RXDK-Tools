@@ -425,10 +425,21 @@ public sealed partial class XboxDebugAdapter
         return p.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar);
     }
 
+    private bool _srcResolveDiagDone;
+
     private string ResolveWorkspacePath(string file)
     {
+        // One-shot diagnostic (first call only) so the DAP log shows why a source path did or did not
+        // resolve, without spamming a line per frame. Set RXDK_DAP_SRCDIAG=all to log every call.
+        var diag = !_srcResolveDiagDone || Environment.GetEnvironmentVariable("RXDK_DAP_SRCDIAG") == "all";
         var norm = NormalizeSourcePath(file);
-        if (File.Exists(norm)) return norm;
+        if (diag)
+            Console_($"xbox-dap: src-resolve file='{file}' norm='{norm}' workspaceRoot='{_workspaceRoot}' srcRoot='{_srcRoot}' cwd='{Directory.GetCurrentDirectory()}'\n");
+        // Only an ALREADY-ABSOLUTE path may be returned verbatim. A RELATIVE norm that File.Exists()
+        // finds does so only relative to the DAP's cwd -- returning it hands VS Code a relative source
+        // path it cannot open ("Could not load source ... Canceled"). Relative paths fall through to the
+        // workspace-root matching below, which yields an absolute path.
+        if (Path.IsPathRooted(norm) && File.Exists(norm)) { if (diag) { Console_($"xbox-dap: src-resolve -> absolute norm exists: '{norm}'\n"); _srcResolveDiagDone = true; } return norm; }
         var baseName = Path.GetFileName(norm);
         // The DWARF file path is often RELATIVE (e.g. "Documents/proj/src/main.cpp"), especially on a
         // Linux build. Split it so we can try each trailing sub-path under the roots below.
@@ -440,22 +451,38 @@ public sealed partial class XboxDebugAdapter
             for (var start = 0; start < relParts.Length; start++)
             {
                 var candidate = Path.Combine(new[] { root }.Concat(relParts.Skip(start)).ToArray());
-                if (File.Exists(candidate)) return candidate;
+                var exists = File.Exists(candidate);
+                if (diag) Console_($"xbox-dap: src-resolve try '{candidate}' exists={exists}\n");
+                if (exists) { if (diag) _srcResolveDiagDone = true; return candidate; }
             }
             var underRoot = Path.Combine(root, baseName);
-            if (File.Exists(underRoot)) return underRoot;
+            if (File.Exists(underRoot)) { if (diag) _srcResolveDiagDone = true; return underRoot; }
             var samplesRoot = Path.Combine(root, "samples");
             if (Directory.Exists(samplesRoot))
             {
                 foreach (var name in Directory.EnumerateDirectories(samplesRoot))
                 {
                     var candidate = Path.Combine(name, baseName);
-                    if (File.Exists(candidate)) return candidate;
+                    if (File.Exists(candidate)) { if (diag) _srcResolveDiagDone = true; return candidate; }
                 }
             }
         }
         var fromSrcRoot = FindInSrcRoot(norm, baseName);
-        return !string.IsNullOrEmpty(fromSrcRoot) ? fromSrcRoot : norm;
+        if (!string.IsNullOrEmpty(fromSrcRoot))
+        {
+            if (diag) { Console_($"xbox-dap: src-resolve -> srcRoot index: '{fromSrcRoot}'\n"); _srcResolveDiagDone = true; }
+            return fromSrcRoot;
+        }
+        // Last resort: the RELATIVE path exists relative to the DAP's cwd -> hand VS Code its ABSOLUTE
+        // form (never the bare relative path, which it cannot open).
+        if (File.Exists(norm))
+        {
+            var full = Path.GetFullPath(norm);
+            if (diag) { Console_($"xbox-dap: src-resolve -> cwd-relative absolute: '{full}'\n"); _srcResolveDiagDone = true; }
+            return full;
+        }
+        if (diag) { Console_($"xbox-dap: src-resolve UNRESOLVED -> returning raw '{norm}'\n"); _srcResolveDiagDone = true; }
+        return norm;
     }
 
     private string FindInSrcRoot(string requested, string baseName)
