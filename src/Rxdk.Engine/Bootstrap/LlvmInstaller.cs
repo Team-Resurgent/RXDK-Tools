@@ -20,6 +20,12 @@ public static class LlvmInstaller
     /// <summary>Marker file recording which release the managed toolchain came from.</summary>
     private const string VersionMarkerFile = "VERSION";
 
+    /// <summary>Per-target build-stamp marker asset on the release (a tiny text file the toolchain
+    /// build or a maintainer writes, e.g. "2026-09-21 07:00"). Preferred over the zip asset's GitHub
+    /// updated_at when present, so the stamp can be set explicitly. Named per target family so the OG
+    /// and 360 toolchains on the shared rolling release each carry their own.</summary>
+    private const string VersionAssetName = "xboxog_version";
+
     /// <summary>The xboxog asset for this host, e.g. <c>xboxog-windows-x64.zip</c>. Matches the
     /// unpacked dir name <see cref="LlvmRuntime"/> looks for.</summary>
     private static string AssetFileName => $"{ArchiveDirName}.zip";
@@ -134,7 +140,7 @@ public static class LlvmInstaller
         // as the toolchain "version": a newer stamp on the release than the marker means an update.
         try
         {
-            var stamp = FormatBuildStamp(asset.UpdatedAt);
+            var stamp = await ResolveBuildStampAsync(release, ct);
             if (!string.IsNullOrWhiteSpace(stamp))
                 File.WriteAllText(Path.Combine(installRoot, VersionMarkerFile), stamp);
         }
@@ -164,10 +170,28 @@ public static class LlvmInstaller
         try
         {
             var release = await GitHubReleases.FetchReleaseAsync(LlvmRepo, tag ?? "latest", ct);
-            var asset = release.Assets.FirstOrDefault(a => a.Name == AssetFileName);
-            return asset is null ? null : FormatBuildStamp(asset.UpdatedAt);
+            return await ResolveBuildStampAsync(release, ct);
         }
         catch { return null; }
+    }
+
+    /// <summary>The toolchain build stamp for a release: the explicit per-target marker asset
+    /// (<see cref="VersionAssetName"/>) when present, else the zip asset's GitHub updated_at.</summary>
+    private static async Task<string?> ResolveBuildStampAsync(GitHubRelease release, CancellationToken ct)
+    {
+        var marker = release.Assets.FirstOrDefault(
+            a => string.Equals(a.Name, VersionAssetName, StringComparison.OrdinalIgnoreCase));
+        if (marker is not null)
+        {
+            try
+            {
+                var text = await GitHubReleases.GetAssetTextAsync(marker, ct);
+                if (!string.IsNullOrWhiteSpace(text)) return text.Trim();
+            }
+            catch { /* fall back to updated_at */ }
+        }
+        var zip = release.Assets.FirstOrDefault(a => a.Name == AssetFileName);
+        return zip is null ? null : FormatBuildStamp(zip.UpdatedAt);
     }
 
     /// <summary>Turn a GitHub ISO-8601 <c>updated_at</c> into a compact, sortable UTC build stamp
