@@ -24,7 +24,7 @@ public static class LlvmInstaller
     /// build or a maintainer writes, e.g. "2026-09-21 07:00"). Preferred over the zip asset's GitHub
     /// updated_at when present, so the stamp can be set explicitly. Named per target family so the OG
     /// and 360 toolchains on the shared rolling release each carry their own.</summary>
-    private const string VersionAssetName = "xboxog_version";
+    private const string VersionAssetName = "xbox_version";
 
     /// <summary>The xboxog asset for this host, e.g. <c>xboxog-windows-x64.zip</c>. Matches the
     /// unpacked dir name <see cref="LlvmRuntime"/> looks for.</summary>
@@ -36,9 +36,9 @@ public static class LlvmInstaller
         {
             var arch = System.Runtime.InteropServices.RuntimeInformation.OSArchitecture
                        == System.Runtime.InteropServices.Architecture.Arm64 ? "arm64" : "x64";
-            if (OperatingSystem.IsWindows()) return $"xboxog-windows-{arch}";
-            if (OperatingSystem.IsMacOS()) return $"xboxog-macos-{arch}";
-            return $"xboxog-linux-{arch}";
+            if (OperatingSystem.IsWindows()) return $"xbox-windows-{arch}";
+            if (OperatingSystem.IsMacOS()) return $"xbox-macos-{arch}";
+            return $"xbox-linux-{arch}";
         }
     }
 

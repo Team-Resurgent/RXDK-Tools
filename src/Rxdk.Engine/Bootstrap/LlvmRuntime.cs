@@ -23,9 +23,9 @@ public static class LlvmRuntime
         get
         {
             var arch = RuntimeInformation.OSArchitecture == Architecture.Arm64 ? "arm64" : "x64";
-            if (OperatingSystem.IsWindows()) return $"xboxog-windows-{arch}";
-            if (OperatingSystem.IsMacOS()) return $"xboxog-macos-{arch}";
-            return $"xboxog-linux-{arch}";
+            if (OperatingSystem.IsWindows()) return $"xbox-windows-{arch}";
+            if (OperatingSystem.IsMacOS()) return $"xbox-macos-{arch}";
+            return $"xbox-linux-{arch}";
         }
     }
 
