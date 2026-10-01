@@ -8,6 +8,7 @@
     <UsingTask TaskName="Rxdk.MsBuild.Tasks.RxdkBundler" AssemblyFile="$(MSBuildThisFileDirectory)Rxdk.MsBuild.dll"/>
     <UsingTask TaskName="Rxdk.MsBuild.Tasks.RxdkXactBld" AssemblyFile="$(MSBuildThisFileDirectory)Rxdk.MsBuild.dll"/>
     <UsingTask TaskName="Rxdk.MsBuild.Tasks.RxdkShaderAssemble" AssemblyFile="$(MSBuildThisFileDirectory)Rxdk.MsBuild.dll"/>
+    <UsingTask TaskName="Rxdk.MsBuild.Tasks.ResolveDeployFiles" AssemblyFile="$(MSBuildThisFileDirectory)Rxdk.MsBuild.dll"/>
 
     <!-- cleanup properties which are not supported by clang -->
     <Import Project="$(VCTargetsPath)\Microsoft.Cpp.ClangCl.Exclusion.props" />
@@ -427,26 +428,33 @@ ___eh_frame_end:
             Outputs="@(Xiso)"
             Condition="'@(Xiso)' != ''"
             DependsOnTargets="RxdkBuildResources">
-        <!-- @(IsoCopyDir) is a literal directory name (e.g. "Media"), not a glob: re-globbing it
-             here, at the point the ISO is actually staged, picks up files RxdkBuildResources just
-             generated this same build. A plain "Media\**" IsoCopy item, by contrast, is a static
-             ItemGroup evaluated once at project load: before RxdkBuildResources ever ran, so on
-             a from-scratch project with no resource outputs already on disk, its first build would
-             never see them (a second build, with the files now present, would). -->
-        <ItemGroup>
-            <IsoCopy Include="%(IsoCopyDir.Identity)\**" Condition="'@(IsoCopyDir)' != ''" />
-        </ItemGroup>
+        <!-- @(IsoCopyDir) entries are XDK "Additional Files" of the form [Destination=]Source (a
+             literal path, not a glob). ResolveDeployFiles walks them HERE, at the point the ISO is
+             staged -- after RxdkBuildResources -- so files that target just generated this same
+             build are picked up (a static "Media\**" IsoCopy item, evaluated once at project load
+             before RxdkBuildResources ran, would miss them on a from-scratch build). The task
+             mirrors the engine's PackXiso.ResolveDeployPaths so VS Code and VS20XX stage identically
+             and the optional Destination= remap works in both. -->
+        <ResolveDeployFiles ProjectDir="$(MSBuildProjectDirectory)" DeployPaths="@(IsoCopyDir)"
+                            Condition="'@(IsoCopyDir)' != ''">
+            <Output TaskParameter="DeployFiles" ItemName="_DeployFile" />
+        </ResolveDeployFiles>
         <PropertyGroup>
             <_XisoDir>@(Xiso)</_XisoDir>
         </PropertyGroup>
         <RemoveDir Directories="$(_XisoDir)" />
-        <!-- Copy the XBE and any other files -->
+        <!-- Copy the XBE, any explicit @(IsoCopy) items, then the resolved deploy files. -->
         <Copy SourceFiles="%(ImageBld.OutputFile)"
               DestinationFiles="$(_XisoDir)\default.xbe"
               UseHardlinksIfPossible="true" />
         <Copy SourceFiles="@(IsoCopy)"
-              DestinationFolder="$(_XisoDir)"
-              UseHardlinksIfPossible="true" />
+              DestinationFiles="@(IsoCopy->'$(_XisoDir)\%(IsoTop)%(RecursiveDir)%(Filename)%(Extension)')"
+              UseHardlinksIfPossible="true"
+              Condition="'@(IsoCopy)' != ''" />
+        <Copy SourceFiles="@(_DeployFile)"
+              DestinationFiles="@(_DeployFile->'$(_XisoDir)\%(IsoDest)')"
+              UseHardlinksIfPossible="true"
+              Condition="'@(_DeployFile)' != ''" />
     </Target>
     
     <Target Name="Xiso"

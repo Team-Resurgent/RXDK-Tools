@@ -140,7 +140,7 @@ public static class Vcproj2003Importer
         foreach (var c in allConfigs)
         {
             c.IncludePaths = RebasePathList(c.IncludePaths, vcprojDir, outDir);
-            c.DeployPaths  = RebasePathList(c.DeployPaths, vcprojDir, outDir);
+            c.DeployPaths  = RebaseDeployList(c.DeployPaths, vcprojDir, outDir);
         }
 
         // Drop configs RXDK has no equivalent for (profiling / LTCG / SDL / Win32 name variants),
@@ -791,9 +791,30 @@ public static class Vcproj2003Importer
         if (string.IsNullOrWhiteSpace(list)) return list;
         var rebased = list
             .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(p => (p.Contains('$') || Path.IsPathRooted(p))
-                ? p
-                : MakeRelative(toDir, Path.GetFullPath(Path.Combine(fromDir, p))));
+            .Select(p => RebaseOne(p, fromDir, toDir));
         return string.Join(";", rebased);
     }
+
+    /// <summary>Rebase a deploy list whose entries follow the XDK "Additional Files" form
+    /// <c>[Destination=]Source</c>: only the Source half is a host path to rebase; the
+    /// Destination is an image-relative target and is preserved verbatim.</summary>
+    private static string RebaseDeployList(string list, string fromDir, string toDir)
+    {
+        if (string.IsNullOrWhiteSpace(list)) return list;
+        var rebased = list
+            .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(entry =>
+            {
+                var eq = entry.IndexOf('=');
+                if (eq <= 0) return RebaseOne(entry, fromDir, toDir);
+                var dest = entry.Substring(0, eq + 1);          // keep "Destination="
+                return dest + RebaseOne(entry.Substring(eq + 1), fromDir, toDir);
+            });
+        return string.Join(";", rebased);
+    }
+
+    private static string RebaseOne(string p, string fromDir, string toDir) =>
+        (p.Contains('$') || Path.IsPathRooted(p))
+            ? p
+            : MakeRelative(toDir, Path.GetFullPath(Path.Combine(fromDir, p)));
 }
