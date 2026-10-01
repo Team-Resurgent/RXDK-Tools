@@ -85,6 +85,7 @@
         <OutputType>staticlibrary</OutputType>
     </PropertyGroup>
 
+    <PropertyGroup Condition="'$(ConfigurationType)' == 'DynamicLibrary'"><LinkCompiled>true</LinkCompiled><TargetExt>.xbs</TargetExt><OutputType>dll</OutputType></PropertyGroup>
     <ItemDefinitionGroup>
         <ClCompile>
             <WarningLevel>EnableAllWarnings</WarningLevel>
@@ -140,8 +141,10 @@
 
         <Link>
             <OutputFile>$(OutDir)$(TargetName).exe</OutputFile>
+            <OutputFile Condition="'$(ConfigurationType)' == 'DynamicLibrary'">$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
             <EntryPointSymbol Condition="'$(ConfigurationType)' == 'Application'">XapiTitleStartup</EntryPointSymbol>
             <EntryPointSymbol Condition="'$(ConfigurationType)' == 'DebuggerExtension'">DxtEntry</EntryPointSymbol>
+            <EntryPointSymbol Condition="'$(ConfigurationType)' == 'DynamicLibrary'">RxdkDllEntry</EntryPointSymbol>
             <!-- LibraryDependencies maps to -lNAME. Verified against the real clang / ld.lld search
                  strategy on this target (x86-windows-gnu): -lNAME only tries NAME.dll, NAME.lib and
                  libNAME.a — never libNAME.lib, so with our libs actually named libd3d8d.lib etc
@@ -161,6 +164,7 @@
                  manifest already lists libcompat[d].lib in "libraries" for this reason, carried over
                  from the old engine's XdkLink.IsWholeArchiveLib opt-in. -->
             <AdditionalOptions>-rtlib=compiler-rt</AdditionalOptions>
+            <AdditionalOptions Condition="'$(ConfigurationType)' == 'DynamicLibrary'">-rtlib=compiler-rt -shared -Wl,--dynamicbase -Wl,--kill-at</AdditionalOptions>
         </Link>
 
         <ImageBld>

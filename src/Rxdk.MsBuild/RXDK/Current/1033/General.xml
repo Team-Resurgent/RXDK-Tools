@@ -78,6 +78,7 @@
     <EnumValue Name="Application" DisplayName="Application (.xbe)" Description="Application (.xbe)" />
     <EnumValue Name="StaticLibrary" DisplayName="Static library (.lib)" Description="Static Library (.lib)" />
     <EnumValue Name="DebuggerExtension" DisplayName="Debugger extension (.dxt)" Description="Debugger Extension (.dxt)"/>
+    <EnumValue Name="DynamicLibrary" DisplayName="Dynamic library / plugin (.xbs)" Description="Dynamic Library (.xbs)" />
     <EnumValue Name="Makefile" DisplayName="Makefile" Description="Makefile" />
   </EnumProperty>
 
