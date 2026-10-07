@@ -131,8 +131,15 @@ public sealed class XbeImageBuilderTests
         {
             BuildManaged(input, output, fixedTimestamp, testCase.Args);
 
+            var built = File.ReadAllBytes(output);
             var goldenPath = Path.Combine(TestPaths.ImageBldRoot, testCase.Golden!);
-            AssertMatchesGolden(File.ReadAllBytes(output), File.ReadAllBytes(goldenPath));
+            if (Environment.GetEnvironmentVariable("REGEN_IMAGEBLD_GOLDEN") == "1")
+            {
+                File.WriteAllBytes(Path.Combine(TestPaths.ImageBldRootSource, testCase.Golden!), built);
+                File.WriteAllBytes(goldenPath, built);
+            }
+
+            AssertMatchesGolden(built, File.ReadAllBytes(goldenPath));
         }
         finally
         {
@@ -171,6 +178,12 @@ public sealed class XbeImageBuilderTests
         var input = Path.Combine(TestPaths.ImageBldRoot, testCase.Input!);
         var actual = DumpToNormalizedBody(input);
         var goldenPath = Path.Combine(TestPaths.ImageBldRoot, testCase.Golden!);
+        if (Environment.GetEnvironmentVariable("REGEN_IMAGEBLD_GOLDEN") == "1")
+        {
+            File.WriteAllText(Path.Combine(TestPaths.ImageBldRootSource, testCase.Golden!), actual);
+            File.WriteAllText(goldenPath, actual);
+        }
+
         var expected = NormalizeGoldenDump(File.ReadAllText(goldenPath));
         Assert.Equal(expected, actual);
     }
@@ -375,6 +388,10 @@ internal static class TestPaths
     public static string TriangleExe => Path.Combine(Root, "TriangleXDK.exe");
     public static string TriangleXbe => Path.Combine(Root, "TriangleXDK.xbe");
     public static string ImageBldRoot => Path.Combine(Root, "ImageBld");
+    // The checked-in source copy of the ImageBld goldens (the bin copy above is
+    // regenerated per build). REGEN_IMAGEBLD_GOLDEN=1 rewrites goldens here.
+    public static string ImageBldRootSource => Path.GetFullPath(
+        Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "TestFiles", "ImageBld"));
     public static string TriangleGolden => Path.Combine(ImageBldRoot, "TriangleNolibwarn.golden.xbe");
     public static string TriangleGoldenSource => Path.GetFullPath(
         Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "TestFiles", "ImageBld", "TriangleNolibwarn.golden.xbe"));
