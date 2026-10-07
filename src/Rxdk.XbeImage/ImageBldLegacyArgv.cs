@@ -50,6 +50,15 @@ public static class ImageBldLegacyArgv
                 continue;
             }
 
+            // A POSIX absolute path (e.g. the positional input/output of /DXT on
+            // Linux/macOS) starts with '/' but is not a switch: pass it through
+            // untouched so it is never normalized or joined onto a prior switch.
+            if (arg[0] == '/' && LooksLikePosixPath(arg))
+            {
+                expanded.Add(arg);
+                continue;
+            }
+
             if (arg[0] is '-' or '/')
             {
                 var normalized = arg[0] == '-' ? '/' + arg[1..] : arg;
@@ -80,5 +89,25 @@ public static class ImageBldLegacyArgv
     }
 
     private static bool IsSwitchOrResponse(string arg) =>
-        arg.Length > 0 && arg[0] is '-' or '/' or '@';
+        arg.Length > 0 && arg[0] is '-' or '/' or '@' && !LooksLikePosixPath(arg);
+
+    /// <summary>
+    /// True when the argument is a POSIX absolute path rather than a legacy
+    /// '/'-switch. A colon-value switch is "/NAME:VALUE" (the VALUE may itself be a
+    /// POSIX path, e.g. "/in:/home/x") and a plain switch is "/NAME" ("/DXT"); in
+    /// both the ':' (if any) comes before any further '/'. A POSIX absolute path
+    /// ("/home/x") has a '/' before any ':'. So it is a path exactly when a second
+    /// '/' appears and precedes the first ':'. OS-agnostic: a Windows path is never
+    /// passed as a bare "/dir/..." token, so this never misfires on Windows.
+    /// </summary>
+    public static bool LooksLikePosixPath(string arg)
+    {
+        if (arg.Length < 2 || arg[0] != '/')
+            return false;
+        var slash = arg.IndexOf('/', 1);
+        if (slash < 0)
+            return false;
+        var colon = arg.IndexOf(':', 1);
+        return colon < 0 || slash < colon;
+    }
 }

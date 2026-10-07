@@ -140,7 +140,11 @@ public static class ImageBuild
         if (!File.Exists(toolPath)) throw new FileNotFoundException($"imagebld: tool not found: {toolPath}");
         var output = Path.GetFullPath(outputDxt);
 
-        var r = await ProcessRunner.RunStreamedAsync(toolPath, new[] { "/DXT", input, output }, log, ct: ct);
+        // Colon-attached /in:/out: (not positional) so an absolute POSIX path on
+        // Linux/macOS is never mistaken for a '/'-switch. imagebld's DXT mode accepts
+        // both forms; this matches the normal-build invocation above.
+        var r = await ProcessRunner.RunStreamedAsync(
+            toolPath, new[] { "/DXT", $"/in:{input}", $"/out:{output}" }, log, ct: ct);
         if (!r.Success) throw new InvalidOperationException($"imagebld /DXT failed (exit {r.ExitCode})");
         return output;
     }

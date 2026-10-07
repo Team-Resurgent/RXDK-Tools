@@ -716,7 +716,8 @@ public static class ImageBldOptionsParser
         (character >= 'A' && character <= 'F');
 
     private static bool IsSwitch(string arg) =>
-        arg.Length > 0 && arg[0] is '-' or '/';
+        arg.Length > 0 && arg[0] is '-' or '/'
+        && !ImageBldLegacyArgv.LooksLikePosixPath(arg);
 
     public static bool IsNoPreloadSection(ImageBldOptions options, string sectionName) =>
         options.NoPreloadSections.Any(entry =>
