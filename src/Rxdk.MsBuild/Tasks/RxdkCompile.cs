@@ -60,6 +60,9 @@ namespace Rxdk.MsBuild.Tasks
             "-ffreestanding", "-fno-stack-protector", "-fms-extensions", "-fms-compatibility",
             "-fms-compatibility-version=19.44",
             "-nostdinc", "-march=pentium3",
+            // long double is the 64-bit double type, as with the XDK compiler; must match
+            // Rxdk.Engine.Build.XboxTarget.CodegenFlags, which builds the SDK libraries.
+            "-mlong-double-64",
             // Every Xbox title is built with _XBOX/XBOX defined (the XDK did this); a lot of
             // Xbox headers/code select their platform path on it.
             "-D_XBOX", "-DXBOX",

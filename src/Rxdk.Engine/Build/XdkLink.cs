@@ -109,7 +109,9 @@ public static class XdkLink
                 var obj = Path.Combine(outDir, stem + ".o");
                 await File.WriteAllTextAsync(src, asm, ct);
                 var asmArgs = new List<string>(tc.CompileSubcommand(false));
-                asmArgs.AddRange(new[] { "-target", tc.TargetTriple, "-march=pentium3", "-c", src, "-o", obj });
+                asmArgs.AddRange(new[] { "-target", tc.TargetTriple });
+                asmArgs.AddRange(XboxTarget.CodegenFlags);
+                asmArgs.AddRange(new[] { "-c", src, "-o", obj });
                 var r = await ProcessRunner.RunStreamedAsync(tc.CompilerExe, asmArgs, log, ct: ct);
                 return r.Success ? obj : null;
             }

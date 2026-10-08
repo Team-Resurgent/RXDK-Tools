@@ -16,7 +16,7 @@ namespace Rxdk.Engine.Build;
 ///
 /// The reproduction recipe (from build/compile_c.zig + coff_lib.zig), which this matches exactly:
 ///   cwd = repo root
-///   clang[++]  -march=pentium3  --target=&lt;triple&gt;  -c -o build-out/obj/&lt;sub&gt;/&lt;stem&gt;.o
+///   clang[++]  &lt;XboxTarget.CodegenFlags&gt;  --target=&lt;triple&gt;  -c -o build-out/obj/&lt;sub&gt;/&lt;stem&gt;.o
 ///              &lt;batch-flags…&gt;  &lt;opt&gt;  -isystem &lt;resource&gt;  -I&lt;inc&gt;…  &lt;abs-src&gt;
 ///   llvm-lib /NOLOGO /OUT:build-out/lib/&lt;name&gt;.lib @&lt;rsp&gt;
 /// where &lt;stem&gt; is the source path with '/','\\','.',':',' ' → '_' (matching zig's uniqueStem),
@@ -223,7 +223,7 @@ public static class SdkLibBuild
                 Directory.CreateDirectory(Path.GetDirectoryName(Path.Combine(repoRoot, objRel))!);
 
                 var compiler = useCpp ? LlvmRuntime.ClangxxExe(root) : LlvmRuntime.ClangExe(root);
-                var args = new List<string> { "-march=pentium3", $"--target={triple}", "-c", "-o", objRel };
+                var args = new List<string>(XboxTarget.CodegenFlags) { $"--target={triple}", "-c", "-o", objRel };
                 if (!isS) args.AddRange(batch.Flags);
                 args.Add(opt);
                 if (resource is not null) { args.Add("-isystem"); args.Add(resource); }

@@ -108,10 +108,11 @@ public static class XboxBuild
         // on the search path, so re-add it here or stddef.h/stdarg.h/... are unfound (empty for zig).
         common.AddRange(tc.ResourceIncludeArgs);
         common.AddRange(OptimizeMode.CompileFlags(optimize));
+        common.AddRange(XboxTarget.CodegenFlags);
         common.AddRange(new[]
         {
             "-ffreestanding", "-fno-stack-protector", "-fms-extensions", "-fms-compatibility",
-            "-nostdinc", "-include", "picolibc.h", "-march=pentium3",
+            "-nostdinc", "-include", "picolibc.h",
             // Every Xbox title is built with _XBOX/XBOX defined (the XDK did this); a lot of
             // Xbox headers/code select their platform path on it.
             "-D_XBOX", "-DXBOX",
