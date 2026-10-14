@@ -173,9 +173,9 @@ public sealed class RxdkProjectManifest
     /// default. Set to false for -fno-exceptions when a title wants to shave the EH tables on a
     /// 64 MB console and never throws.
     ///
-    /// The runtime side is in place either way: libcpp.lib bundles libunwind, which recovers the
-    /// merged .eh_frame from the PE section table at runtime. This flag only decides whether the
-    /// title's own code may throw.
+    /// The runtime side is in place either way: libcpp.lib bundles libunwind, which finds the
+    /// merged .eh_frame between the markers the link places (and checks) around it. This flag
+    /// only decides whether the title's own code may throw.
     /// </summary>
     public bool? Exceptions { get; set; }
 

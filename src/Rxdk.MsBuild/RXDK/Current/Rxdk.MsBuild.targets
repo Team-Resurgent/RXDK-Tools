@@ -208,9 +208,11 @@
 ___eh_frame_start:
 ]]>
             </_EhStartSource>
+            <!-- The end marker goes in .eh_frame$z: the linker sorts grouped sections after every
+                 plain .eh_frame contribution, including archive members it appends late. -->
             <_EhEndSource>
-                <![CDATA[                
-.section .eh_frame,"dr"
+                <![CDATA[
+.section .eh_frame$z,"dr"
 .globl ___eh_frame_end
 ___eh_frame_end:
 ]]>

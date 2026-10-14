@@ -82,15 +82,25 @@ public static class XdkLink
         args.AddRange(tc.LinkRuntimeArgs());
         args.AddRange(new[] { "-e", string.IsNullOrEmpty(entry) ? "start" : entry, "-o", outExe });
 
-        return await ProcessRunner.RunStreamedAsync(tc.CompilerExe, args, log, ct: ct);
+        var result = await ProcessRunner.RunStreamedAsync(tc.CompilerExe, args, log, ct: ct);
+        if (result.Success && ehBegin is not null && EhFrameCheck.Verify(await File.ReadAllBytesAsync(outExe, ct)) is { } ehError)
+        {
+            log?.Invoke($"error: {outExe}: .eh_frame bracket: {ehError}");
+            return result with { ExitCode = 1, StdErr = result.StdErr + ehError };
+        }
+        return result;
     }
 
     // The two .eh_frame bracket markers (i386 COFF mangles C __eh_frame_start -> ___eh_frame_start).
     // Kept in-engine (rather than shipped in the SDK) because they're a pure link-time concern.
-    private const string EhBeginAsm =
+    // The end marker lives in .eh_frame$z: the COFF linker merges grouped sections into .eh_frame
+    // sorted by the text after '$', after every plain .eh_frame contribution. In plain .eh_frame
+    // it followed only the command-line objects -- lld appends the archive members it pulls in
+    // after those, so their FDEs fell outside the bracket and libunwind could not find them.
+    public const string EhBeginAsm =
         ".section .eh_frame,\"dr\"\n.globl ___eh_frame_start\n___eh_frame_start:\n";
-    private const string EhEndAsm =
-        ".section .eh_frame,\"dr\"\n.globl ___eh_frame_end\n___eh_frame_end:\n";
+    public const string EhEndAsm =
+        ".section .eh_frame$z,\"dr\"\n.globl ___eh_frame_end\n___eh_frame_end:\n";
 
     /// <summary>
     /// Writes and compiles the two .eh_frame bracket markers next to the output. Returns
