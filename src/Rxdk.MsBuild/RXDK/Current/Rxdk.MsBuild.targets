@@ -209,12 +209,16 @@ ___eh_frame_start:
 ]]>
             </_EhStartSource>
             <!-- The end marker goes in .eh_frame$z: the linker sorts grouped sections after every
-                 plain .eh_frame contribution, including archive members it appends late. -->
+                 plain .eh_frame contribution, including archive members it appends late. Its
+                 second name is the one the SDK's libunwind (1.3.6+) refers to, so that SDK fails
+                 to link with Tools that place the marker the old way. -->
             <_EhEndSource>
                 <![CDATA[
 .section .eh_frame$z,"dr"
 .globl ___eh_frame_end
+.globl ___rxdk_eh_frame_end_requires_rxdk_tools_1_3_6
 ___eh_frame_end:
+___rxdk_eh_frame_end_requires_rxdk_tools_1_3_6:
 ]]>
             </_EhEndSource>
         </PropertyGroup>

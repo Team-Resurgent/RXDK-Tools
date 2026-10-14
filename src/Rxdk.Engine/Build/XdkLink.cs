@@ -99,8 +99,13 @@ public static class XdkLink
     // after those, so their FDEs fell outside the bracket and libunwind could not find them.
     public const string EhBeginAsm =
         ".section .eh_frame,\"dr\"\n.globl ___eh_frame_start\n___eh_frame_start:\n";
+    // The end marker carries a second name, which the SDK's libunwind (1.3.6+) refers to: an SDK
+    // that relies on this bracket then fails to link with older Tools instead of shipping a title
+    // whose throws terminate.
+    public const string EhEndSdkSymbol = "___rxdk_eh_frame_end_requires_rxdk_tools_1_3_6";
     public const string EhEndAsm =
-        ".section .eh_frame$z,\"dr\"\n.globl ___eh_frame_end\n___eh_frame_end:\n";
+        ".section .eh_frame$z,\"dr\"\n.globl ___eh_frame_end\n.globl " + EhEndSdkSymbol + "\n" +
+        "___eh_frame_end:\n" + EhEndSdkSymbol + ":\n";
 
     /// <summary>
     /// Writes and compiles the two .eh_frame bracket markers next to the output. Returns

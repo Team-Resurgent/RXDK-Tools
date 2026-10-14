@@ -85,6 +85,16 @@ public sealed class EhFrameCheckTests
         Assert.Contains(".section .eh_frame,", XdkLink.EhBeginAsm);
     }
 
+    [Fact]
+    public void EndMarkerDefinesTheNameTheSdksLibunwindNeeds()
+    {
+        // The SDK's libunwind refers to the end marker by this name (build/generated/
+        // rxdk_eh_frame_end.h in RXDK-Libs), so the pair links only with Tools that sort it last.
+        Assert.Equal("___rxdk_eh_frame_end_requires_rxdk_tools_1_3_6", XdkLink.EhEndSdkSymbol);
+        Assert.Contains(".globl " + XdkLink.EhEndSdkSymbol + "\n", XdkLink.EhEndAsm);
+        Assert.Contains("___eh_frame_end:\n" + XdkLink.EhEndSdkSymbol + ":\n", XdkLink.EhEndAsm);
+    }
+
     // A minimal PE: DOS header, COFF header, section table, COFF symbols and string table. Names
     // longer than eight bytes go through the string table, as the linker writes them.
     private static byte[] Pe((string Name, uint Size)[] sections, (string Name, uint Value, short Section)[] symbols)
