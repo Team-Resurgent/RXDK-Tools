@@ -924,10 +924,12 @@ public partial class MainWindow : Window, IFileOperationHost
         var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
             Title = "Save screenshot",
-            DefaultExtension = "bmp",
-            SuggestedFileName = $"{name}-screenshot.bmp",
+            DefaultExtension = "png",
+            SuggestedFileName = $"{name}-screenshot.png",
             FileTypeChoices = new[]
             {
+                new FilePickerFileType("PNG image") { Patterns = new[] { "*.png" } },
+                new FilePickerFileType("JPEG image") { Patterns = new[] { "*.jpg", "*.jpeg" } },
                 new FilePickerFileType("Bitmap") { Patterns = new[] { "*.bmp" } },
             },
         });

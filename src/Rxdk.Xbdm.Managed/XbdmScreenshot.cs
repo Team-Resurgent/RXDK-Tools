@@ -1,12 +1,11 @@
 using System.Buffers.Binary;
+using System.Numerics;
 using Rxdk.Xbdm;
 
 namespace Rxdk.Xbdm.Managed;
 
 internal static class XbdmScreenshot
 {
-    private const ushort BmpType = 0x4D42;
-
     internal readonly record struct Info(
         uint Pitch,
         uint Height,
@@ -63,112 +62,88 @@ internal static class XbdmScreenshot
         return buffer;
     }
 
-    internal static void WriteBmp(string localBmpPath, Info info, XbdmProtocolSession session)
+    /// <summary>
+    /// Receive the frame that follows the screenshot info line and save it; the path's extension
+    /// picks the format (see <see cref="ScreenshotImage.FormatFromPath"/>).
+    /// </summary>
+    internal static void WriteImage(string localPath, Info info, XbdmProtocolSession session)
     {
+        var format = ScreenshotImage.FormatFromPath(localPath);
         var frameBuffer = new byte[info.FrameBufferSize];
         session.BeginPendingBinary(info.FrameBufferSize);
         session.ReceiveBinary(frameBuffer);
-        WriteBmpFromFramebuffer(localBmpPath, info, frameBuffer);
+        WriteImageFromFramebuffer(localPath, info, frameBuffer, format);
     }
 
-    internal static void WriteBmpFromFramebuffer(string localBmpPath, Info info, ReadOnlySpan<byte> frameBuffer)
+    internal static void WriteImageFromFramebuffer(string localPath, Info info, ReadOnlySpan<byte> frameBuffer) =>
+        WriteImageFromFramebuffer(localPath, info, frameBuffer, ScreenshotImage.FormatFromPath(localPath));
+
+    private static void WriteImageFromFramebuffer(
+        string localPath, Info info, ReadOnlySpan<byte> frameBuffer, ScreenshotImageFormat format)
     {
-        if (frameBuffer.Length < info.FrameBufferSize)
-            throw XbdmException.FromHResult("Screenshot framebuffer was truncated.", XbdmHResults.FileError);
+        var rgb = ToRgb(info, frameBuffer);
+        var encoded = ScreenshotImage.Encode(format, (int)info.Width, (int)info.Height, rgb);
 
-        var destPitch = (int)(info.Width * 3);
-        var pixelData = new byte[destPitch * info.Height];
-        ConvertFrameBuffer(frameBuffer, info, pixelData, destPitch);
-
-        var directory = Path.GetDirectoryName(localBmpPath);
+        var directory = Path.GetDirectoryName(localPath);
         if (!string.IsNullOrEmpty(directory))
             Directory.CreateDirectory(directory);
 
         try
         {
-            using var stream = File.Create(localBmpPath);
-            WriteBmpHeaders(stream, info.Width, info.Height, destPitch, pixelData);
+            File.WriteAllBytes(localPath, encoded);
         }
         catch
         {
-            if (File.Exists(localBmpPath))
-                File.Delete(localBmpPath);
+            if (File.Exists(localPath))
+                File.Delete(localPath);
             throw;
         }
     }
 
-    private static void ConvertFrameBuffer(ReadOnlySpan<byte> source, Info info, Span<byte> destination, int destPitch)
+    /// <summary>The frame as 24-bit RGB, top row first, with 5/6-bit channels expanded to 0..255.</summary>
+    internal static byte[] ToRgb(Info info, ReadOnlySpan<byte> frameBuffer)
     {
-        var height = (int)info.Height;
-        var pitch = (int)info.Pitch;
-        var srcWidth = info.SrcWidth;
-        var offset = 0;
+        if (frameBuffer.Length < info.FrameBufferSize || (long)info.Pitch * info.Height > frameBuffer.Length)
+            throw XbdmException.FromHResult("Screenshot framebuffer was truncated.", XbdmHResults.FileError);
 
+        var width = (int)info.Width;
+        var height = (int)info.Height;
+        var rgb = new byte[width * height * 3];
         for (var y = 0; y < height; y++)
         {
-            var rowStart = offset;
-            var destRow = (height - 1 - y) * destPitch;
-
+            var row = frameBuffer.Slice(y * (int)info.Pitch);
+            var dst = rgb.AsSpan(y * width * 3, width * 3);
             if (info.BitCount == 32)
-                ConvertRow32(source, rowStart, srcWidth, destination, destRow);
+            {
+                // X8R8G8B8 / A8R8G8B8: B, G, R, X in memory.
+                for (var x = 0; x < width; x++)
+                {
+                    dst[x * 3] = row[x * 4 + 2];
+                    dst[x * 3 + 1] = row[x * 4 + 1];
+                    dst[x * 3 + 2] = row[x * 4];
+                }
+            }
             else
-                ConvertRow16(source, rowStart, srcWidth, destination, destRow, info);
-
-            offset += pitch;
+            {
+                for (var x = 0; x < width; x++)
+                {
+                    var pixel = BinaryPrimitives.ReadUInt16LittleEndian(row[(x * 2)..]);
+                    dst[x * 3] = Expand(pixel, info.RedMask);
+                    dst[x * 3 + 1] = Expand(pixel, info.GreenMask);
+                    dst[x * 3 + 2] = Expand(pixel, info.BlueMask);
+                }
+            }
         }
+        return rgb;
     }
 
-    private static void ConvertRow32(
-        ReadOnlySpan<byte> source, int rowStart, int srcWidth, Span<byte> destination, int destRow)
+    // A masked channel scaled to 8 bits by repeating its high bits (31 -> 255, not 248).
+    private static byte Expand(ushort pixel, ushort mask)
     {
-        var pixels = srcWidth / 4;
-        var src = rowStart;
-        var dst = destRow;
-        for (var i = 0; i < pixels; i++)
-        {
-            destination[dst++] = source[src++];
-            destination[dst++] = source[src++];
-            destination[dst++] = source[src++];
-            src++;
-        }
-    }
-
-    private static void ConvertRow16(
-        ReadOnlySpan<byte> source, int rowStart, int srcWidth, Span<byte> destination, int destRow, Info info)
-    {
-        var pixels = srcWidth / 2;
-        var src = rowStart;
-        var dst = destRow;
-        for (var i = 0; i < pixels; i++)
-        {
-            var pixel = BinaryPrimitives.ReadUInt16LittleEndian(source[src..]);
-            src += 2;
-            destination[dst++] = (byte)((pixel & info.BlueMask) << info.BlueUpShift);
-            destination[dst++] = (byte)((pixel & info.GreenMask) >> info.GreenShift);
-            destination[dst++] = (byte)((pixel & info.RedMask) >> info.RedShift);
-        }
-    }
-
-    private static void WriteBmpHeaders(Stream stream, uint width, uint height, int destPitch, ReadOnlySpan<byte> pixelData)
-    {
-        var fileHeaderSize = 14;
-        var infoHeaderSize = 40;
-        var pixelOffset = (uint)(fileHeaderSize + infoHeaderSize);
-        var fileSize = pixelOffset + (uint)pixelData.Length;
-
-        Span<byte> fileHeader = stackalloc byte[fileHeaderSize];
-        BinaryPrimitives.WriteUInt16LittleEndian(fileHeader, BmpType);
-        BinaryPrimitives.WriteUInt32LittleEndian(fileHeader[2..], fileSize);
-        BinaryPrimitives.WriteUInt32LittleEndian(fileHeader[10..], pixelOffset);
-        stream.Write(fileHeader);
-
-        Span<byte> infoHeader = stackalloc byte[infoHeaderSize];
-        BinaryPrimitives.WriteUInt32LittleEndian(infoHeader, (uint)infoHeaderSize);
-        BinaryPrimitives.WriteInt32LittleEndian(infoHeader[4..], (int)width);
-        BinaryPrimitives.WriteInt32LittleEndian(infoHeader[8..], (int)height);
-        BinaryPrimitives.WriteUInt16LittleEndian(infoHeader[12..], 1);
-        BinaryPrimitives.WriteUInt16LittleEndian(infoHeader[14..], 24);
-        stream.Write(infoHeader);
-        stream.Write(pixelData);
+        var shift = BitOperations.TrailingZeroCount(mask);
+        var bits = BitOperations.PopCount(mask);
+        var value = (pixel & mask) >> shift;
+        var expanded = value << (8 - bits);
+        return (byte)(expanded | (expanded >> bits));
     }
 }

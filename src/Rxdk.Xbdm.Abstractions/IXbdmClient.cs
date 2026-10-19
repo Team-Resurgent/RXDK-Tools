@@ -48,7 +48,8 @@ public interface IXbdmConnection : IDisposable
     string GetXbeLaunchPath();
     XbdmXbeInfo GetXbeInfo(string name);
 
-    void CaptureScreenshot(string localBmpPath);
+    /// <summary>Save the kit's front buffer; the extension (.png, .jpg/.jpeg, .bmp) picks the format.</summary>
+    void CaptureScreenshot(string localImagePath);
     void SyncConsoleClock();
     void SetFileAttributes(string wirePath, uint attributes);
 

@@ -503,10 +503,12 @@ public partial class PropertiesWindow : Window
         var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
             Title = "Save screenshot",
-            DefaultExtension = "bmp",
-            SuggestedFileName = "screenshot.bmp",
+            DefaultExtension = "png",
+            SuggestedFileName = "screenshot.png",
             FileTypeChoices = new[]
             {
+                new FilePickerFileType("PNG image") { Patterns = new[] { "*.png" } },
+                new FilePickerFileType("JPEG image") { Patterns = new[] { "*.jpg", "*.jpeg" } },
                 new FilePickerFileType("Bitmap") { Patterns = new[] { "*.bmp" } },
             },
         });
@@ -521,6 +523,10 @@ public partial class PropertiesWindow : Window
             ShowInfo("Screenshot saved.");
         }
         catch (XbdmException ex)
+        {
+            ShowError(ex.Message);
+        }
+        catch (ArgumentException ex) // a file type other than .png/.jpg/.jpeg/.bmp
         {
             ShowError(ex.Message);
         }

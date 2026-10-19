@@ -16,6 +16,7 @@ $cliTools = @(
     @{ Project = "Rxdk.XbDir\Rxdk.XbDir.csproj"; Name = "xbdir" },
     @{ Project = "Rxdk.XbMkdir\Rxdk.XbMkdir.csproj"; Name = "xbmkdir" },
     @{ Project = "Rxdk.XbDel\Rxdk.XbDel.csproj"; Name = "xbdel" },
+    @{ Project = "Rxdk.XbCapture\Rxdk.XbCapture.csproj"; Name = "xbcapture" },
     @{ Project = "Rxdk.XbeCopy\Rxdk.XbeCopy.csproj"; Name = "xbecopy" },
     @{ Project = "Rxdk.ImageBld\Rxdk.ImageBld.csproj"; Name = "imagebld" },
     @{ Project = "Rxdk.Bundler\Rxdk.Bundler.csproj"; Name = "bundler" },

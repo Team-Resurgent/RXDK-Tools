@@ -64,6 +64,11 @@ jobs:
       - name: Test Rxdk.XboxLaunch
         run: dotnet test src/Rxdk.XboxLaunch.Tests/Rxdk.XboxLaunch.Tests.csproj -c Release
 
+      # Screenshot capture and the PNG/JPEG/BMP encoders (JPEG checked with Windows' decoder).
+      # The rest of Rxdk.Xbdm.Tests needs a live kit (RXDK_TEST_CONSOLE).
+      - name: Test screenshot encoders
+        run: dotnet test src/Rxdk.Xbdm.Tests/Rxdk.Xbdm.Tests.csproj -c Release --filter "FullyQualifiedName~ScreenshotImageTests|FullyQualifiedName~XbdmScreenshotTests"
+
       # - name: Test Rxdk.XbeImage
       #   run: dotnet test src/Rxdk.XbeImage.Tests/Rxdk.XbeImage.Tests.csproj -c Release --no-restore
 
@@ -119,6 +124,8 @@ jobs:
             '| `out/publish/managed/win-x64/tools/xbcp.exe` |',
             '| `out/publish/managed/win-x64/tools/xbdir.exe` |',
             '| `out/publish/managed/win-x64/tools/xbmkdir.exe` |',
+            '| `out/publish/managed/win-x64/tools/xbdel.exe` |',
+            '| `out/publish/managed/win-x64/tools/xbcapture.exe` |',
             '| `out/publish/managed/win-x64/tools/xbecopy.exe` |',
             '| `out/publish/managed/win-x64/tools/imagebld.exe` |',
             '| `out/publish/managed/win-x64/tools/bundler.exe` |',
@@ -221,7 +228,7 @@ jobs:
             echo ""
             echo "| Path |"
             echo "|------|"
-            echo "| \`out/publish/managed/linux-x64/tools/\` (xbset, xbcp, xbdir, xbmkdir, xbecopy, imagebld, bundler, xactbld, skinbld, xsasm, xbox-launch, xboxdbg-bridge, Rxdk.Cli, Rxdk.Dap, xbwatson, xbneighborhood) |"
+            echo "| \`out/publish/managed/linux-x64/tools/\` (xbset, xbcp, xbdir, xbmkdir, xbdel, xbcapture, xbecopy, imagebld, bundler, xactbld, skinbld, xsasm, xbox-launch, xboxdbg-bridge, Rxdk.Cli, Rxdk.Dap, xbwatson, xbneighborhood) |"
             echo "| \`out/publish/nuget/Rxdk.XboxDbgBridge.*.nupkg\` |"
           } >> "$GITHUB_STEP_SUMMARY"
 

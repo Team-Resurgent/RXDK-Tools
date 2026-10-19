@@ -14,6 +14,7 @@ cli_tools=(
   "Rxdk.XbDir/Rxdk.XbDir.csproj:xbdir"
   "Rxdk.XbMkdir/Rxdk.XbMkdir.csproj:xbmkdir"
   "Rxdk.XbDel/Rxdk.XbDel.csproj:xbdel"
+  "Rxdk.XbCapture/Rxdk.XbCapture.csproj:xbcapture"
   "Rxdk.XbeCopy/Rxdk.XbeCopy.csproj:xbecopy"
   "Rxdk.ImageBld/Rxdk.ImageBld.csproj:imagebld"
   "Rxdk.Bundler/Rxdk.Bundler.csproj:bundler"

@@ -222,9 +222,9 @@ internal static class ShellCommandService
         using var dialog = new SaveFileDialog
         {
             Title = "Save screenshot",
-            Filter = "Bitmap (*.bmp)|*.bmp",
-            FileName = $"{consolePath}-screenshot.bmp",
-            DefaultExt = "bmp",
+            Filter = "PNG image (*.png)|*.png|JPEG image (*.jpg;*.jpeg)|*.jpg;*.jpeg|Bitmap (*.bmp)|*.bmp",
+            FileName = $"{consolePath}-screenshot.png",
+            DefaultExt = "png",
         };
 
         if (dialog.ShowDialog(System.Windows.Forms.NativeWindow.FromHandle(hwnd)) != DialogResult.OK)

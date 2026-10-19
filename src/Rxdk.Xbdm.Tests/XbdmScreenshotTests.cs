@@ -19,7 +19,7 @@ public sealed class XbdmScreenshotTests
     }
 
     [Fact]
-    public void WriteBmpFromFramebuffer_converts_32bpp_to_24bpp_bottom_up()
+    public void WriteImageFromFramebuffer_bmp_converts_32bpp_to_24bpp_bottom_up_with_padded_rows()
     {
         const uint width = 2;
         const uint height = 2;
@@ -37,16 +37,16 @@ public sealed class XbdmScreenshotTests
         var path = Path.Combine(Path.GetTempPath(), $"xbdm-shot-{Guid.NewGuid():N}.bmp");
         try
         {
-            XbdmScreenshot.WriteBmpFromFramebuffer(path, info, frameBuffer);
+            XbdmScreenshot.WriteImageFromFramebuffer(path, info, frameBuffer);
 
             var bmp = BmpTestHelper.ReadInfo(path);
             Assert.Equal(2, bmp.Width);
             Assert.Equal(2, bmp.Height);
             Assert.Equal((ushort)24, bmp.BitCount);
-            Assert.Equal(12, bmp.PixelDataSize);
+            Assert.Equal(16, bmp.PixelDataSize); // two 6-byte rows, each padded to 8
 
             var pixels = File.ReadAllBytes(path)[54..];
-            Assert.Equal(new byte[] { 1, 2, 3, 4, 5, 6, 10, 20, 30, 40, 50, 60 }, pixels);
+            Assert.Equal(new byte[] { 1, 2, 3, 4, 5, 6, 0, 0, 10, 20, 30, 40, 50, 60, 0, 0 }, pixels);
         }
         finally
         {

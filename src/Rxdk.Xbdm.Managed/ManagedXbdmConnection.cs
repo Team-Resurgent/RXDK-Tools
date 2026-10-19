@@ -284,9 +284,11 @@ public sealed class ManagedXbdmConnection : IXbdmConnection
 
     public XbdmXbeInfo GetXbeInfo(string name) => _debug.GetXbeInfo(name);
 
-    public void CaptureScreenshot(string localBmpPath)
+    public void CaptureScreenshot(string localImagePath)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(localBmpPath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(localImagePath);
+        // Reject an unsupported file type before asking the kit for a frame.
+        ScreenshotImage.FormatFromPath(localImagePath);
 
         var (hr, line) = _session.SendCommandRaw("screenshot");
         if (hr != XbdmHResults.Binresponse)
@@ -294,7 +296,7 @@ public sealed class ManagedXbdmConnection : IXbdmConnection
 
         var infoLine = _session.ReceiveLine();
         var info = XbdmScreenshot.ParseInfoLine(infoLine);
-        XbdmScreenshot.WriteBmp(localBmpPath, info, _session);
+        XbdmScreenshot.WriteImage(localImagePath, info, _session);
     }
 
     public void SetFileAttributes(string wirePath, uint attributes)

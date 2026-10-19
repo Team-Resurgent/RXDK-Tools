@@ -123,7 +123,7 @@ public sealed class XbdmConnection : IDisposable
     public string GetNameOfXbox(bool resolvable) => _inner.GetNameOfXbox(resolvable);
     public string GetXbeLaunchPath() => _inner.GetXbeLaunchPath();
     public XbdmXbeInfo GetXbeInfo(string name) => _inner.GetXbeInfo(name);
-    public void CaptureScreenshot(string localBmpPath) => _inner.CaptureScreenshot(localBmpPath);
+    public void CaptureScreenshot(string localImagePath) => _inner.CaptureScreenshot(localImagePath);
     public void SyncConsoleClock() => _inner.SyncConsoleClock();
     public void SetFileAttributes(string wirePath, uint attributes) => _inner.SetFileAttributes(wirePath, attributes);
 

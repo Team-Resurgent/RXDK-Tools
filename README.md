@@ -28,7 +28,8 @@ The classic XDK shipped 32-bit utilities that no longer run on modern Windows. R
 | Explorer (Windows) | **Xbox Neighborhood** shell extension (`Rxdk.XbShellExt.comhost.dll`) |
 | Neighborhood app | **`xbneighborhood.exe`** — Avalonia standalone browser |
 | Console config | **`xbset`** — set default kit for CLI tools |
-| File transfer | `xbcp`, `xbdir`, `xbmkdir`, `xbecopy` |
+| File transfer | `xbcp`, `xbdir`, `xbmkdir`, `xbdel`, `xbecopy` |
+| Screen capture | `xbcapture` (PNG, JPEG or BMP) |
 | Build | `imagebld` (PE → signed `.xbe`) |
 | Debug | `xbox-launch`, **`xbwatson`**, `xboxdbg-bridge` |
 
@@ -44,6 +45,7 @@ The classic XDK shipped 32-bit utilities that no longer run on modern Windows. R
   - [Managed CLI tools](#managed-cli-tools-cross-platform)
   - [Default console (`xbset`)](#default-console-xbset)
   - [File utilities](#file-utilities-xbcp-xbdir-xbmkdir-xbecopy)
+  - [Screen capture](#screen-capture-xbcapture)
   - [Image builder](#xbox-image-file-builder-imagebld)
   - [Launch helper](#launch-helper-xbox-launch)
   - [xbWatson](#xbwatson)
@@ -263,6 +265,7 @@ Classic XDK command-line tools for moving data between the PC and a kit. Shared 
 | **`xbcp`** | Copy files to or from the kit (`/r` recursive, `/s` subdirs, `/d` copy-if-newer, `/y` no prompt, `/t` create dest dir, …) |
 | **`xbdir`** | List files on PC or kit (`/r` recursive, `/b` bare names, `/w` columns, `/o` sort) |
 | **`xbmkdir`** | Create a directory on the kit (`/t` creates parent path as needed) |
+| **`xbdel`** | Delete files on the kit (`-r` directories, `-f` read-only files) |
 | **`xbecopy`** | Deploy a built image to a remote Xbox path — for VS post-build steps (`local.exe` → `xe:\path\title.xbe`) |
 
 ```cmd
@@ -271,6 +274,19 @@ xbdir /r xE:\title
 xbmkdir /t xE:\data\savegames
 xbecopy Debug\game.xbe E:\title\game.xbe
 ```
+
+As with the XDK's `xbcp`, a directory copied to a destination that does not exist becomes it, and one copied to an existing directory goes inside it under its own name. To refresh a deployed tree, copy into its parent: `xbcp /r /d /y LEGO xE:\isle`.
+
+### Screen capture (`xbcapture`)
+
+Saves the image on the kit's front buffer. The file's extension picks the format: **`.png`**, **`.jpg`/`.jpeg`** (baseline, quality 90, no chroma subsampling) or **`.bmp`** (the XDK tool's only format). Xbox Neighborhood's *Capture screenshot* offers the same three.
+
+```cmd
+xbcapture shot.png
+xbcapture /x 192.168.1.114 frames\title.jpg
+```
+
+The title must have created its Direct3D device: a title still stopped at its entry point has no front buffer to capture ("can't find screen buffer").
 
 ### Xbox Image File Builder (`imagebld`)
 
@@ -349,7 +365,8 @@ Managed projects live under **`src/`**. The native **`Rxdk.XbShellExt.Shell`** C
 | `Rxdk.XbShellExt.Shell` | `Rxdk.XbShellExt.Shell.dll` | Native namespace proxy |
 | `Rxdk.XbNeighborhood` | `xbneighborhood.exe` | Standalone Avalonia browser |
 | `Rxdk.XbSet` | `xbset` | Set default console |
-| `Rxdk.XbCp`, `Rxdk.XbDir`, `Rxdk.XbMkdir`, `Rxdk.XbeCopy` | `xbcp`, `xbdir`, … | File transfer utilities |
+| `Rxdk.XbCp`, `Rxdk.XbDir`, `Rxdk.XbMkdir`, `Rxdk.XbDel`, `Rxdk.XbeCopy` | `xbcp`, `xbdir`, … | File transfer utilities |
+| `Rxdk.XbCapture` | `xbcapture` | Front-buffer screenshot (PNG/JPEG/BMP) |
 | `Rxdk.ImageBld` | `imagebld` | PE → XBE image builder |
 | `Rxdk.XboxLaunch.Cli` | `xbox-launch` | CLI debug launch helper |
 | `Rxdk.XbWatson` | `xbwatson` | Break/assert/RIP notification UI |
