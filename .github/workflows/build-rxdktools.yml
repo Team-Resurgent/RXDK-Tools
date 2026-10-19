@@ -57,6 +57,13 @@ jobs:
       - name: Test Rxdk.Engine
         run: dotnet test src/Rxdk.Engine.Tests/Rxdk.Engine.Tests.csproj -c Release
 
+      # xbcp / xbdir path and tree handling, on local paths (the same code walks Xbox paths).
+      - name: Test Rxdk.XbFile
+        run: dotnet test src/Rxdk.XbFile.Tests/Rxdk.XbFile.Tests.csproj -c Release
+
+      - name: Test Rxdk.XboxLaunch
+        run: dotnet test src/Rxdk.XboxLaunch.Tests/Rxdk.XboxLaunch.Tests.csproj -c Release
+
       # - name: Test Rxdk.XbeImage
       #   run: dotnet test src/Rxdk.XbeImage.Tests/Rxdk.XbeImage.Tests.csproj -c Release --no-restore
 

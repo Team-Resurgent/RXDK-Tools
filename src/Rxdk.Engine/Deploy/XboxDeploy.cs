@@ -116,8 +116,9 @@ public static class XboxDeploy
                 return DeployResult.Fail($"No files matched in {localDir} (patterns: {string.Join(", ", patterns)})");
 
             // deployPaths: project-relative files/dirs copied next to the output on the console.
-            // Copied per-file with an explicit destination (xbcp's own recursive copy misbehaves
-            // on a plain local folder source — see xboxDeploy.ts).
+            // Copied per-file with an explicit destination, so each file maps to exactly its
+            // RelativeDest (a directory source to an existing directory would nest under it, as
+            // with the XDK's xbcp) and -d decides per file.
             var deployFiles = PackXiso.ResolveDeployPaths(projectRoot, opts.DeployPaths ?? manifest?.DeployPaths, opts.Log);
             foreach (var entry in deployFiles)
             {

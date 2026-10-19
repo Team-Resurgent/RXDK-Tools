@@ -100,8 +100,29 @@ public sealed class XbPath
             ? (DirectoryPath.EndsWith('\\') ? DirectoryPath : DirectoryPath + "\\")
             : throw new InvalidOperationException("Not an Xbox path.");
 
+    /// <summary>
+    /// The entry <paramref name="name"/> next to this one: same directory, different last
+    /// component. On a listing path (directory + pattern) that is the matched entry.
+    /// </summary>
     public XbPath WithName(string name) =>
         new(IsXbox, DirectoryPath, name, Original);
+
+    /// <summary>
+    /// The entry <paramref name="name"/> inside this path, which names a directory
+    /// (<c>xe:\isle</c> -> <c>xe:\isle\name</c>). <c>Child("*")</c> is the listing path for the
+    /// directory's contents. Not <see cref="WithName"/>, which replaces the last component and
+    /// so names a sibling.
+    /// </summary>
+    public XbPath Child(string name)
+    {
+        if (Name is "." or "")
+            return new(IsXbox, DirectoryPath, name, Original);
+
+        var dir = IsXbox
+            ? $"{DirectoryPath.TrimEnd('\\')}\\{Name}"
+            : Path.Combine(DirectoryPath, Name);
+        return new(IsXbox, dir, name, Original);
+    }
 
     public XbPath WithDirectory(string directoryPath) =>
         new(IsXbox, directoryPath, Name, Original);
@@ -113,12 +134,14 @@ public sealed class XbPath
             path = path.TrimEnd('\\');
 
         var idx = path.LastIndexOf('\\');
-        if (idx <= 2 && path.Length > 2 && path[1] == ':')
+        if (path.Length >= 2 && path[1] == ':')
         {
-            if (idx == 2 && path.Length > 3)
+            // The drive root ("e:\", which the trim above made "e:") is the directory itself.
+            if (path.Length == 2)
+                return (path + "\\", ".");
+            // An entry directly under the root keeps the root's separator: "e:\isle" -> ("e:\", "isle").
+            if (idx == 2)
                 return (path[..3], path[3..]);
-
-            return (path + "\\", ".");
         }
 
         if (idx < 0)

@@ -234,8 +234,9 @@ public sealed class XboxLaunchRunner : IDisposable
                 break;
 
             case XbdmDebugConstants.DmModLoad when data is XbdmModLoadNotification mod:
-                _output.WriteLine($"  module {mod.Name} base=0x{mod.BaseAddress:x} size={mod.Size}");
-                if (_awaitingTitleThread && ModuleMatchesLaunchTitle(mod.Name))
+                _output.WriteLine($"  module {mod.Name} base=0x{mod.BaseAddress:x} size={mod.Size}" +
+                                  ((mod.Flags & XbdmDebugConstants.DmnModflagXbe) != 0 ? " xbe" : ""));
+                if (_awaitingTitleThread && IsLaunchTitleModule(mod, _launchTitleBase))
                     _seenTitleMod = true;
                 break;
 
@@ -273,12 +274,21 @@ public sealed class XboxLaunchRunner : IDisposable
     private void SetLaunchBaseFromTitle(string title) =>
         _launchTitleBase = Path.GetFileNameWithoutExtension(title).ToLowerInvariant();
 
-    private bool ModuleMatchesLaunchTitle(string name)
+    /// <summary>
+    /// True when a module load is the launched title's image. XBDM flags the XBE's module
+    /// ("xbe" on the modload line), and that is the signal: the module is named after the PE
+    /// image the XBE was built from (isle.exe), not the .xbe file (default.xbe), so matching
+    /// the title's file name missed every title not named after its image and the launch waited
+    /// out its whole timeout. The name match remains for a monitor that sends no flags.
+    /// </summary>
+    internal static bool IsLaunchTitleModule(XbdmModLoadNotification mod, string launchTitleBase)
     {
-        if (string.IsNullOrEmpty(_launchTitleBase))
+        if ((mod.Flags & XbdmDebugConstants.DmnModflagXbe) != 0)
+            return true;
+        if (string.IsNullOrEmpty(launchTitleBase))
             return false;
-        var baseName = Path.GetFileName(name.Replace('/', '\\')).ToLowerInvariant();
-        return baseName.Contains(_launchTitleBase, StringComparison.Ordinal);
+        var baseName = Path.GetFileName(mod.Name.Replace('/', '\\')).ToLowerInvariant();
+        return baseName.Contains(launchTitleBase, StringComparison.Ordinal);
     }
 
     private void PrintHr(string what, XbdmException ex)

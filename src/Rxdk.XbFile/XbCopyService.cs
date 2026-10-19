@@ -39,8 +39,10 @@ public sealed class XbCopyService
 
         var destIsDir = ResolveDestinationIsDirectory(sources, destination);
 
+        // One source to a destination that is not an existing directory: the destination is
+        // the copy's own name (xbcp -r LEGO xe:\isle\LEGO creates LEGO with LEGO's tree).
         if (!destIsDir && sources.Count == 1)
-            CopyFileOrDirectory(sources[0], destination);
+            CopyNode(sources[0], destination);
         else
         {
             foreach (var src in sources)
@@ -67,19 +69,18 @@ public sealed class XbCopyService
 
     private void CopySourceToDirectory(XbPath source, XbPath destDir)
     {
-        if (source.HasWildcard || _options.Recurse.SearchSubdirs)
+        // A pattern copies its matches; -s on a directory copies the directory's contents.
+        // Either way each entry lands inside destDir under its own name.
+        XbPath? listing = source.HasWildcard ? source
+            : _options.Recurse.SearchSubdirs && PathExistsAsDirectory(source) ? source.Child("*")
+            : null;
+        if (listing is not null)
         {
-            var pattern = source.HasWildcard ? source.Name : "*";
-            var listingDir = source.HasWildcard ? source : source.WithName("*");
-            foreach (var name in ListNames(listingDir, pattern))
-            {
-                var srcChild = ChildPath(source, name);
-                var dstChild = destDir.WithName(name);
-                CopyNode(srcChild, dstChild);
-            }
+            foreach (var name in ListNames(listing, listing.Name))
+                CopyNode(listing.WithName(name), destDir.Child(name));
         }
         else
-            CopyNode(source, destDir.WithName(source.Name));
+            CopyNode(source, destDir.Child(source.Name));
     }
 
     private void CopyNode(XbPath src, XbPath dst)
@@ -93,12 +94,8 @@ public sealed class XbCopyService
                 return;
 
             EnsureDirectory(dst);
-            foreach (var name in ListNames(ToListingPath(src), "*"))
-            {
-                var childSrc = ChildPath(src, name);
-                var childDst = dst.WithName(name);
-                CopyNode(childSrc, childDst);
-            }
+            foreach (var name in ListNames(src.Child("*"), "*"))
+                CopyNode(src.Child(name), dst.Child(name));
 
             _anySuccess = true;
             return;
@@ -226,22 +223,7 @@ public sealed class XbCopyService
         }
     }
 
-    private static XbPath ChildPath(XbPath parent, string childName)
-    {
-        if (parent.IsXbox)
-        {
-            var wire = parent.WireDirectoryPath.TrimEnd('\\');
-            if (parent.Name is not "." and not "")
-                wire = $"{wire.TrimEnd('\\')}\\{parent.Name}";
-            return XbPath.Parse("x" + wire + "\\" + childName);
-        }
-
-        var localDir = parent.Name is "." or ""
-            ? parent.DirectoryPath
-            : Path.Combine(parent.DirectoryPath, parent.Name);
-        return XbPath.Parse(Path.Combine(localDir, childName));
-    }
-
+    /// <summary>Names in a listing path's directory that match <paramref name="pattern"/>.</summary>
     private IEnumerable<string> ListNames(XbPath directory, string pattern)
     {
         if (directory.IsXbox)
@@ -257,7 +239,7 @@ public sealed class XbCopyService
         }
         else
         {
-            foreach (var name in XbLocalFs.EnumerateNames(directory.WithName(pattern), _options.Recurse.IncludeHidden))
+            foreach (var name in XbLocalFs.EnumerateNames(directory.WithName("*"), _options.Recurse.IncludeHidden))
             {
                 if (!XbWildcard.IsMatch(pattern, name))
                     continue;
@@ -266,7 +248,7 @@ public sealed class XbCopyService
         }
     }
 
-    private bool HasEntries(XbPath directory) => ListNames(directory.WithName("*"), "*").Any();
+    private bool HasEntries(XbPath directory) => ListNames(directory.Child("*"), "*").Any();
 
     private bool ConfirmReplace(XbPath dst)
     {
@@ -355,23 +337,6 @@ public sealed class XbCopyService
             XbXboxFs.EnsureDirectoryTree(_session!.Connection, path);
         else
             XbLocalFs.EnsureDirectory(path);
-    }
-
-    private static XbPath ToListingPath(XbPath path)
-    {
-        if (path.IsXbox)
-        {
-            if (path.Name is "." or "")
-                return path;
-
-            var wire = path.WirePath.TrimEnd('\\');
-            return XbPath.Parse("x" + wire + "\\.");
-        }
-
-        if (path.Name is "." or "")
-            return path;
-
-        return XbPath.Parse(path.LocalFullPath + Path.DirectorySeparatorChar);
     }
 
     private static XbPath? ParentPath(XbPath path)

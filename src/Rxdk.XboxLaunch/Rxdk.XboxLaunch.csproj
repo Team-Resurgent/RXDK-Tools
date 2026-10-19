@@ -7,6 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Rxdk.XboxLaunch.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Rxdk.XbFile\Rxdk.XbFile.csproj" />
   </ItemGroup>
 </Project>

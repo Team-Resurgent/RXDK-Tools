@@ -55,15 +55,25 @@ public sealed class XbDirService
         {
             foreach (var path in paths)
             {
+                // A directory lists its contents; anything else is a pattern (or a single name)
+                // matched within its own directory.
                 var listPath = path;
                 if (!path.HasWildcard && PathExistsAsDirectory(path))
-                    listPath = path.WithName("*");
+                {
+                    listPath = path.Child("*");
+                    _listed = true; // an empty directory is a successful (empty) listing
+                }
                 ListPath(listPath);
             }
         }
 
         if (!_listed)
+        {
+            Console.Error.WriteLine(paths.Count == 0
+                ? "File Not Found"
+                : $"File Not Found: {string.Join(", ", paths.Select(p => p.Original))}");
             return false;
+        }
 
         if (!_options.Bare)
             Console.WriteLine($"{_fileCount,16} File(s) {FormatNumber(_totalBytes),13} bytes");
@@ -110,18 +120,27 @@ public sealed class XbDirService
         return results;
     }
 
+    // `path` is a listing path: its directory, and its name as the pattern to match there.
     private void CollectEntriesRecursive(XbPath path, List<XbDirEntryView> results)
     {
-        var pattern = path.HasWildcard ? path.Name : "*";
-        foreach (var name in ListNames(path, pattern))
+        var pattern = path.Name is "." or "" ? "*" : path.Name;
+        foreach (var entry in ListEntries(path))
         {
-            var child = ChildPath(path, name);
-            var view = ReadEntry(child, name);
-            results.Add(view);
+            if (!XbWildcard.IsMatch(pattern, entry.Name))
+                continue;
+            results.Add(ReadEntry(path.WithName(entry.Name), entry.Name));
             _listed = true;
+        }
 
-            if (view.IsDirectory && (_options.Recurse.Recursive || _options.Recurse.SearchSubdirs))
-                CollectEntriesRecursive(child.WithName("*"), results);
+        // Subdirectories are searched with the same pattern whether or not their own names
+        // match it (xbdir /s xe:\*.xbe finds xe:\isle\default.xbe).
+        if (_options.Recurse.Recursive || _options.Recurse.SearchSubdirs)
+        {
+            foreach (var entry in ListEntries(path))
+            {
+                if (entry.IsDirectory)
+                    CollectEntriesRecursive(path.WithName(entry.Name).Child(pattern), results);
+            }
         }
     }
 
@@ -228,27 +247,23 @@ public sealed class XbDirService
         return sorted.ToList();
     }
 
-    private IEnumerable<string> ListNames(XbPath directory, string pattern)
+    /// <summary>The entries of a listing path's directory (hidden ones only with /h).</summary>
+    private IEnumerable<(string Name, bool IsDirectory)> ListEntries(XbPath listing)
     {
-        if (directory.IsXbox)
+        if (listing.IsXbox)
         {
-            foreach (var entry in XbXboxFs.ListDirectory(_session!.Connection, directory))
+            foreach (var entry in XbXboxFs.ListDirectory(_session!.Connection, listing))
             {
                 if (!_options.Recurse.IncludeHidden && (entry.Attributes & XbdmConstants.AttrHidden) != 0)
                     continue;
-                if (!XbWildcard.IsMatch(pattern, entry.Name))
-                    continue;
-                yield return entry.Name;
+                yield return (entry.Name, XbXboxFs.IsDirectory(entry));
             }
         }
         else
         {
-            foreach (var name in XbLocalFs.EnumerateNames(directory.WithName(pattern), _options.Recurse.IncludeHidden))
-            {
-                if (!XbWildcard.IsMatch(pattern, name))
-                    continue;
-                yield return name;
-            }
+            var dir = listing.WithName("*");
+            foreach (var name in XbLocalFs.EnumerateNames(dir, _options.Recurse.IncludeHidden))
+                yield return (name, Directory.Exists(dir.WithName(name).LocalFullPath));
         }
     }
 
@@ -259,22 +274,6 @@ public sealed class XbDirService
                    XbXboxFs.IsDirectory(e);
 
         return Directory.Exists(path.LocalFullPath);
-    }
-
-    private static XbPath ChildPath(XbPath parent, string childName)
-    {
-        if (parent.IsXbox)
-        {
-            var wire = parent.WireDirectoryPath.TrimEnd('\\');
-            if (parent.Name is not "." and not "" && parent.Name != "*")
-                wire = $"{wire.TrimEnd('\\')}\\{parent.Name}";
-            return XbPath.Parse("x" + wire + "\\" + childName);
-        }
-
-        var localDir = parent.Name is "." or "" or "*"
-            ? parent.DirectoryPath
-            : Path.Combine(parent.DirectoryPath, parent.Name);
-        return XbPath.Parse(Path.Combine(localDir, childName));
     }
 
     private static string FormatNumber(ulong value)
