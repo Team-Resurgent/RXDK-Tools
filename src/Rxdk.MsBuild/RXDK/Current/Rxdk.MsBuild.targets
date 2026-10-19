@@ -436,7 +436,7 @@ ___rxdk_eh_frame_end_requires_rxdk_tools_1_3_6:
             DependsOnTargets="RxdkBuildResources">
         <!-- @(IsoCopyDir) entries are XDK "Additional Files" of the form [Destination=]Source (a
              literal path, not a glob). ResolveDeployFiles walks them HERE, at the point the ISO is
-             staged -- after RxdkBuildResources -- so files that target just generated this same
+             staged (after RxdkBuildResources), so files that target just generated this same
              build are picked up (a static "Media\**" IsoCopy item, evaluated once at project load
              before RxdkBuildResources ran, would miss them on a from-scratch build). The task
              mirrors the engine's PackXiso.ResolveDeployPaths so VS Code and VS20XX stage identically

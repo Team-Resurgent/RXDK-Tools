@@ -23,12 +23,16 @@ namespace Rxdk.MsBuild.Tasks
 
         private static string Exe(string name) => name + ".exe";
 
-        private static string ArchiveDirName
+        /// <summary>The unpacked toolchain's folder names under the managed install, newest
+        /// first: v1.3.0 renamed xboxog-&lt;os&gt;-&lt;arch&gt; to xbox-&lt;os&gt;-&lt;arch&gt; (the engine's
+        /// LlvmRuntime), and an install from before then still has the old one.</summary>
+        private static IEnumerable<string> ArchiveDirNames
         {
             get
             {
                 var arch = RuntimeInformation.OSArchitecture == Architecture.Arm64 ? "arm64" : "x64";
-                return "xboxog-windows-" + arch; // MSBuild/VS is Windows-only
+                yield return "xbox-windows-" + arch; // MSBuild/VS is Windows-only
+                yield return "xboxog-windows-" + arch;
             }
         }
 
@@ -52,7 +56,7 @@ namespace Rxdk.MsBuild.Tasks
                 if (File.Exists(Path.Combine(root, "bin", Exe("clang"))))
                     return root;
             Log.LogError("RXDK LLVM toolchain not installed. Open the RXDK tool window and run " +
-                         "Complete Setup (or set RXDK_LLVM to an unpacked xboxog-<os>-<arch> root).");
+                         "Complete Setup (or set RXDK_LLVM to an unpacked xbox-<os>-<arch> root).");
             return null;
         }
 
@@ -65,7 +69,8 @@ namespace Rxdk.MsBuild.Tasks
                 ? over.Trim()
                 : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "RXDK");
             var root = Path.Combine(dataRoot, "llvm");
-            yield return Path.Combine(root, ArchiveDirName);
+            foreach (var name in ArchiveDirNames)
+                yield return Path.Combine(root, name);
             yield return root; // in case the archive was unpacked flat
         }
 

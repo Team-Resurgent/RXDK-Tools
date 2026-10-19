@@ -152,7 +152,7 @@ public static class RxdkPaths
     // (Windows: %ProgramData%\RXDK\llvm, honoring the RXDK / registry install-path override).
 
     /// <summary>Managed install root for the RXDK LLVM toolchain (the xboxog clang/lld fork).
-    /// An unpacked xboxog-&lt;os&gt;-&lt;arch&gt; lives under here.</summary>
+    /// An unpacked xbox-&lt;os&gt;-&lt;arch&gt; lives under here.</summary>
     public static string GetLlvmInstallRoot() =>
         Path.Combine(RxdkDataRoot(), "llvm");
 

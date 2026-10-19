@@ -7,7 +7,7 @@ namespace Rxdk.Engine.Bootstrap;
 /// Downloads + installs the RXDK LLVM toolchain (the Team-Resurgent clang/lld/llvm-ar fork built
 /// for the xboxog target) into the managed install root, so the LLVM title-build path needs no
 /// manual <c>RXDK_LLVM</c> env var. Mirrors <see cref="HostToolsInstaller"/>: pull the
-/// per-platform <c>xboxog-&lt;os&gt;-&lt;arch&gt;.zip</c>
+/// per-platform <c>xbox-&lt;os&gt;-&lt;arch&gt;.zip</c>
 /// asset from the shared rolling release, unpack it, and leave <see cref="LlvmRuntime"/> to resolve
 /// it. Does not mutate PATH — the build resolves clang by absolute path.
 /// </summary>
@@ -26,7 +26,7 @@ public static class LlvmInstaller
     /// and 360 toolchains on the shared rolling release each carry their own.</summary>
     private const string VersionAssetName = "xbox_version";
 
-    /// <summary>The xboxog asset for this host, e.g. <c>xboxog-windows-x64.zip</c>. Matches the
+    /// <summary>The xboxog asset for this host, e.g. <c>xbox-windows-x64.zip</c>. Matches the
     /// unpacked dir name <see cref="LlvmRuntime"/> looks for.</summary>
     private static string AssetFileName => $"{ArchiveDirName}.zip";
 
@@ -113,7 +113,7 @@ public static class LlvmInstaller
             try { File.Delete(archivePath); } catch { /* ignore */ }
         }
 
-        // The zip may hold a top-level xboxog-<os>-<arch>/ dir or unpack flat. Normalize to
+        // The zip may hold a top-level xbox-<os>-<arch>/ dir or unpack flat. Normalize to
         // <installRoot>/<ArchiveDirName>/ (the first candidate LlvmRuntime searches).
         var destRoot = Path.Combine(installRoot, ArchiveDirName);
         var nested = Path.Combine(extractDir, ArchiveDirName);

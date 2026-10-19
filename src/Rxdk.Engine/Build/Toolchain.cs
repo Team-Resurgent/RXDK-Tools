@@ -70,7 +70,7 @@ public sealed class Toolchain
         var root = LlvmRuntime.ResolveRoot(llvmOverride)
             ?? throw new InvalidOperationException(
                 "No RXDK LLVM toolchain found. Run install-llvm, or set RXDK_LLVM to an unpacked " +
-                "xboxog-<os>-<arch> clang root.");
+                "xbox-<os>-<arch> clang root.");
         return Task.FromResult(Llvm(root));
     }
 }

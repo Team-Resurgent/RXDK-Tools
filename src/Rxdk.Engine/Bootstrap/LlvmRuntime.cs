@@ -9,7 +9,7 @@ namespace Rxdk.Engine.Bootstrap;
 /// libraries are built and tested with exactly this clang, so codegen/predefined macros match.
 ///
 /// Resolution order (opt-in during the zig->LLVM migration): explicit override -> RXDK_LLVM env
-/// (the ROOT of an unpacked xboxog-&lt;os&gt;-&lt;arch&gt;.zip: the dir holding bin/clang + lib/clang/
+/// (the ROOT of an unpacked xbox-&lt;os&gt;-&lt;arch&gt;.zip: the dir holding bin/clang + lib/clang/
 /// &lt;ver&gt;/include) -> managed pinned install. Returns null when none is available, which the
 /// caller treats as "LLVM not selected/installed" and falls back to zig.
 /// </summary>
