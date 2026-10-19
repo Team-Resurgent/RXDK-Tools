@@ -97,11 +97,15 @@ public static class XboxBuild
 
     // ---- per-file compile ----
 
-    private static async Task CompileAsync(
+    /// <summary>
+    /// The full compiler argument list for one translation unit. It is composed before the
+    /// up-to-date check so the check can compare it with the command that built the existing
+    /// object (see <see cref="ObjFreshness.Signature"/>).
+    /// </summary>
+    private static List<string> ComposeCompileArgs(
         Toolchain tc, string source, string obj, IReadOnlyList<string> includeArgs,
         IReadOnlyList<string> defineArgs, IReadOnlyList<string> userFlags, bool isCpp, string cppStandard, bool exceptions,
-        RxdkOptimizeMode optimize,
-        Action<string>? log, CancellationToken ct)
+        RxdkOptimizeMode optimize)
     {
         var common = new List<string> { "-target", tc.TargetTriple };
         // LLVM builds with -nostdinc (below) and, unlike zig cc, do NOT keep clang's resource dir
@@ -160,7 +164,7 @@ public static class XboxBuild
         common.AddRange(new[] { "-x", isCpp ? "c++" : "c" });
         common.AddRange(new[] { "-c", source, $"-o{obj}" });
         // Emit a Make-style header dependency list next to the object (<obj>.d). The incremental
-        // build (IsObjUpToDate) reads it to decide whether a later build may skip recompiling this
+        // build (ObjFreshness.IsUpToDate) reads it to decide whether a later build may skip recompiling this
         // TU. -MD writes the deps as a side effect without suppressing the compile itself.
         common.AddRange(new[] { "-MD", "-MF", obj + ".d" });
 
@@ -205,7 +209,14 @@ public static class XboxBuild
             toolArgs.Add("-std=c23");
         }
         toolArgs.AddRange(common);
+        return toolArgs;
+    }
 
+    private static async Task CompileAsync(
+        Toolchain tc, string source, string obj, IReadOnlyList<string> toolArgs, bool isCpp,
+        RxdkOptimizeMode optimize, Action<string>? log, CancellationToken ct)
+    {
+        var keepsDebug = OptimizeMode.KeepsDebugInfo(optimize);
         var result = await ProcessRunner.RunStreamedAsync(tc.CompilerExe, toolArgs, log, ct: ct);
 
         // If a full-debug TU turns out to use emulated TLS, its object carries emutls symbols
@@ -637,100 +648,37 @@ public static class XboxBuild
             var isCpp = ext is ".cpp" or ".cxx";
             if (isCpp) usesCpp = true;
 
+            var toolArgs = ComposeCompileArgs(tc, src, obj, includeArgs, defineArgs, userFlagArgs, isCpp,
+                                              m.EffectiveCppStandard, m.Exceptions ?? true, optimize);
+            var signature = ObjFreshness.Signature(tc.CompilerExe, toolArgs);
+
             // Incremental: skip the compile when the object is already newer than the source and
-            // every header it pulled in on the previous build (recorded in <obj>.d). A missing
-            // object or depfile, or any newer input, forces the recompile.
-            if (incremental && IsObjUpToDate(src, obj))
+            // every header it pulled in on the previous build (recorded in <obj>.d), and was built
+            // by this exact command (recorded in <obj>.cmd) -- a changed define, include path,
+            // flag, configuration or compiler must rebuild it. A missing object, depfile or
+            // command record, or any newer input, forces the recompile.
+            if (incremental && ObjFreshness.IsUpToDate(new[] { src }, obj, signature))
             {
                 log?.Invoke($"Up to date {obj}");
                 objs.Add(obj);
                 continue;
             }
 
-            await CompileAsync(tc, src, obj, includeArgs, defineArgs, userFlagArgs, isCpp,
-                                  m.EffectiveCppStandard, m.Exceptions ?? true, optimize, log, ct);
+            // Drop the old command record first: if this compile fails, the stale object must not
+            // look current to the next build.
+            File.Delete(ObjFreshness.CommandFile(obj));
+            await CompileAsync(tc, src, obj, toolArgs, isCpp, optimize, log, ct);
             // A compiler can exit 0 and still write nothing (see the -x note above). Catch that
             // here, where we still know which source it was, rather than at link time.
             if (!File.Exists(obj))
                 throw new InvalidOperationException(
                     $"Compiler reported success but produced no object for {src} (expected {obj}).");
+            await File.WriteAllTextAsync(ObjFreshness.CommandFile(obj), signature, ct);
             log?.Invoke($"Compiled {obj}");
             objs.Add(obj);
             anyRecompiled = true;
         }
         return (objs, usesCpp, anyRecompiled);
-    }
-
-    /// <summary>
-    /// True when <paramref name="obj"/> exists and is at least as new as its source and every header
-    /// recorded in the sidecar depfile (<c><paramref name="obj"/>.d</c>), so recompiling it would
-    /// reproduce the same object. A missing object or depfile, a vanished dependency, or any input
-    /// newer than the object returns false (recompile).
-    /// </summary>
-    private static bool IsObjUpToDate(string src, string obj)
-    {
-        if (!File.Exists(obj)) return false;
-        var objTime = File.GetLastWriteTimeUtc(obj);
-        if (File.GetLastWriteTimeUtc(src) > objTime) return false;
-
-        var depFile = obj + ".d";
-        if (!File.Exists(depFile)) return false; // no recorded deps -> can't prove fresh
-        foreach (var dep in ParseDepfile(depFile))
-        {
-            // A dependency that no longer exists means a header was moved/deleted: recompile so the
-            // failure (or the newly-resolved header) is seen now, not silently skipped.
-            if (!File.Exists(dep)) return false;
-            if (File.GetLastWriteTimeUtc(dep) > objTime) return false;
-        }
-        return true;
-    }
-
-    /// <summary>
-    /// Parse a clang/Make-style depfile into its prerequisite paths. The format is
-    /// <c>target: dep1 dep2 \</c> with line continuations, spaces inside a path escaped as
-    /// <c>\ </c>, and the target (everything up to the first unescaped <c>:</c>) dropped.
-    /// </summary>
-    private static IEnumerable<string> ParseDepfile(string depFile)
-    {
-        string text;
-        try { text = File.ReadAllText(depFile); }
-        catch { yield break; }
-
-        // Join line continuations, then drop the "target:" prefix. The target is itself a Windows
-        // path, so its drive-letter colon ("C:\...") must NOT be mistaken for the rule separator:
-        // split on the first colon that is followed by whitespace (or end), which is the real
-        // "target: deps" colon. clang emits a single rule, so the first such colon is enough.
-        text = text.Replace("\\\r\n", " ").Replace("\\\n", " ").Replace("\r", " ").Replace("\n", " ");
-        var colon = -1;
-        for (int i = 0; i < text.Length; i++)
-        {
-            if (text[i] == ':' && (i + 1 >= text.Length || text[i + 1] == ' ' || text[i + 1] == '\t'))
-            {
-                colon = i;
-                break;
-            }
-        }
-        if (colon >= 0) text = text.Substring(colon + 1);
-
-        var sb = new System.Text.StringBuilder();
-        for (int i = 0; i < text.Length; i++)
-        {
-            var c = text[i];
-            if (c == '\\' && i + 1 < text.Length && text[i + 1] == ' ')
-            {
-                sb.Append(' '); // escaped space inside a path
-                i++;
-            }
-            else if (c == ' ' || c == '\t')
-            {
-                if (sb.Length > 0) { yield return sb.ToString(); sb.Clear(); }
-            }
-            else
-            {
-                sb.Append(c);
-            }
-        }
-        if (sb.Length > 0) yield return sb.ToString();
     }
 
     /// <summary>
@@ -780,8 +728,13 @@ public static class XboxBuild
         var lib = Path.Combine(outDir, $"{manifest.Name}.lib");
         // Incremental: if no object was recompiled and the archive is already newer than all of
         // them, it is current -- skip the re-archive so a dependent build can also short-circuit.
+        // The manifest is an input too: a source dropped from it leaves every remaining object
+        // current, yet the archive still holds the dropped one.
+        var archiveInputs = new List<string>(objs);
+        var libManifest = Path.Combine(libRoot, RxdkManifestLoader.ManifestFileName);
+        if (File.Exists(libManifest)) archiveInputs.Add(libManifest);
         if ((manifest.Incremental ?? true) && !anyRecompiled && File.Exists(lib)
-            && IsOutputFresh(lib, objs))
+            && IsOutputFresh(lib, archiveInputs))
         {
             log?.Invoke($"Up to date {lib}");
             return lib;
@@ -881,25 +834,14 @@ public static class XboxBuild
                 return null;
             }
 
-            // Referenced library projects, in dependency order. If a dep's .lib is already
-            // built (native .vcxproj flow: VS builds the child project first via a
-            // ProjectReference), link it directly; otherwise build it now (CLI / no VS).
+            // Referenced library projects, in dependency order. Each goes through the incremental
+            // library build every time -- never "the .lib exists, link it": that linked a library
+            // built from older sources forever. When the child is already current (e.g. VS built it
+            // first via a ProjectReference) this is only the up-to-date checks.
             var depOrder = GetDependencyOrder(projectRoot, manifest);
             var userLibs = new List<string>();
             foreach (var dep in depOrder)
-            {
-                var depManifest = ReadManifest(dep);
-                var prebuilt = Path.Combine(SdkLayout.GetProjectOutDir(dep, depManifest), $"{depManifest.Name}.lib");
-                if (File.Exists(prebuilt))
-                {
-                    log?.Invoke($"Using prebuilt library {prebuilt}");
-                    userLibs.Add(prebuilt);
-                }
-                else
-                {
-                    userLibs.Add(await BuildLibraryAsync(dep, tc, sdkInclude, optimize, log, ct, depManifest));
-                }
-            }
+                userLibs.Add(await BuildLibraryAsync(dep, tc, sdkInclude, optimize, log, ct, ReadManifest(dep)));
 
             // Explicit prebuilt .lib files (additionalLibraries), linked verbatim alongside deps.
             foreach (var rel in manifest.AdditionalLibraries ?? new())

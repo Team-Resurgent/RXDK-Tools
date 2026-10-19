@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
+using Rxdk.Engine.Build;
 
 namespace Rxdk.MsBuild.Tasks
 {
@@ -148,22 +149,46 @@ namespace Rxdk.MsBuild.Tasks
             foreach (ITaskItem src in Sources)
                 Log.LogMessage(MessageImportance.High, Path.GetFileName(src.ItemSpec));
 
-            // Header-aware incremental skip: the ClCompile target already gates the whole run on
-            // source->object timestamps; this additionally avoids recompiling a source whose object
-            // is newer than the source AND every header its depfile lists. Missing depfile => rebuild.
-            if (CompileUpToDate())
+            var a = BuildArgs(root);
+            var clang = ClangExe(root);
+
+            // Incremental skip (shared with the engine build, see ObjFreshness): the object is
+            // current only when it is newer than every source and every header its depfile lists,
+            // and was built by this exact command line -- a changed define, include directory,
+            // option or configuration rebuilds it. Missing depfile or command record => rebuild.
+            var obj = SingleObjectFile();
+            var signature = ObjFreshness.Signature(clang, a);
+            if (obj != null)
             {
-                Log.LogMessage(MessageImportance.Low, "  up to date");
-                return true;
+                var sources = new List<string>();
+                foreach (ITaskItem src in Sources)
+                    sources.Add(src.GetMetadata("FullPath"));
+                if (ObjFreshness.IsUpToDate(sources, obj, signature))
+                {
+                    Log.LogMessage(MessageImportance.Low, "  up to date");
+                    return true;
+                }
+                // Drop the old record first: if this compile fails, the stale object must not
+                // look current to the next build.
+                File.Delete(ObjFreshness.CommandFile(obj));
             }
 
-            var a = BuildArgs(root);
-
-            var r = Run(ClangExe(root), a, workingDir: null, useResponseFile: true);
+            var r = Run(clang, a, workingDir: null, useResponseFile: true);
             LogDiagnostics(r.Combined, new[] { clangMessageRegex });
             if (r.ExitCode != 0 && !Log.HasLoggedErrors)
                 Log.LogError("clang (compile) failed with exit code {0}", r.ExitCode);
-            return !Log.HasLoggedErrors && r.ExitCode == 0;
+            var ok = !Log.HasLoggedErrors && r.ExitCode == 0;
+            if (ok && obj != null)
+                File.WriteAllText(ObjFreshness.CommandFile(obj), signature);
+            return ok;
+        }
+
+        /// <summary>The object this invocation writes, or null when ObjectFileName names a directory.</summary>
+        private string SingleObjectFile()
+        {
+            if (string.IsNullOrWhiteSpace(ObjectFileName)) return null;
+            var obj = ObjectFileName;
+            return obj.EndsWith("\\") || obj.EndsWith("/") ? null : obj;
         }
 
         private List<string> BuildArgs(string root)
@@ -206,65 +231,6 @@ namespace Rxdk.MsBuild.Tasks
                 a.Add(Quote(src.GetMetadata("FullPath")));
 
             return a;
-        }
-
-        private bool CompileUpToDate()
-        {
-            if (string.IsNullOrWhiteSpace(ObjectFileName))
-                return false;
-            string obj = ObjectFileName;
-            if (obj.EndsWith("\\") || obj.EndsWith("/") || !File.Exists(obj))
-                return false;
-
-            DateTime objTime = File.GetLastWriteTimeUtc(obj);
-
-            foreach (ITaskItem src in Sources)
-            {
-                string s = src.GetMetadata("FullPath");
-                if (!File.Exists(s) || File.GetLastWriteTimeUtc(s) > objTime)
-                    return false;
-            }
-
-            string dep = obj + ".d";
-            if (!File.Exists(dep))
-                return false;
-
-            foreach (string header in ParseDepfile(dep))
-            {
-                if (File.Exists(header) && File.GetLastWriteTimeUtc(header) > objTime)
-                    return false;
-            }
-            return true;
-        }
-
-        /// <summary>Parse the makefile-style depfile "obj: a.h b.h \ c.h" into its prerequisites.</summary>
-        private static IEnumerable<string> ParseDepfile(string path)
-        {
-            string text;
-            try { text = File.ReadAllText(path); } catch { yield break; }
-
-            // Join line continuations, then take everything after the first ':'.
-            text = text.Replace("\\\r\n", " ").Replace("\\\n", " ").Replace("\r", " ").Replace("\n", " ");
-            int colon = text.IndexOf(':');
-            if (colon < 0) yield break;
-            text = text.Substring(colon + 1);
-
-            var cur = new StringBuilder();
-            for (int i = 0; i < text.Length; i++)
-            {
-                char c = text[i];
-                if (c == '\\' && i + 1 < text.Length && (text[i + 1] == ' ' || text[i + 1] == '\\'))
-                {
-                    cur.Append(text[i + 1]); // escaped space or backslash inside a path
-                    i++;
-                }
-                else if (char.IsWhiteSpace(c))
-                {
-                    if (cur.Length > 0) { yield return cur.ToString(); cur.Clear(); }
-                }
-                else cur.Append(c);
-            }
-            if (cur.Length > 0) yield return cur.ToString();
         }
     }
 }

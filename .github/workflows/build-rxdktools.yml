@@ -53,6 +53,10 @@ jobs:
       - name: Test Rxdk.Pdb (managed PDB reader)
         run: dotnet test src/Rxdk.Pdb.Tests/Rxdk.Pdb.Tests.csproj -c Release
 
+      # Build engine rules: codegen flags, incremental compile, unwind-table checks, vcxproj export.
+      - name: Test Rxdk.Engine
+        run: dotnet test src/Rxdk.Engine.Tests/Rxdk.Engine.Tests.csproj -c Release
+
       # - name: Test Rxdk.XbeImage
       #   run: dotnet test src/Rxdk.XbeImage.Tests/Rxdk.XbeImage.Tests.csproj -c Release --no-restore
 

@@ -29,6 +29,12 @@
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net472" Version="1.0.3" PrivateAssets="all" />
   </ItemGroup>
 
+  <!-- The incremental-compile rule is the engine's (tested in Rxdk.Engine.Tests); compile the same
+       source here rather than keep a second copy that drifts. -->
+  <ItemGroup>
+    <Compile Include="..\Rxdk.Engine\Build\ObjFreshness.cs" Link="Tasks\ObjFreshness.cs" />
+  </ItemGroup>
+
   <!-- RXDK\Current\Rxdk.MsBuild.dll is the ApplicationType-visible copy the VSIX packages
        (RxdkVs.Package.csproj: Content Include="...\Rxdk.MsBuild\RXDK\**\*") and that
        Install Xbox Platform stages into VCTargetsPath\Application Type\RXDK\Current\: it must be
