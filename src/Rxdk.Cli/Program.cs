@@ -37,6 +37,8 @@ if (args.Length == 0)
     Console.Error.WriteLine("  import-vcproj --in <file.vcproj> [--out <dir>] [--scaffold <dir>] [--copy-sources]   Import a VS2003 XDK project");
     Console.Error.WriteLine("  import-sln --in <file.sln> [--out <dir>] [--scaffold <dir>] [--copy-sources]   Import a VS2003 XDK solution (multi-project)");
     Console.Error.WriteLine("  generate-vcxproj --project-root <dir>   Generate a .vcxproj + .sln from rxdk.project.json (open a VS Code project in Visual Studio)");
+    Console.Error.WriteLine("build-system commands (used by cmake/RxdkToolchain.cmake):");
+    ExternalBuildCommands.PrintUsage();
     return 2;
 }
 
@@ -102,6 +104,18 @@ switch (command)
         return CmdImportSln(opts);
     case "generate-vcxproj":
         return CmdGenerateVcxproj(opts);
+    case "toolchain-info":
+        return await ExternalBuildCommands.ToolchainInfo();
+    case "compile-args":
+        return await ExternalBuildCommands.CompileArgs(opts);
+    case "compile-launch":
+        return await ExternalBuildCommands.CompileLaunch(args[1..]);
+    case "link-exe":
+        return await ExternalBuildCommands.LinkExe(args[1..]);
+    case "make-xbe":
+        return await ExternalBuildCommands.MakeXbe(opts);
+    case "make-iso":
+        return await ExternalBuildCommands.MakeIso(args[1..]);
     default:
         Console.Error.WriteLine($"unknown command: {command}");
         return 2;

@@ -48,6 +48,7 @@ The classic XDK shipped 32-bit utilities that no longer run on modern Windows. R
   - [Screen capture](#screen-capture-xbcapture)
   - [Image builder](#xbox-image-file-builder-imagebld)
   - [Launch helper](#launch-helper-xbox-launch)
+  - [CMake toolchain](#cmake-toolchain)
   - [xbWatson](#xbwatson)
   - [Debug bridge](#debug-bridge-xboxdbg-bridge)
 - [Build from source](#build-from-source)
@@ -307,6 +308,32 @@ Command-line **debug launches** for scripts or CI. Reboots the kit to pending ex
 ```cmd
 xbox-launch /dir xe:\path /title game.xbe [/cmd args] [/x console] [/reboot] [/timeout ms]
 ```
+
+### CMake toolchain
+
+`cmake/RxdkToolchain.cmake` (installed in the tools folder, beside `Rxdk.Cli`) builds an original Xbox title from a CMake project. The compile flags, the link and the XBE come from the same engine code as `rxdk build`, through `Rxdk.Cli`, so a CMake build matches an `rxdk.project.json` one.
+
+```bash
+cmake -G Ninja -DCMAKE_TOOLCHAIN_FILE=C:/ProgramData/RXDK/tools/cmake/RxdkToolchain.cmake -DCMAKE_BUILD_TYPE=Release -B out
+cmake --build out
+```
+
+On Linux the tools folder is `~/.local/share/rxdk/tools` (or `$XDG_DATA_HOME/rxdk/tools`), and on macOS `~/Library/Application Support/RXDK/tools`.
+
+```cmake
+add_executable(game main.cpp)
+# SDK libraries are named by file, as in rxdk.project.json; Debug builds link the "d" ones.
+set(_d "$<$<CONFIG:Debug>:d>")
+target_link_libraries(game PRIVATE libxapi${_d} libkernel${_d} libc${_d} libcpp${_d} libcompat${_d})
+rxdk_add_xbe(game TITLE_NAME "My Game" TITLE_ID 0x4D590001 ISO DEPLOY media=assets/media)
+```
+
+- **Platform:** `CMAKE_SYSTEM_NAME` is `XboxOG`, and `XBOXOG` is set. `WIN32` is not, so a project takes its Xbox branch rather than its Windows one.
+- **Configurations:** Debug, Release, RelWithDebInfo and MinSizeRel map to Debug, ReleaseFast, ReleaseSafe and ReleaseSmall. With no build type, the build is Debug. As with `rxdk build`, Release does not define `NDEBUG`.
+- **`rxdk_add_xbe(<target> ...)`** builds `<target>.xbe` after the link. `IMAGE_BUILD_JSON` takes the same settings as `"imageBuild"`, and `TITLE_NAME`, `TITLE_ID` and `STACK` override them. `ISO` also packs `XISO/<name>.iso`, with `DEPLOY` entries written as `"deployPaths"` are (`dest=source`), and repacks it when the XBE or a deployed file changes.
+- **Settings:** `RXDK_CLI` (the `Rxdk.Cli` to use), `RXDK_CXX_STANDARD` (default `c++23`), `RXDK_CXX_EXCEPTIONS` (default `ON`), and `RXDK_TLS_RETRY`, which recompiles a `thread_local` file with line tables only when full debug info would break its link, as `rxdk build` does.
+
+`cmake/test` is a title that checks the toolchain end to end; it prints `[T]` lines to the debug output.
 
 ### xbWatson
 

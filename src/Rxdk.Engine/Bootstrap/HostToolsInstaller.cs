@@ -47,8 +47,19 @@ public static partial class HostToolsInstaller
         return string.IsNullOrWhiteSpace(text) ? null : text;
     }
 
-    [GeneratedRegex(@"(^|/)tools/[^/]+$")]
+    [GeneratedRegex(@"(^|/)tools/(?<rel>.+)$")]
     private static partial Regex ToolsEntryRegex();
+
+    /// <summary>
+    /// Where a file of the RXDK-Tools archive goes under the tools root: everything inside its
+    /// tools/ folder, keeping subfolders (tools/cmake/Platform/XboxOG.cmake lands in
+    /// cmake/Platform/), or null for anything else.
+    /// </summary>
+    internal static string? ToolsArchiveTarget(string entryName)
+    {
+        var m = ToolsEntryRegex().Match(entryName.Replace('\\', '/'));
+        return m.Success ? m.Groups["rel"].Value : null;
+    }
 
     // xdvdfs ships a per-OS build (windows x64, linux x64, macos x64/arm64). The engine now
     // runs under VS Code on Linux/macOS as well as VS20XX on Windows, so pick the asset for the
@@ -91,8 +102,8 @@ public static partial class HostToolsInstaller
         log?.Invoke($"RXDK: host tools {toolsRelease.TagName} → {root}");
         var wrote = await DownloadAndExtractAsync(
             toolsAsset.BrowserDownloadUrl, root,
-            // Files directly under a tools/ dir inside the archive (dist/rxdk-managed-<rid>/tools/*).
-            name => ToolsEntryRegex().IsMatch(name),
+            // Everything inside the archive's tools/ dir (dist/rxdk-managed-<rid>/tools/...).
+            ToolsArchiveTarget,
             "RXDK-Tools", log, ct);
         log?.Invoke($"RXDK: extracted {wrote} file(s) from RXDK-Tools");
 
@@ -112,7 +123,7 @@ public static partial class HostToolsInstaller
         var xdvdfsName = RxdkPaths.HostToolExecutableName("xdvdfs");
         await DownloadAndExtractAsync(
             xdvdfsAsset.BrowserDownloadUrl, root,
-            name => PosixBasename(name) == xdvdfsName,
+            name => PosixBasename(name) == xdvdfsName ? xdvdfsName : null,
             "xdvdfs", log, ct);
 
         var missing = RequiredHostTools
@@ -141,7 +152,7 @@ public static partial class HostToolsInstaller
     }
 
     private static async Task<int> DownloadAndExtractAsync(
-        string url, string destRoot, Func<string, bool> pick, string label,
+        string url, string destRoot, Func<string, string?> pick, string label,
         Action<string>? log, CancellationToken ct)
     {
         var tmp = Path.Combine(Path.GetTempPath(), $"rxdk-hosttool-{Guid.NewGuid():N}.zip");
@@ -159,9 +170,10 @@ public static partial class HostToolsInstaller
                     // Directory entries have empty Name; entry.FullName is forward-slashed.
                     if (string.IsNullOrEmpty(entry.Name)) continue;
                     var normalized = entry.FullName.Replace('\\', '/');
-                    if (!pick(normalized)) continue;
+                    if (pick(normalized) is not { } relative) continue;
 
-                    var target = Path.Combine(destRoot, PosixBasename(normalized));
+                    var target = ResolveTarget(destRoot, relative);
+                    Directory.CreateDirectory(Path.GetDirectoryName(target)!);
                     ExtractOverwriteResilient(entry, target);
                     wrote++;
                 }
@@ -234,6 +246,20 @@ public static partial class HostToolsInstaller
         {
             try { File.Delete(stale); } catch { /* still locked; swept next install */ }
         }
+    }
+
+    /// <summary>
+    /// The path a picked archive entry is written to: <paramref name="relative"/> under
+    /// <paramref name="destRoot"/>. An entry that would land outside it (a "..") is refused.
+    /// </summary>
+    internal static string ResolveTarget(string destRoot, string relative)
+    {
+        var root = Path.GetFullPath(destRoot);
+        var target = Path.GetFullPath(Path.Combine(root, relative.Replace('/', Path.DirectorySeparatorChar)));
+        var rootWithSep = root.EndsWith(Path.DirectorySeparatorChar) ? root : root + Path.DirectorySeparatorChar;
+        if (!target.StartsWith(rootWithSep, OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
+            throw new InvalidOperationException($"Archive entry {relative} would extract outside {root}");
+        return target;
     }
 
     private static string PosixBasename(string p)

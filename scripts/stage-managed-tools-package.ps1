@@ -26,6 +26,13 @@ if (-not $SkipPublish) {
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 
+# The CMake toolchain (cmake/RxdkToolchain.cmake finds Rxdk.Cli one folder up, in tools/).
+$cmakeDir = Join-Path $toolsDir 'cmake'
+if (Test-Path -LiteralPath $cmakeDir) { Remove-Item -LiteralPath $cmakeDir -Recurse -Force }
+New-Item -ItemType Directory -Force -Path (Join-Path $cmakeDir 'Platform') | Out-Null
+Copy-Item -Path (Join-Path $repoRoot 'cmake/*.cmake') -Destination $cmakeDir -Force
+Copy-Item -Path (Join-Path $repoRoot 'cmake/Platform/*.cmake') -Destination (Join-Path $cmakeDir 'Platform') -Force
+
 if (-not $SkipRuntimeDownload) {
     & (Join-Path $PSScriptRoot 'download-dotnet-runtime.ps1') -Runtime $Runtime -OutputDir $runtimeDir
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -36,6 +43,6 @@ Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'install-dotnet-runtime.cmd') -D
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'install-dotnet-runtime.sh') -Destination (Join-Path $packageDir 'install-dotnet-runtime.sh') -Force
 
 Write-Host "Staged package: $packageDir"
-Write-Host "  tools/    - single-file executables"
+Write-Host "  tools/    - single-file executables, and cmake/ (the CMake toolchain)"
 Write-Host "  runtime/  - bundled .NET 8 runtime installer"
 Write-Host "  install-dotnet-runtime.* - run before first use if .NET 8 is not installed"

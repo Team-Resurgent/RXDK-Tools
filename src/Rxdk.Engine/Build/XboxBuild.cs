@@ -101,17 +101,21 @@ public static class XboxBuild
     /// The full compiler argument list for one translation unit. It is composed before the
     /// up-to-date check so the check can compare it with the command that built the existing
     /// object (see <see cref="ObjFreshness.Signature"/>).
+    /// With no <paramref name="source"/> it stops before the -x/-c/-o/-MD tail, and with no
+    /// <paramref name="optimize"/> it leaves out the optimization and debug-info flags: those are
+    /// the parts <see cref="XboxRecipe"/> hands to other build systems, which add their own.
     /// </summary>
-    private static List<string> ComposeCompileArgs(
-        Toolchain tc, string source, string obj, IReadOnlyList<string> includeArgs,
+    internal static List<string> ComposeCompileArgs(
+        Toolchain tc, string? source, string? obj, IReadOnlyList<string> includeArgs,
         IReadOnlyList<string> defineArgs, IReadOnlyList<string> userFlags, bool isCpp, string cppStandard, bool exceptions,
-        RxdkOptimizeMode optimize)
+        RxdkOptimizeMode? optimize)
     {
         var common = new List<string> { "-target", tc.TargetTriple };
         // LLVM builds with -nostdinc (below) and, unlike zig cc, do NOT keep clang's resource dir
         // on the search path, so re-add it here or stddef.h/stdarg.h/... are unfound (empty for zig).
         common.AddRange(tc.ResourceIncludeArgs);
-        common.AddRange(OptimizeMode.CompileFlags(optimize));
+        if (optimize is { } mode)
+            common.AddRange(OptimizeMode.CompileFlags(mode));
         common.AddRange(XboxTarget.CodegenFlags);
         common.AddRange(new[]
         {
@@ -149,8 +153,7 @@ public static class XboxBuild
         //     file only).
         //   * ReleaseFast/ReleaseSmall (no -g): add -gline-tables-only for line tables
         //     (F5 stepping + crash symbolization) with no locals expected anyway.
-        var keepsDebug = OptimizeMode.KeepsDebugInfo(optimize);
-        if (!keepsDebug)
+        if (optimize is { } level && !OptimizeMode.KeepsDebugInfo(level))
             common.Add("-gline-tables-only");
         common.AddRange(includeArgs);
         common.AddRange(defineArgs);
@@ -161,12 +164,15 @@ public static class XboxBuild
         // -x: state the language rather than letting clang infer it from the extension. Its
         // suffix table is case-sensitive, so an imported project spelling a source "Foo.Cpp"
         // would otherwise be treated as a linker input and -c would silently emit no object.
-        common.AddRange(new[] { "-x", isCpp ? "c++" : "c" });
-        common.AddRange(new[] { "-c", source, $"-o{obj}" });
-        // Emit a Make-style header dependency list next to the object (<obj>.d). The incremental
-        // build (ObjFreshness.IsUpToDate) reads it to decide whether a later build may skip recompiling this
-        // TU. -MD writes the deps as a side effect without suppressing the compile itself.
-        common.AddRange(new[] { "-MD", "-MF", obj + ".d" });
+        if (source is not null && obj is not null)
+        {
+            common.AddRange(new[] { "-x", isCpp ? "c++" : "c" });
+            common.AddRange(new[] { "-c", source, $"-o{obj}" });
+            // Emit a Make-style header dependency list next to the object (<obj>.d). The incremental
+            // build (ObjFreshness.IsUpToDate) reads it to decide whether a later build may skip recompiling this
+            // TU. -MD writes the deps as a side effect without suppressing the compile itself.
+            common.AddRange(new[] { "-MD", "-MF", obj + ".d" });
+        }
 
         var toolArgs = new List<string>();
         if (isCpp)
@@ -250,7 +256,7 @@ public static class XboxBuild
     // thread_local, and the names appear as plain ASCII in the COFF symbol/string table,
     // so a substring scan detects TLS usage without parsing the object -- and it catches
     // TLS pulled in through headers (e.g. stb_image), which a source-text scan would miss.
-    private static bool ObjUsesEmulatedTls(string objPath)
+    internal static bool ObjUsesEmulatedTls(string objPath)
     {
         try
         {
@@ -877,71 +883,18 @@ public static class XboxBuild
                 return new BuildResult(true, outDir);
             }
 
-            // SDK libraries to link: executable's own + every referenced library's, deduped in
-            // first-seen order, libkernel forced last so other archives resolve kernel imports.
+            // SDK libraries to link: executable's own + every referenced library's, in first-seen
+            // order. XboxRecipe.PlanLink orders them, picks the entry point and resolves the files,
+            // as it does for the CMake toolchain's link (Rxdk.Cli link-exe).
             var libNames = new List<string>();
-            void AddLibName(string n) { if (!string.IsNullOrWhiteSpace(n) && !libNames.Contains(n)) libNames.Add(n); }
-            foreach (var n in manifest.Libraries ?? new()) AddLibName(n);
+            libNames.AddRange(manifest.Libraries ?? new());
             foreach (var dep in depOrder)
-                foreach (var n in ReadManifest(dep).Libraries ?? new()) AddLibName(n);
-            if (libNames.Contains("libkernel.lib"))
-            {
-                libNames.Remove("libkernel.lib");
-                libNames.Add("libkernel.lib");
-            }
+                libNames.AddRange(ReadManifest(dep).Libraries ?? new());
 
             var isDxt = manifest.Type == RxdkProjectKind.Dxt;
-            // A title linking xAPI enters at XapiTitleStartup (which runs XapiInitProcess:
-            // per-title/utility drive setup, etc.) rather than the bare libc `start`. The
-            // library is named by its exact file, so the Debug build lists libxapid.lib --
-            // match either spelling, or a Debug title silently falls back to `start` and
-            // skips the whole xAPI init (e.g. no T:/U:/Z: drives).
-            var linksXapi = libNames.Contains("libxapi.lib") || libNames.Contains("libxapid.lib");
-            var entry = isDxt ? "DxtEntry" : linksXapi ? "XapiTitleStartup" : "start";
-
-            var linkLibs = new List<string>();
-            if (isDxt) linkLibs.Add("-Wl,--dynamicbase"); // DXT keeps its base-reloc table.
-
-            // Resolve every SDK library, partitioning the whole-archive override(s) from the
-            // referenced-only libs.
-            var wholeArchiveLibs = new List<string>();
-            var regularLibs = new List<string>();
-            foreach (var libName in libNames)
-            {
-                // Fully verbatim, like a real "Additional Dependencies" list: the manifest/project
-                // names the exact file it wants, extension included (libxapi.lib / libxapid.lib),
-                // same as the retail XDK's d3d8$(D).lib flow -- the engine never appends the Debug
-                // "d" suffix, or the ".lib" extension, on its own.
-                var resolved = ResolveLib(libName)
-                    ?? (libName == "libkernel.lib" ? ResolveLib("xboxkrnl.lib") : null);
-                if (resolved is null)
-                    throw new InvalidOperationException(
-                        $"Missing library: {libName} under sdk/lib - run RXDK SDK install");
-                // libcompat[d] must be force-linked whole-archive to win the compiler-rt comdat
-                // tie-break (see XdkLink.IsWholeArchiveLib); every other library links the normal,
-                // referenced-only way.
-                (XdkLink.IsWholeArchiveLib(resolved) ? wholeArchiveLibs : regularLibs).Add(resolved);
-            }
-
-            // Emit the whole-archive override(s) AHEAD of every other archive (per f849319). libcompat
-            // carries picolibc's fabs/sqrt/sin/cos/rem_pio2/memmove/... which must beat zig
-            // compiler-rt's per-symbol COMDAT copies (SSE2 memmove faults on a PIII; the x87 fabs
-            // corrupts the FPU stack). Defining them first means libc's identical copies are never
-            // pulled -- when libcompat trailed libc, a pull of libc's copy (e.g. rem_pio2 via a trig
-            // call) duplicate-symbol'd against the whole-archived version and failed the link.
-            foreach (var wa in wholeArchiveLibs)
-            {
-                linkLibs.Add("-Wl,--whole-archive");
-                linkLibs.Add(wa);
-                linkLibs.Add("-Wl,--no-whole-archive");
-            }
-            if (userLibs.Count > 0)
-            {
-                linkLibs.Add("-Wl,--start-group");
-                linkLibs.AddRange(userLibs);
-                linkLibs.Add("-Wl,--end-group");
-            }
-            linkLibs.AddRange(regularLibs);
+            var plan = XboxRecipe.PlanLink(libNames, userLibs, libSearchDirs, isDxt);
+            var entry = plan.Entry;
+            var linkLibs = plan.LibraryArgs;
 
             // Incremental link/package skip: when no object was recompiled, the final product
             // (ISO, or the XBE when createIso=false, or the DXT) may already be current. It is stale

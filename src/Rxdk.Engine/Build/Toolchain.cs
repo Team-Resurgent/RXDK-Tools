@@ -46,7 +46,7 @@ public sealed class Toolchain
     /// runtime comes from the explicit SDK libs (and <see cref="BuiltinsArchive"/>).</summary>
     public IEnumerable<string> LinkRuntimeArgs() => new[] { "-fuse-ld=lld" };
 
-    private static Toolchain Llvm(string root)
+    internal static Toolchain Llvm(string root)
     {
         var resource = LlvmRuntime.ResourceInclude(root);
         var inc = resource is not null ? new[] { "-isystem", resource } : Array.Empty<string>();
