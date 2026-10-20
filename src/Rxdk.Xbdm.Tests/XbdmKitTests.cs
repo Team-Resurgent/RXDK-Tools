@@ -4,82 +4,57 @@ using Xunit;
 namespace Rxdk.Xbdm.Tests;
 
 /// <summary>
-/// Individual hardware test facts retained for granular CI reporting.
-/// See <see cref="KitTestReportTests"/> for the full markdown report.
+/// Individual hardware checks, one per test for granular CI reporting: each runs its category's
+/// checks and reports the one it names. See <see cref="KitTestReportTests"/> for the full
+/// markdown report.
 /// </summary>
 [Collection("XboxHardware")]
 public sealed class XbdmKitTests
 {
-    [Fact]
-    public void ListDrives_managed_smoke() => RunSingle("Connection", "ListDrives", XbdmKitChecks.RunConnectionChecks);
+    [KitFact]
+    public void ListDrives_managed_smoke() => RunSingle("ListDrives", XbdmKitChecks.RunConnectionChecks);
 
-    [Fact]
-    public void ListDirectory_managed_smoke() => RunCategory(XbdmKitChecks.RunConnectionChecks);
+    [KitFact]
+    public void ListDirectory_managed_smoke() => RunSingle("ListDirectory", XbdmKitChecks.RunConnectionChecks);
 
-    [Fact]
-    public void GetFileAttributes_managed_smoke() => RunCategory(XbdmKitChecks.RunConnectionChecks);
+    [KitFact]
+    public void GetFileAttributes_managed_smoke() => RunSingle("GetFileAttributes", XbdmKitChecks.RunConnectionChecks);
 
-    [Fact]
-    public void GetDiskFreeSpace_managed_smoke() => RunCategory(XbdmKitChecks.RunConnectionChecks);
+    [KitFact]
+    public void GetDiskFreeSpace_managed_smoke() => RunSingle("GetDiskFreeSpace", XbdmKitChecks.RunConnectionChecks);
 
-    [Fact]
-    public void IsSecurityEnabled_managed_smoke() => RunCategory(XbdmKitChecks.RunConnectionChecks);
+    [KitFact]
+    public void IsSecurityEnabled_managed_smoke() => RunSingle("IsSecurityEnabled", XbdmKitChecks.RunConnectionChecks);
 
-    [Fact]
-    public void SupportsUserPrivileges_managed_smoke() => RunCategory(XbdmKitChecks.RunConnectionChecks);
+    [KitFact]
+    public void SupportsUserPrivileges_managed_smoke() => RunSingle("SupportsUserPrivileges", XbdmKitChecks.RunConnectionChecks);
 
-    [Fact]
-    public void GetUserAccess_managed_smoke() => RunCategory(XbdmKitChecks.RunConnectionChecks);
+    [KitFact]
+    public void GetUserAccess_managed_smoke() => RunSingle("GetUserAccess", XbdmKitChecks.RunConnectionChecks);
 
-    [Fact]
-    public void CaptureScreenshot_managed_smoke() => RunCategory(XbdmKitChecks.RunConnectionChecks);
+    [KitFact]
+    public void CaptureScreenshot_managed_smoke() => RunSingle("CaptureScreenshot", XbdmKitChecks.RunConnectionChecks);
 
-    [Fact]
-    public void TryResolveXboxAddress_managed_smoke() => RunCategory(XbdmKitChecks.RunConnectionChecks);
+    [KitFact]
+    public void TryResolveXboxAddress_managed_smoke() => RunSingle("TryResolveXboxAddress", XbdmKitChecks.RunConnectionChecks);
 
-    [Fact]
-    public void File_roundtrip_managed_smoke() => RunCategory(XbdmKitChecks.RunFileChecks);
+    [KitFact]
+    public void File_roundtrip_managed_smoke() => RunSingle("FileRoundTrip", XbdmKitChecks.RunFileChecks);
 
-    [Fact]
-    public void Debug_thread_list_managed_smoke() => RunCategory(XbdmKitChecks.RunDebugChecks);
+    [KitFact]
+    public void Debug_thread_list_managed_smoke() => RunSingle("GetThreadList", XbdmKitChecks.RunDebugChecks);
 
-    [Fact]
-    public void Upload_triangle_xbe_managed_smoke() => RunCategory(XbdmKitChecks.RunLaunchChecks);
+    [KitFact]
+    public void Upload_triangle_xbe_managed_smoke() => RunSingle("UploadTriangleXbe", XbdmKitChecks.RunLaunchChecks);
 
-    private static void RunSingle(
-        string category,
-        string name,
-        Func<XbdmKitSession, IReadOnlyList<KitCheckResult>> runner)
+    private static void RunSingle(string name, Func<XbdmKitSession, IReadOnlyList<KitCheckResult>> runner)
     {
-        if (!XbdmTestEnvironment.TryGetConsole(out var console))
-            return;
-
-        if (!XbdmKitSession.TryCreate(console, out var session, out _))
-            return;
-
-        using (session)
-        {
-            var result = runner(session).FirstOrDefault(r => r.Category == category && r.Name == name);
-            if (result is null)
-                return;
-            if (result.Status == KitCheckStatus.Failed)
-                Assert.Fail(result.ToString());
-        }
-    }
-
-    private static void RunCategory(Func<XbdmKitSession, IReadOnlyList<KitCheckResult>> runner)
-    {
-        if (!XbdmTestEnvironment.TryGetConsole(out var console))
-            return;
-
-        if (!XbdmKitSession.TryCreate(console, out var session, out _))
-            return;
-
-        using (session)
-        {
-            var failures = runner(session).Where(r => r.Status == KitCheckStatus.Failed).ToArray();
-            if (failures.Length > 0)
-                Assert.Fail(string.Join(Environment.NewLine, failures.Select(f => f.ToString())));
-        }
+        using var session = KitTestReportTests.OpenSession();
+        var results = runner(session);
+        var result = results.FirstOrDefault(r => r.Name == name);
+        if (result is null)
+            Assert.Fail($"No check named {name} ran; the checks were: {string.Join(", ", results.Select(r => r.Name))}");
+        if (result.Status == KitCheckStatus.Failed)
+            Assert.Fail(result.ToString());
     }
 }

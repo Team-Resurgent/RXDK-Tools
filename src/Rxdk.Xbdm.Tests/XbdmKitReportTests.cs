@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using Rxdk.Xbdm.Tests.Hardware;
 using Xunit;
 using Xunit.Abstractions;
@@ -21,120 +20,76 @@ public sealed class KitTestReportTests
 
     public KitTestReportTests(ITestOutputHelper output) => _output = output;
 
-    [Fact]
+    [KitFact]
     public void Comprehensive_kit_report()
     {
-        if (!XbdmTestEnvironment.TryGetConsole(out var console))
-        {
-            _output.WriteLine("Skipped: set RXDK_TEST_CONSOLE to run kit hardware tests report.");
-            return;
-        }
-
         var exitCode = KitTestProgram.Run();
         if (exitCode != 0)
-            Assert.Fail(exitCode == 2 ? "Kit test run skipped or could not open session." : "Kit tests failed — see report.");
+            Assert.Fail(exitCode == 2 ? "Could not open a session with the kit." : "Kit tests failed — see report.");
     }
 
-    [Fact]
+    [KitFact]
     public void Connection_kit_checks()
     {
-        if (!TryOpenSession(out var session))
-            return;
-
-        using (session)
+        using (var session = OpenSession())
             AssertAllPassed(XbdmKitChecks.RunConnectionChecks(session));
     }
 
-    [Fact]
+    [KitFact]
     public void File_kit_checks()
     {
-        if (!TryOpenSession(out var session))
-            return;
-
-        using (session)
+        using (var session = OpenSession())
             AssertAllPassed(XbdmKitChecks.RunFileChecks(session));
     }
 
-    [Fact]
+    [KitFact]
     public void Debug_kit_checks()
     {
-        if (!TryOpenSession(out var session))
-            return;
-
-        using (session)
+        using (var session = OpenSession())
             AssertAllPassed(XbdmKitChecks.RunDebugChecks(session));
     }
 
-    [Fact]
+    [KitFact]
     public void Launch_kit_checks()
     {
-        if (!TryOpenSession(out var session))
-            return;
-
-        using (session)
+        using (var session = OpenSession())
             AssertAllPassed(XbdmKitChecks.RunLaunchChecks(session));
     }
 
-    [Fact]
+    [KitFact]
     public void Extended_kit_checks()
     {
-        if (!TryOpenSession(out var session))
-            return;
-
-        using (session)
+        using (var session = OpenSession())
             AssertAllPassed(XbdmKitChecks.RunExtendedChecks(session));
     }
 
-    [Fact]
+    [KitFact]
     public void Execution_kit_checks()
     {
-        if (!TryOpenSession(out var session))
-            return;
-
-        using (session)
+        using (var session = OpenSession())
             AssertAllPassed(XbdmKitChecks.RunExecutionChecks(session));
     }
 
-    [Fact]
+    [KitFact]
     public void Bridge_kit_checks()
     {
-        if (!TryOpenSession(out var session))
-            return;
-
-        using (session)
+        using (var session = OpenSession())
             AssertAllPassed(XbdmKitChecks.RunBridgeChecks(session.ConsoleName, session));
     }
 
-    [Fact]
+    [KitFact]
     public void Reboot_kit_checks()
     {
-        if (!XbdmTestEnvironment.TryGetConsole(out _))
-        {
-            _output.WriteLine("Skipped: set RXDK_TEST_CONSOLE.");
-            return;
-        }
-
         AssertAllPassed(XbdmKitChecks.RunRebootChecks());
     }
 
-    private bool TryOpenSession([NotNullWhen(true)] out XbdmKitSession? session)
+    /// <summary>A session with the kit; failing to open one fails the test (the kit was asked for).</summary>
+    internal static XbdmKitSession OpenSession()
     {
-        if (!XbdmTestEnvironment.TryGetConsole(out var console))
-        {
-            _output.WriteLine("Skipped: set RXDK_TEST_CONSOLE.");
-            session = null;
-            return false;
-        }
-
-        if (!XbdmKitSession.TryCreate(console, out var created, out var reason))
-        {
-            _output.WriteLine($"Skipped: {reason}");
-            session = null;
-            return false;
-        }
-
-        session = created;
-        return true;
+        var console = XbdmTestEnvironment.Console;
+        if (!XbdmKitSession.TryCreate(console, out var session, out var reason))
+            Assert.Fail($"Could not open a session with {console}: {reason}");
+        return session;
     }
 
     private void AssertAllPassed(IReadOnlyList<KitCheckResult> results)

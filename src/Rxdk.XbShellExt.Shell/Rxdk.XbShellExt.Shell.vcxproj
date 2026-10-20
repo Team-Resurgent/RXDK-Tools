@@ -15,7 +15,7 @@
     <RootNamespace>RxdkXbShellExtShell</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
-  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" Condition="'$(MSBuildRuntimeType)' != 'Core'" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <PlatformToolset>v145</PlatformToolset>
@@ -28,7 +28,7 @@
     <CharacterSet>Unicode</CharacterSet>
     <UseOfAtl>Static</UseOfAtl>
   </PropertyGroup>
-  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" Condition="'$(MSBuildRuntimeType)' != 'Core'" />
   <Import Project="$(MSBuildThisFileDirectory)..\RXDKTools.props" />
   <PropertyGroup>
     <TargetName>Rxdk.XbShellExt.Shell</TargetName>
@@ -93,8 +93,13 @@
   <ItemGroup>
     <ResourceCompile Include="$(MSBuildThisFileDirectory)Rxdk.XbShellExt.Shell.rc" />
   </ItemGroup>
-  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
-  <Target Name="StageShellIcons" AfterTargets="Build">
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" Condition="'$(MSBuildRuntimeType)' != 'Core'" />
+  <Target Name="StageShellIcons" AfterTargets="Build" Condition="'$(MSBuildRuntimeType)' != 'Core'">
     <Copy SourceFiles="$(MSBuildThisFileDirectory)..\..\assets\xbox-light.ico" DestinationFiles="$(OutDir)xbox.ico" SkipUnchangedFiles="true" Condition="Exists('$(MSBuildThisFileDirectory)..\..\assets\xbox-light.ico')" />
   </Target>
+  <!-- The C++ build needs Visual Studio's MSBuild (the VC targets aren't in the .NET SDK). Under
+       `dotnet build`/`dotnet test` of the solution, DotNetSdkNoOp.targets makes this project do
+       nothing, so the managed projects still build and test. It has to be a conditional import:
+       a target defined here would replace the C++ Build target even when its condition is false. -->
+  <Import Project="$(MSBuildThisFileDirectory)DotNetSdkNoOp.targets" Condition="'$(MSBuildRuntimeType)' == 'Core'" />
 </Project>

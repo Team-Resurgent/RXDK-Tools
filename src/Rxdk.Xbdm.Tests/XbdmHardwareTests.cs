@@ -11,11 +11,10 @@ namespace Rxdk.Xbdm.Tests;
 [Collection("XboxHardware")]
 public sealed class XbdmHardwareTests
 {
-    [Fact]
+    [KitFact]
     public void Managed_connect_and_list_drives()
     {
-        if (!XbdmTestEnvironment.TryGetConsole(out var console))
-            return;
+        var console = XbdmTestEnvironment.Console;
 
         using var client = CreateManagedClient();
         using var conn = Connect(client, console);
@@ -24,11 +23,10 @@ public sealed class XbdmHardwareTests
         Assert.NotEmpty(drives);
     }
 
-    [Fact]
+    [KitFact]
     public void Managed_list_root_directory()
     {
-        if (!XbdmTestEnvironment.TryGetConsole(out var console))
-            return;
+        var console = XbdmTestEnvironment.Console;
 
         using var client = CreateManagedClient();
         using var conn = Connect(client, console);
@@ -38,11 +36,10 @@ public sealed class XbdmHardwareTests
         Assert.NotNull(entries);
     }
 
-    [Fact]
+    [KitFact]
     public void Managed_reports_security_state()
     {
-        if (!XbdmTestEnvironment.TryGetConsole(out var console))
-            return;
+        var console = XbdmTestEnvironment.Console;
 
         using var client = CreateManagedClient();
         using var conn = Connect(client, console);
@@ -51,26 +48,21 @@ public sealed class XbdmHardwareTests
         _ = conn.SupportsUserPrivileges();
     }
 
-    [Fact]
+    [KitFact("RXDK_TEST_PASSWORD")]
     public void Managed_secure_admin_connect_when_password_configured()
     {
-        if (!XbdmTestEnvironment.TryGetConsole(out var console))
-            return;
-
+        var console = XbdmTestEnvironment.Console;
         var password = Environment.GetEnvironmentVariable("RXDK_TEST_PASSWORD");
-        if (string.IsNullOrWhiteSpace(password))
-            return;
 
         using var client = CreateManagedClient();
         using var conn = client.Connect(console, new XbdmConnectOptions { AdminPassword = password });
         Assert.NotEmpty(conn.ListDrives());
     }
 
-    [Fact]
+    [KitFact]
     public void Managed_disk_free_space_returns_nonzero()
     {
-        if (!XbdmTestEnvironment.TryGetConsole(out var console))
-            return;
+        var console = XbdmTestEnvironment.Console;
 
         using var client = CreateManagedClient();
         using var conn = Connect(client, console);
@@ -79,11 +71,10 @@ public sealed class XbdmHardwareTests
         Assert.True(space.TotalBytes > 0, "Expected non-zero total disk space.");
     }
 
-    [Fact]
+    [KitFact]
     public void Managed_capture_screenshot_writes_valid_bmp()
     {
-        if (!XbdmTestEnvironment.TryGetConsole(out var console))
-            return;
+        var console = XbdmTestEnvironment.Console;
 
         using var client = CreateManagedClient();
         using var conn = Connect(client, console);
@@ -125,6 +116,10 @@ public sealed class XbdmHardwareTests
 
 internal static class XbdmTestEnvironment
 {
+    /// <summary>The kit a [KitFact] runs against (it only runs when this is set).</summary>
+    public static string Console =>
+        TryGetConsole(out var console) ? console : throw new InvalidOperationException("RXDK_TEST_CONSOLE is not set.");
+
     public static bool TryGetConsole(out string console)
     {
         console = Environment.GetEnvironmentVariable("RXDK_TEST_CONSOLE") ?? string.Empty;

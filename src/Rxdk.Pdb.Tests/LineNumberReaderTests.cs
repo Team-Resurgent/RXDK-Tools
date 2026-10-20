@@ -67,13 +67,14 @@ public class LineNumberReaderTests
         Assert.False(pdb.TryFindLine(0, out _, out _));
     }
 
-    [Fact]
-    public void TriangleXdk_LineTable_RoundTripsWhenC13Present()
+    // TriangleXDK.pdb comes from the XDK's VC 7.1 compiler, whose line numbers are in the older C11
+    // form (sstSrcModule); the reader only reads C13 (DEBUG_S_LINES), which clang -gcodeview writes.
+    [Fact(Skip = "The reader does not read C11 (VC 7.1) line numbers yet; TriangleXDK.pdb has only those.")]
+    public void TriangleXdk_LineTable_RoundTrips()
     {
         var pdb = PdbImage.OpenFile(TrianglePdb);
         var entries = pdb.Lines.Entries;
-        if (entries.Count == 0)
-            return; // legacy C11 line info -- out of scope for the C13 reader
+        Assert.NotEmpty(entries);
 
         var entry = entries.First();
         Assert.True(pdb.TryFindLine(entry.RvaStart, out _, out var line));

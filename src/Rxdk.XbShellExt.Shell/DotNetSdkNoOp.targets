@@ -1,0 +1,10 @@
+<Project>
+  <!-- Imported only under the .NET SDK's MSBuild (see Rxdk.XbShellExt.Shell.vcxproj). -->
+  <Target Name="Build">
+    <Message Importance="high" Text="Rxdk.XbShellExt.Shell: skipped under the .NET SDK; build it with Visual Studio's MSBuild." />
+  </Target>
+  <Target Name="Rebuild" DependsOnTargets="Build" />
+  <Target Name="Clean" />
+  <Target Name="Restore" />
+  <Target Name="VSTest" />
+</Project>

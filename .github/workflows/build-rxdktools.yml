@@ -64,13 +64,23 @@ jobs:
       - name: Test Rxdk.XboxLaunch
         run: dotnet test src/Rxdk.XboxLaunch.Tests/Rxdk.XboxLaunch.Tests.csproj -c Release
 
-      # Screenshot capture and the PNG/JPEG/BMP encoders (JPEG checked with Windows' decoder).
-      # The rest of Rxdk.Xbdm.Tests needs a live kit (RXDK_TEST_CONSOLE).
-      - name: Test screenshot encoders
-        run: dotnet test src/Rxdk.Xbdm.Tests/Rxdk.Xbdm.Tests.csproj -c Release --filter "FullyQualifiedName~ScreenshotImageTests|FullyQualifiedName~XbdmScreenshotTests"
+      # XBDM protocol, screenshot capture and the PNG/JPEG/BMP encoders (JPEG checked with Windows'
+      # decoder). The [KitFact] tests need a live kit (RXDK_TEST_CONSOLE) and report as skipped here.
+      - name: Test Rxdk.Xbdm
+        run: dotnet test src/Rxdk.Xbdm.Tests/Rxdk.Xbdm.Tests.csproj -c Release
 
-      # - name: Test Rxdk.XbeImage
-      #   run: dotnet test src/Rxdk.XbeImage.Tests/Rxdk.XbeImage.Tests.csproj -c Release --no-restore
+      # imagebld: the XBE built from TriangleXDK.exe against the checked-in goldens.
+      - name: Test Rxdk.XbeImage
+        run: dotnet test src/Rxdk.XbeImage.Tests/Rxdk.XbeImage.Tests.csproj -c Release
+
+      - name: Test Rxdk.KitConfig
+        run: dotnet test src/Rxdk.KitConfig.Tests/Rxdk.KitConfig.Tests.csproj -c Release
+
+      - name: Test Rxdk.Xbdm.KitServices
+        run: dotnet test src/Rxdk.Xbdm.KitServices.Tests/Rxdk.Xbdm.KitServices.Tests.csproj -c Release
+
+      - name: Test Rxdk.XbWatson.Core
+        run: dotnet test src/Rxdk.XbWatson.Core.Tests/Rxdk.XbWatson.Core.Tests.csproj -c Release
 
       - name: Build Xbox Neighborhood installer
         shell: pwsh
@@ -167,8 +177,9 @@ jobs:
       - name: Test Rxdk.Pdb (managed PDB reader)
         run: dotnet test src/Rxdk.Pdb.Tests/Rxdk.Pdb.Tests.csproj -c Release
 
-      # - name: Test Rxdk.XbeImage
-      #   run: dotnet test src/Rxdk.XbeImage.Tests/Rxdk.XbeImage.Tests.csproj -c Release --no-restore
+      # imagebld on Linux, including POSIX paths.
+      - name: Test Rxdk.XbeImage
+        run: dotnet test src/Rxdk.XbeImage.Tests/Rxdk.XbeImage.Tests.csproj -c Release --no-restore
 
       - name: Pack Rxdk.XboxDbgBridge NuGet
         shell: bash
@@ -253,8 +264,9 @@ jobs:
       - name: Test Rxdk.Pdb (managed PDB reader)
         run: dotnet test src/Rxdk.Pdb.Tests/Rxdk.Pdb.Tests.csproj -c Release
 
-      # - name: Test Rxdk.XbeImage
-      #   run: dotnet test src/Rxdk.XbeImage.Tests/Rxdk.XbeImage.Tests.csproj -c Release --no-restore
+      # imagebld on macOS, including POSIX paths.
+      - name: Test Rxdk.XbeImage
+        run: dotnet test src/Rxdk.XbeImage.Tests/Rxdk.XbeImage.Tests.csproj -c Release --no-restore
 
       - name: Publish managed tools package (macOS arm64)
         run: |
